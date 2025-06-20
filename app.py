@@ -1,21 +1,27 @@
 import sys
-from db.db_manager import DBManager
+from PySide6.QtWidgets import QApplication
+from views.main_window import MainWindow
+from views.home_page import HomePage
+from views.assistant_page import AssistantPage
+from views.members_page import MembersPage
+from views.data_page import DataPage
 
 def main():
-    # Ruta de la base de datos
-    db_path = "BGC-base-de-datos.db"
+    app = QApplication(sys.argv)
+    window = MainWindow()
 
-    # Inicializar y conectar el DBManager
-    db_manager = DBManager(db_path)
-    if not db_manager.connect():
-        print("No se pudo conectar a la base de datos.")
-        sys.exit(1)
+    # Create and add views
+    window.add_view("home", HomePage())
+    window.add_view("assistant", AssistantPage())
+    window.add_view("members", MembersPage())
+    window.add_view("data", DataPage())
 
-    # Inicializar las tablas
-    db_manager.create_tables()
+    # Show initial view
+    window.show_view("home")
+    window.show()
 
-    print("¡Aplicación inicializada correctamente!")
-    db_manager.close()
+    print("✅ Aplicación iniciada correctamente.")
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()
