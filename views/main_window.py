@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
         top_bar = QWidget()
         top_bar.setObjectName("TopBar")
         top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(10, 10, 100, 10) # Acomodar margen derecha botones.
+        top_layout.setContentsMargins(10, 15, 100, 15) # Margen Topbar, right, top, left, bottom
 
         # Logo
         logo_label = QLabel("🔷 BGC")
@@ -49,9 +49,6 @@ class MainWindow(QMainWindow):
 
         # Botones con íconos PNG
         icons_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "icons")
-        print("Ruta de iconos:", icons_dir)
-        print("Home icon exists:", os.path.exists(os.path.join(icons_dir, "home.svg")))
-
         self.btn_home = QPushButton(" Inicio")
         self.btn_home.setIcon(load_svg_icon("assets/icons/home.svg"))
 
