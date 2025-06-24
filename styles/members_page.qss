@@ -1,0 +1,28 @@
+/* Titulo */
+#title-members {  
+    font-size: 24px;
+    font-weight: bold;
+}
+
+/* Top bar: búsqueda + botón */
+#topBar-members {
+    background-color: red;
+}
+
+#searchBox-members {
+    background-color: white;
+    border: 1px solid #3e3d3d;
+    border-radius: 8px;
+    padding: 5px;
+    font-size: 14px;
+}
+
+#newMemberButton{
+    background-color: #0A2F66;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    font-size: 15px;
+    border-radius: 8px;
+}

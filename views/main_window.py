@@ -96,13 +96,17 @@ class MainWindow(QMainWindow):
         self.btn_data.setObjectName("NavBarButton")
 
     def load_styles(self):
-        with open("views/main.qss", "r") as f:
-            qss = f.read() % {
-                "PRIMARY_COLOR": PRIMARY_COLOR,
-                "SECONDARY_COLOR": SECONDARY_COLOR,
-                "TEXT_COLOR": TEXT_COLOR
-            }
-            self.setStyleSheet(qss)
+        qss_path = os.path.join(os.path.dirname(__file__), "..",  "styles", "main.qss")
+        try:
+            with open(qss_path, "r") as f:
+                qss = f.read() % {
+                    "PRIMARY_COLOR": PRIMARY_COLOR,
+                    "SECONDARY_COLOR": SECONDARY_COLOR,
+                    "TEXT_COLOR": TEXT_COLOR
+                }
+                self.setStyleSheet(qss)
+        except Exception as e:
+            print(f"❌ Error cargando estilos de {qss_path}: {e}")
 
     def add_view(self, name, widget):
         self.views[name] = widget
