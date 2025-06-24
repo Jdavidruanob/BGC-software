@@ -37,12 +37,13 @@ class MainWindow(QMainWindow):
         top_bar = QWidget()
         top_bar.setObjectName("TopBar")
         top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(10, 10, 10, 10)
+        top_layout.setContentsMargins(10, 10, 100, 10) # Acomodar margen derecha botones.
 
         # Logo
         logo_label = QLabel("🔷 BGC")
         logo_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
         top_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
+        logo_label.setObjectName("logoLabel")
 
         top_layout.addStretch()
 
@@ -59,15 +60,18 @@ class MainWindow(QMainWindow):
 
         self.btn_members = QPushButton(" Socios")
         self.btn_members.setIcon(QIcon(os.path.join(icons_dir, "users-group.svg")))
-
+  
         self.btn_data = QPushButton(" Datos")
         self.btn_data.setIcon(QIcon(os.path.join(icons_dir, "chart-area-line.svg")))
+
+        
 
         for btn in [self.btn_home, self.btn_assistant, self.btn_members, self.btn_data]:
             btn.setIconSize(QSize(24, 24))
             btn.setFixedHeight(40)
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             top_layout.addWidget(btn, alignment=Qt.AlignRight)
+
 
         top_bar.setLayout(top_layout)
 
@@ -88,8 +92,14 @@ class MainWindow(QMainWindow):
 
         self.load_styles()
 
+        # Configuración de botones 
+        self.btn_home.setObjectName("NavBarButton")
+        self.btn_assistant.setObjectName("NavBarButton")
+        self.btn_members.setObjectName("NavBarButton")
+        self.btn_data.setObjectName("NavBarButton")
+
     def load_styles(self):
-        with open("style.qss", "r") as f:
+        with open("views/main.qss", "r") as f:
             qss = f.read() % {
                 "PRIMARY_COLOR": PRIMARY_COLOR,
                 "SECONDARY_COLOR": SECONDARY_COLOR,
