@@ -1,0 +1,22 @@
+#MemberCard {
+    background-color: white;
+    border: 1px solid #3e3d3d;
+    border-radius: 12px;
+    padding: 10px;
+}
+
+#PhotoLabel {
+    border-radius: 50px;
+    border: 2px solid #0A2F66;
+}
+
+#NameLabel {
+    font-weight: bold;
+    font-size: 14px;
+    color: #000000;
+}
+
+#CreditLabel {
+    color: #8B5E3C;
+    font-size: 13px;
+}
