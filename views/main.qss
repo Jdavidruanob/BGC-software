@@ -1,26 +1,30 @@
-QPushButton {
+/* Estilos solo para los botones del navbar */
+QPushButton#NavBarButton {
     color: %(TEXT_COLOR)s;
-    background-color: transparent;
+    background-color: %(PRIMARY_COLOR)s;
     border: none;
     padding: 10px 20px;
     font-weight: bold;
     font-size: 15px;
     border-radius: 8px;
+    text-align: left;
 }
 
-QPushButton:hover {
+QPushButton#NavBarButton:hover {
     background-color: %(SECONDARY_COLOR)s;
 }
 
-QPushButton:pressed {
+QPushButton#NavBarButton:pressed {
     background-color: %(SECONDARY_COLOR)s;
 }
 
 QWidget#TopBar {
     background-color: %(PRIMARY_COLOR)s;
     padding: 12px;
+    
 }
 
-QPushButton {
-    text-align: left;
+QLabel#logoLabel {
+    margin-left: 50px;
 }
+
