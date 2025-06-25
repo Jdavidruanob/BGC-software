@@ -18,13 +18,13 @@ class MembersPage(QWidget):
         super().__init__()
         self.db_manager = db_manager  # Guardamos referencia a la base de datos
 
-        main_layout = QVBoxLayout()
+        main_layout = QVBoxLayout() # Layout principal
 
         # --- Encabezado: Título + Botón "Nuevo Socio"
-        header_layout = QHBoxLayout()
+        header_layout = QHBoxLayout() 
 
         title = QLabel("Socios")
-        title.setObjectName("Title-members")
+        title.setObjectName("title-members")
         header_layout.addWidget(title)
 
         header_layout.addStretch()
@@ -42,8 +42,8 @@ class MembersPage(QWidget):
         # --- Barra de búsqueda
         search_box = QLineEdit()
         search_box.setObjectName("searchBox-members")
-        search_box.setPlaceholderText("🔍 Buscar socio por nombre...")
-        search_box.setFixedHeight(35)
+        search_box.setPlaceholderText("Buscar socio por nombre...")
+        #search_box.setFixedHeight(35)
         main_layout.addWidget(search_box)
 
         # --- Área de tarjetas con scroll
@@ -63,8 +63,9 @@ class MembersPage(QWidget):
         scroll.setWidget(content_widget)
         main_layout.addWidget(scroll)
 
-        self.load_styles()
+        
         self.setLayout(main_layout)
+        self.load_styles()
 
     def load_styles(self):
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "members_page.qss")
@@ -97,8 +98,7 @@ class MembersPage(QWidget):
             socios = self.db_manager.get_all_members()
             for i, (name, photo, info) in enumerate(socios):
                 card = MemberCard(name, photo, info)
-                grid.addWidget(card, i // 4, i % 4)
-
+                grid.addWidget(card, i // 4, i % 4) # Adjust the grid layout as needed
             content_widget.setLayout(grid)
             scroll.setWidget(content_widget)
 

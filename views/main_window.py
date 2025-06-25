@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
         top_bar = QWidget()
         top_bar.setObjectName("TopBar")
         top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(10, 15, 100, 15) # Margen Topbar, right, top, left, bottom
+        top_layout.setContentsMargins(10, 15, 40, 15) # Margen Topbar, right, top, left, bottom
 
         # Logo
         logo_label = QLabel("🔷 BGC")

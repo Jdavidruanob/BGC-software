@@ -1,7 +1,12 @@
 /* Titulo */
-#title-members {  
+QLabel#title-members {  
     font-size: 24px;
     font-weight: bold;
+    color: %(PRIMARY_COLOR)s;
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    margin-left: 40px;
 }
 
 /* Top bar: búsqueda + botón */
@@ -11,18 +16,21 @@
 
 #searchBox-members {
     background-color: white;
-    border: 1px solid #3e3d3d;
-    border-radius: 8px;
-    padding: 5px;
+    border: 1px solid #c8d0da;
+    border-radius: 5px;
+    padding: 10px 0px 10px 5px;  /* top right bottom left  */;
     font-size: 14px;
+    margin: 0px 40px 40px 40px;  /* top right bottom left  */
+    
 }
 
 #newMemberButton{
-    background-color: #0A2F66;
+    background-color: %(PRIMARY_COLOR)s;
     color: white;
     border: none;
     padding: 10px 20px;
     font-weight: bold;
     font-size: 15px;
     border-radius: 8px;
+    margin-right: 40px;
 }
