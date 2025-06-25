@@ -5,18 +5,30 @@ from views.home_page import HomePage
 from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
+from db.db_manager import DBManager  # Nueva importación
 
 def main():
     app = QApplication(sys.argv)
+
+    # Inicializar y conectar la base de datos
+    db_path = "BGC-software.db"
+    db_manager = DBManager(db_path)
+
+    if not db_manager.connect():
+        print("❌ No se pudo conectar a la base de datos.")
+        sys.exit(1)
+
+    db_manager.create_tables()
+
+    # Crear ventana principal
     window = MainWindow()
 
-    # Create and add views
+    # Crear y agregar vistas (se pasa db_manager si es necesario)
     window.add_view("home", HomePage())
     window.add_view("assistant", AssistantPage())
-    window.add_view("members", MembersPage())
+    window.add_view("members", MembersPage(db_manager))  # Se pasa db_manager
     window.add_view("data", DataPage())
 
-    # Show initial view
     window.show_view("home")
     window.show()
 
