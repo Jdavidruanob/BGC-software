@@ -6,7 +6,7 @@ QLabel#title-members {
     text-align: center;
     margin-top: 20px;
     margin-bottom: 20px;
-    margin-left: 40px;
+    margin-left: 80px;
 }
 
 /* Top bar: búsqueda + botón */
@@ -20,7 +20,7 @@ QLabel#title-members {
     border-radius: 5px;
     padding: 10px 0px 10px 5px;  /* top right bottom left  */;
     font-size: 14px;
-    margin: 0px 40px 40px 40px;  /* top right bottom left  */
+    margin: 0px 80px 40px 80px;  /* top right bottom left  */
     
 }
 
@@ -32,5 +32,10 @@ QLabel#title-members {
     font-weight: bold;
     font-size: 15px;
     border-radius: 8px;
-    margin-right: 40px;
+    margin-right: 80px;
+}
+
+#contentWidget-members {
+    background-color: red;
+    margin: 0px 80px 0px 80px;  /* top right bottom left  */
 }

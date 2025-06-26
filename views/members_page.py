@@ -55,11 +55,12 @@ class MembersPage(QWidget):
         # 🔄 Cargar socios desde la base de datos
         socios = self.db_manager.get_all_members()
 
-        for i, (name, photo, info) in enumerate(socios):
-            card = MemberCard(name, photo, info)
+        for i, (member_id, name, photo, info) in enumerate(socios):
+            card = MemberCard(member_id, name, photo, info)
             grid.addWidget(card, i // 4, i % 4)
 
         content_widget.setLayout(grid)
+        content_widget.setObjectName("contentWidget-members")
         scroll.setWidget(content_widget)
         main_layout.addWidget(scroll)
 
@@ -96,8 +97,8 @@ class MembersPage(QWidget):
             grid = QGridLayout()
 
             socios = self.db_manager.get_all_members()
-            for i, (name, photo, info) in enumerate(socios):
-                card = MemberCard(name, photo, info)
+            for i, (member_id, name, photo, info) in enumerate(socios):
+                card = MemberCard(member_id, name, photo, info)
                 grid.addWidget(card, i // 4, i % 4) # Adjust the grid layout as needed
             content_widget.setLayout(grid)
             scroll.setWidget(content_widget)
