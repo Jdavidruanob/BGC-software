@@ -1,5 +1,7 @@
 /* Estilos solo para los botones del navbar */
-
+QWidget {
+    background: #fff;
+}
 QPushButton#NavBarButton {
     color: %(TEXT_COLOR)s;
     background-color: %(PRIMARY_COLOR)s;
@@ -27,6 +29,7 @@ QWidget#TopBar {
 
 QLabel#logoLabel {
     margin-left: 80px;
+    background-color: %(PRIMARY_COLOR)s;
 }
 
 
