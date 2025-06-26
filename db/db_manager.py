@@ -61,9 +61,10 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT s.nombre, 
-                       COALESCE(s.photo_path, '') as photo_path,
-                       COUNT(c.letra) as creditos
+                SELECT s.id,
+                    s.nombre, 
+                    COALESCE(s.photo_path, '') as photo_path,
+                    COUNT(c.letra) as creditos
                 FROM socios s
                 LEFT JOIN creditos c ON s.id = c.socio_id
                 GROUP BY s.id
@@ -71,12 +72,14 @@ class DBManager:
             """)
             results = []
             for row in cursor.fetchall():
+                member_id = row["id"]
                 nombre = row["nombre"]
                 foto = row["photo_path"] or "assets/photos/default_user.png"
                 creditos = row["creditos"]
                 label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)"
-                results.append((nombre, foto, label))
+                results.append((member_id, nombre, foto, label))
             return results
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
+

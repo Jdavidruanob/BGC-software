@@ -1,22 +1,28 @@
 #MemberCard {
     background-color: white;
-    border: 1px solid #3e3d3d;
-    border-radius: 12px;
-    padding: 10px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 14px;
+    
+}
+
+#MemberCard:hover {
+    border: 2px solid %(PRIMARY_COLOR)s;
 }
 
 #PhotoLabel {
-    border-radius: 50px;
-    border: 2px solid #0A2F66;
+    background-color: red;
 }
 
 #NameLabel {
     font-weight: bold;
-    font-size: 14px;
-    color: #000000;
+    font-size: 16px;
+    color: #0A0A0A ;
+    margin-top: 10px;
 }
 
 #CreditLabel {
+    font-size: 14px;
     color: #8B5E3C;
-    font-size: 13px;
+    margin-top: 4px;
 }
