@@ -11,7 +11,6 @@ QLabel#title-members {
 
 /* Top bar: búsqueda + botón */
 #topBar-members {
-    background-color: red;
 }
 
 #searchBox-members {
@@ -36,6 +35,10 @@ QLabel#title-members {
 }
 
 #contentWidget-members {
-    background-color: red;
+    /* background-color: red; */
     margin: 0px 80px 0px 80px;  /* top right bottom left  */
+
+
 }
+
+
