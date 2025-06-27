@@ -6,9 +6,21 @@ from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
 from db.db_manager import DBManager  # Nueva importación
+from PySide6.QtGui import QFontDatabase, QFont
+import os
+
 
 def main():
     app = QApplication(sys.argv)
+
+    # ✅ 1. Cargar fuente Inter Variable
+    font_id = QFontDatabase.addApplicationFont("assets/fonts/InterVariable.ttf")
+    if font_id != -1:
+        family = QFontDatabase.applicationFontFamilies(font_id)[0]
+        app.setFont(QFont(family))
+        print(f"✅ Fuente '{family}' cargada correctamente.")
+    else:
+        print("❌ No se pudo cargar la fuente Inter Variable.")
 
     # Inicializar y conectar la base de datos
     db_path = "BGC-software.db"
