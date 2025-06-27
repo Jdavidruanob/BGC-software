@@ -12,6 +12,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 
+
 # Function to load SVG icons
 def load_svg_icon(path: str, size: QSize = QSize(24, 24)) -> QIcon:
     renderer = QSvgRenderer(path)

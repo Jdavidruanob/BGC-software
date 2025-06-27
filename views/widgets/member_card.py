@@ -18,14 +18,15 @@ class MemberCard(QPushButton):  # ya estás usando QPushButton para que sea clic
         # Foto del socio
         self.photo_label = QLabel()
         self.photo_label.setObjectName("PhotoLabel")
-        self.photo_label.setFixedSize(125, 125)
+        self.photo_label.setFixedSize(115, 115)
         self.photo_label.setAlignment(Qt.AlignCenter)
+        self.photo_label.setScaledContents(True) # Esto ayuda a mantener centrado el contenido
 
         if not os.path.exists(photo_path) or not photo_path:
             photo_path = "assets/images/default_user.png"
 
         # Usa el método mejorado para crear el avatar circular con borde suave
-        avatar_pixmap = self.create_rounded_avatar(photo_path, size=125, border=3, border_color=PRIMARY_COLOR)
+        avatar_pixmap = self.create_rounded_avatar(photo_path, size=135, border=3, border_color=PRIMARY_COLOR)
         self.photo_label.setPixmap(avatar_pixmap)
 
         # Nombre
@@ -43,7 +44,7 @@ class MemberCard(QPushButton):  # ya estás usando QPushButton para que sea clic
         layout.addWidget(self.credit_label)
 
         self.setLayout(layout)
-        self.setFixedSize(335, 225)  # Tamaño fijo de la tarjeta
+        self.setFixedSize(325, 225)  # Tamaño fijo de la tarjeta
         self.load_styles()
 
         
@@ -60,7 +61,7 @@ class MemberCard(QPushButton):  # ya estás usando QPushButton para que sea clic
         except Exception as e:
             print(f"❌ Error cargando estilos de {qss_path}: {e}")
 
-    def create_rounded_avatar(self, photo_path, size=125, border=3, border_color="#153A66"):
+    def create_rounded_avatar(self, photo_path, size=135, border=3, border_color="#153A66"):
         # Cargar imagen y escalarla exactamente al círculo interior
         inner_diameter = size - 2 * border
         pixmap = QPixmap(photo_path).scaled(
@@ -81,8 +82,9 @@ class MemberCard(QPushButton):  # ya estás usando QPushButton para que sea clic
         pen.setWidth(border)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
-        offset = border / 2
-        painter.drawEllipse(offset, offset, size - border, size - border)
+        offset = int(border / 2)
+        diameter = size - border
+        painter.drawEllipse(offset, offset, diameter, diameter)
 
         # Dibujar imagen circular centrada
         path = QPainterPath()

@@ -2,6 +2,7 @@
 QWidget {
     background: #fff;
 }
+
 QPushButton#NavBarButton {
     color: %(TEXT_COLOR)s;
     background-color: %(PRIMARY_COLOR)s;
@@ -13,7 +14,7 @@ QPushButton#NavBarButton {
     text-align: left;
 }
 
-QPushButton#NavBarButton:hover {
+QPushButton#NavBarButton:hover {     
     background-color: %(SECONDARY_COLOR)s;
 }
 
