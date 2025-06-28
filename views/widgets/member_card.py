@@ -35,25 +35,26 @@ class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
 
         avatar_layout.addWidget(self.photo_label)
 
-        # Nombre
+        # Nombre del socio
         self.name_label = QLabel(name)
         self.name_label.setObjectName("NameLabel")
         self.name_label.setAlignment(Qt.AlignCenter)
-        self.name_label.setWordWrap(True)
-        self.name_label.setMaximumWidth(220)
+        #self.name_label.setWordWrap(True)
+        self.name_label.setMaximumWidth(300) # Ancho máximo para evitar desbordamiento
+        #self.name_label.setStyleSheet("background-color: red;")
 
         # Info de crédito
         self.credit_label = QLabel(credit_info)
         self.credit_label.setObjectName("CreditLabel")
         self.credit_label.setAlignment(Qt.AlignCenter)
+        
+        layout.addWidget(avatar_container) # Añadir el contenedor del avatar
+        layout.addWidget(self.name_label) # Añadir la etiqueta del nombre
+        layout.addWidget(self.credit_label) # Añadir la etiqueta de crédito
 
-        layout.addWidget(avatar_container)
-        layout.addWidget(self.name_label)
-        layout.addWidget(self.credit_label)
-
-        self.setLayout(layout)
+        self.setLayout(layout) # Añadir el layout al botón
         self.setFixedSize(325, 225)  # Tamaño de la card
-        self.load_styles()
+        self.load_styles() # Cargar estilos desde el archivo QSS
 
     def load_styles(self):
         qss_path = os.path.join(os.path.dirname(__file__), "..", "..", "styles", "member_card.qss")
