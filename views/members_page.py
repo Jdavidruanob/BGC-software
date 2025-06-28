@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QLineEdit, QScrollArea
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QAction
 import os
 
 from .widgets.member_card import MemberCard
@@ -22,6 +22,7 @@ class MembersPage(QWidget):
 
         # --- Encabezado: Título + Botón "Nuevo Socio"
         header_layout = QHBoxLayout() 
+        header_layout.setContentsMargins(80, 20, 80, 30)
 
         title = QLabel("Socios")
         title.setObjectName("title-members")
@@ -31,7 +32,7 @@ class MembersPage(QWidget):
 
         new_btn = QPushButton("  Nuevo Socio")
         new_btn.setObjectName("newMemberButton")
-        new_btn.setFixedHeight(35)
+        new_btn.setFixedHeight(45)
         new_btn.setIconSize(QSize(18, 18))
         new_btn.setIcon(load_svg_icon("assets/icons/users-plus.svg"))
         new_btn.clicked.connect(self.open_new_member_dialog)
@@ -39,12 +40,21 @@ class MembersPage(QWidget):
 
         main_layout.addLayout(header_layout)
 
-        # --- Barra de búsqueda
+        # --- Barra de búsqueda con márgenes laterales
+        search_layout = QHBoxLayout()
+        search_layout.setContentsMargins(80, 0, 80, 30)  # Aplica el margen aquí
+
         search_box = QLineEdit()
         search_box.setObjectName("searchBox-members")
-        search_box.setPlaceholderText("Buscar socio por nombre...")
-        #search_box.setFixedHeight(35)
-        main_layout.addWidget(search_box)
+        search_box.setPlaceholderText(" Buscar socio por nombre")
+
+        # Ícono dentro del QLineEdit
+        search_icon = load_svg_icon("assets/icons/search.svg")
+        search_action = QAction(search_icon, "", search_box)
+        search_box.addAction(search_action, QLineEdit.LeadingPosition)
+
+        search_layout.addWidget(search_box)
+        main_layout.addLayout(search_layout)
 
         # --- Área de tarjetas con scroll
         scroll = QScrollArea()

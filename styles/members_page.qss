@@ -1,12 +1,11 @@
 /* Titulo */
 QLabel#title-members {  
-    font-size: 24px;
+    font-size: 32px;
     font-weight: bold;
     color: %(PRIMARY_COLOR)s;
-    text-align: center;
-    margin-top: 20px;
+    /* margin-top: 20px;
     margin-bottom: 20px;
-    margin-left: 80px;
+    margin-left: 80px; */
 }
 
 /* Top bar: búsqueda + botón */
@@ -14,24 +13,27 @@ QLabel#title-members {
 }
 
 #searchBox-members {
-    background-color: white;
-    border: 1px solid #c8d0da;
-    border-radius: 5px;
-    padding: 10px 0px 10px 5px;  /* top right bottom left  */;
-    font-size: 14px;
-    margin: 0px 80px 40px 80px;  /* top right bottom left  */
-    
+    border: 2px solid #e4eaf1;
+    border-radius: 8px;
+    padding-left: 5px; /* deja espacio para el ícono */
+    height: 40px;
+    font-size: 16px;
 }
+
+
 
 #newMemberButton{
     background-color: %(PRIMARY_COLOR)s;
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 10px 20px;/* top right bottom left  */
     font-weight: bold;
     font-size: 15px;
     border-radius: 8px;
-    margin-right: 80px;
+    /* margin-right: 80px; */
+}
+#newMemberButton:hover {
+    background-color: %(SECONDARY_COLOR)s;
 }
 
 #contentWidget-members {
