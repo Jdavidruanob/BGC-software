@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 import os
+from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
 
 DEFAULT_PHOTO = "assets/images/default_user.png"
 
@@ -12,46 +13,70 @@ class NewMemberDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Nuevo Socio")
         self.setModal(True)
-        self.setFixedSize(400, 360)
+        self.setFixedSize(600, 550)
+        self.setObjectName("NewMemberDialog")
 
         self.first_name_input = QLineEdit()
-        self.last_name_input = QLineEdit()
-        self.cc_input = QLineEdit()
-        self.phone_input = QLineEdit()
-        self.photo_input = QLineEdit()
+        self.first_name_input.setObjectName("InputField")
 
-        # Botón para seleccionar imagen
+        self.last_name_input = QLineEdit()
+        self.last_name_input.setObjectName("InputField")
+
+        self.cc_input = QLineEdit()
+        self.cc_input.setObjectName("InputField")
+
+        self.phone_input = QLineEdit()
+        self.phone_input.setObjectName("InputField")
+
+        self.photo_input = QLineEdit()
+        self.photo_input.setObjectName("InputField")
+
         photo_btn = QPushButton("Seleccionar imagen")
+        photo_btn.setObjectName("PhotoButton")
         photo_btn.clicked.connect(self.select_photo)
 
         layout = QVBoxLayout()
-        layout.setSpacing(12)
+        layout.setSpacing(16)
+        layout.setContentsMargins(40, 30, 40, 30)
 
-        layout.addWidget(QLabel("Nombres:"))
-        layout.addWidget(self.first_name_input)
+        for label_text, widget in [
+            ("Nombres:", self.first_name_input),
+            ("Apellidos:", self.last_name_input),
+            ("Cédula:", self.cc_input),
+            ("Celular:", self.phone_input),
+            ("Foto (opcional):", None)
+        ]:
+            label = QLabel(label_text)
+            label.setObjectName("FormLabel")
+            layout.addWidget(label)
+            if widget:
+                layout.addWidget(widget)
+            elif label_text.startswith("Foto"):
+                photo_layout = QHBoxLayout()
+                photo_layout.addWidget(self.photo_input)
+                photo_layout.addWidget(photo_btn)
+                layout.addLayout(photo_layout)
 
-        layout.addWidget(QLabel("Apellidos:"))
-        layout.addWidget(self.last_name_input)
-
-        layout.addWidget(QLabel("Cédula:"))
-        layout.addWidget(self.cc_input)
-
-        layout.addWidget(QLabel("Celular:"))
-        layout.addWidget(self.phone_input)
-
-        layout.addWidget(QLabel("Foto (opcional):"))
-        photo_layout = QHBoxLayout()
-        photo_layout.addWidget(self.photo_input)
-        photo_layout.addWidget(photo_btn)
-        layout.addLayout(photo_layout)
-
-        # Botón de crear
         create_btn = QPushButton("Crear socio")
-        create_btn.setStyleSheet("padding: 8px; font-weight: bold; background-color: #0A2F66; color: white;")
+        create_btn.setObjectName("CreateMemberButton")
         create_btn.clicked.connect(self.on_submit)
         layout.addWidget(create_btn, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
+        self.load_styles()
+
+    def load_styles(self):
+        qss_path = os.path.join(os.path.dirname(__file__), ".." , "..","styles", "new_member_dialog.qss")
+        try:
+            with open(qss_path, "r") as f:
+                qss = f.read() % {
+                    "PRIMARY_COLOR": PRIMARY_COLOR,
+                    "SECONDARY_COLOR": SECONDARY_COLOR,
+                    "TEXT_COLOR": TEXT_COLOR
+                }
+                self.setStyleSheet(qss)
+        except Exception as e:
+            print(f"❌ Error cargando estilos de {qss_path}: {e}")
 
     def select_photo(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.jpeg)")
