@@ -21,7 +21,8 @@ class DBManager:
                 CREATE TABLE IF NOT EXISTS socios (
                     id INTEGER PRIMARY KEY,
                     cc TEXT UNIQUE,
-                    nombre TEXT NOT NULL,
+                    nombres TEXT NOT NULL,
+                    apellidos TEXT NOT NULL,
                     saldo INTEGER DEFAULT 0,
                     celular TEXT UNIQUE,
                     photo_path TEXT,
@@ -45,15 +46,15 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error creando tablas: {e}")
 
-    def add_member(self, cc, name, phone, photo_path):
+    def add_member(self, cc, nombres, apellidos, phone, photo_path):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO socios (cc, nombre, celular, photo_path)
-                VALUES (?, ?, ?, ?)
-            """, (cc, name, phone, photo_path))
+                INSERT INTO socios (cc, nombres, apellidos, celular, photo_path)
+                VALUES (?, ?, ?, ?, ?)
+            """, (cc, nombres, apellidos, phone, photo_path))
             self.conn.commit()
-            print(f"✅ Socio '{name}' agregado correctamente.")
+            print(f"✅ Socio '{nombres} {apellidos}' agregado correctamente.")
         except sqlite3.Error as e:
             print(f"❌ Error agregando socio: {e}")
 
@@ -62,24 +63,26 @@ class DBManager:
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT s.id,
-                    s.nombre, 
-                    COALESCE(s.photo_path, '') as photo_path,
-                    COUNT(c.letra) as creditos
+                       s.nombres,
+                       s.apellidos,
+                       COALESCE(s.photo_path, '') as photo_path,
+                       COUNT(c.letra) as creditos
                 FROM socios s
                 LEFT JOIN creditos c ON s.id = c.socio_id
                 GROUP BY s.id
-                ORDER BY s.nombre
+                ORDER BY s.nombres
             """)
             results = []
             for row in cursor.fetchall():
                 member_id = row["id"]
-                nombre = row["nombre"]
+                primer_nombre = row["nombres"].split()[0]
+                primer_apellido = row["apellidos"].split()[0]
+                nombre_corto = f"{primer_nombre} {primer_apellido}"
                 foto = row["photo_path"] or "assets/photos/default_user.png"
                 creditos = row["creditos"]
                 label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)"
-                results.append((member_id, nombre, foto, label))
+                results.append((member_id, nombre_corto, foto, label))
             return results
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
-

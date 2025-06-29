@@ -5,16 +5,17 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import os
 
-DEFAULT_PHOTO = "assets/icons/default_user.png"
+DEFAULT_PHOTO = "assets/images/default_user.png"
 
 class NewMemberDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Nuevo Socio")
         self.setModal(True)
-        self.setFixedSize(400, 320)
+        self.setFixedSize(400, 360)
 
-        self.name_input = QLineEdit()
+        self.first_name_input = QLineEdit()
+        self.last_name_input = QLineEdit()
         self.cc_input = QLineEdit()
         self.phone_input = QLineEdit()
         self.photo_input = QLineEdit()
@@ -26,8 +27,11 @@ class NewMemberDialog(QDialog):
         layout = QVBoxLayout()
         layout.setSpacing(12)
 
-        layout.addWidget(QLabel("Nombre completo:"))
-        layout.addWidget(self.name_input)
+        layout.addWidget(QLabel("Nombres:"))
+        layout.addWidget(self.first_name_input)
+
+        layout.addWidget(QLabel("Apellidos:"))
+        layout.addWidget(self.last_name_input)
 
         layout.addWidget(QLabel("Cédula:"))
         layout.addWidget(self.cc_input)
@@ -55,14 +59,15 @@ class NewMemberDialog(QDialog):
             self.photo_input.setText(file_path)
 
     def on_submit(self):
-        if not self.name_input.text().strip() or not self.cc_input.text().strip():
-            QMessageBox.warning(self, "Campos obligatorios", "Por favor ingrese al menos nombre y cédula.")
+        if not self.first_name_input.text().strip() or not self.last_name_input.text().strip() or not self.cc_input.text().strip():
+            QMessageBox.warning(self, "Campos obligatorios", "Por favor ingrese nombres, apellidos y cédula.")
             return
         self.accept()
 
     def get_data(self):
-        name = self.name_input.text().strip()
+        nombres = self.first_name_input.text().strip()
+        apellidos = self.last_name_input.text().strip()
         cc = self.cc_input.text().strip()
         phone = self.phone_input.text().strip()
         photo = self.photo_input.text().strip() or DEFAULT_PHOTO
-        return (cc, name, phone, photo)
+        return (cc, nombres, apellidos, phone, photo)

@@ -96,10 +96,11 @@ class MembersPage(QWidget):
     def open_new_member_dialog(self):
         dialog = NewMemberDialog(self)
         if dialog.exec():
-            cc, name, phone, photo = dialog.get_data()
-            if name and cc:
-                self.db_manager.add_member(cc, name, phone, photo)
+            cc, nombres, apellidos, phone, photo = dialog.get_data()
+            if nombres and apellidos and cc:
+                self.db_manager.add_member(cc, nombres, apellidos, phone, photo)
                 self.refresh_members()
+
 
     def refresh_members(self):
         # Elimina y reconstruye las tarjetas
