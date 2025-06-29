@@ -58,6 +58,7 @@ class MembersPage(QWidget):
 
         # --- Área de tarjetas con scroll
         scroll = QScrollArea()
+        scroll.setContentsMargins(80, 0, 80, 0)  # Márgenes laterales
         scroll.setWidgetResizable(True)
         content_widget = QWidget()
         grid = QGridLayout()
@@ -70,9 +71,9 @@ class MembersPage(QWidget):
             grid.addWidget(card, i // 4, i % 4)
 
         grid.setObjectName("gridLayout-members")
-        grid.setContentsMargins(80, 0, 80, 0)
 
         content_widget.setLayout(grid)
+        content_widget.setContentsMargins(80, 0, 80, 0)
         content_widget.setObjectName("contentWidget-members")
         scroll.setWidget(content_widget)
         main_layout.addWidget(scroll)
@@ -114,6 +115,7 @@ class MembersPage(QWidget):
                 card = MemberCard(member_id, name, photo, info)
                 grid.addWidget(card, i // 4, i % 4) # Adjust the grid layout as needed
             content_widget.setLayout(grid)
+            content_widget.setContentsMargins(80, 0, 80, 0)
             scroll.setWidget(content_widget)
 
 
