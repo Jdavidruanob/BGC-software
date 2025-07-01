@@ -1,17 +1,17 @@
+import os
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QLineEdit, QScrollArea
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
-import os
-
 from .widgets.member_card import MemberCard
 from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
-from views.main_window import load_svg_icon
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.member_detail_page import MemberDetailPage
 
+from config import load_styles, load_svg_icon
 
 
 class MembersPage(QWidget):
@@ -69,7 +69,7 @@ class MembersPage(QWidget):
 
         for i, (member_id, name, photo, info) in enumerate(socios):
             card = MemberCard(member_id, name, photo, info)
-            card.mousePressEvent = lambda e, m_id=member_id: self.open_member_detail(m_id)
+            card.clicked.connect(lambda _, member_id=member_id: self.open_member_detail(member_id))
             grid.addWidget(card, i // 4, i % 4)
 
         grid.setObjectName("gridLayout-members")
@@ -81,20 +81,9 @@ class MembersPage(QWidget):
         main_layout.addWidget(scroll)
 
         self.setLayout(main_layout)
-        self.load_styles()
-
-    def load_styles(self):
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "members_page.qss")
-        try:
-            with open(qss_path, "r") as f:
-                qss = f.read() % {
-                    "PRIMARY_COLOR": PRIMARY_COLOR,
-                    "SECONDARY_COLOR": SECONDARY_COLOR,
-                    "TEXT_COLOR": TEXT_COLOR
-                }
-                self.setStyleSheet(qss)
-        except Exception as e:
-            print(f"❌ Error cargando estilos de {qss_path}: {e}")
+        load_styles(self, qss_path)
+
 
     def open_new_member_dialog(self):
         dialog = NewMemberDialog(self)

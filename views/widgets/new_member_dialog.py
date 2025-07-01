@@ -1,10 +1,12 @@
+import os
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QFileDialog, QMessageBox
 )
 from PySide6.QtCore import Qt
-import os
-from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
+
+from config import load_styles, load_svg_icon
 
 DEFAULT_PHOTO = "assets/images/default_user.png"
 
@@ -63,20 +65,8 @@ class NewMemberDialog(QDialog):
         layout.addWidget(create_btn, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
-        self.load_styles()
-
-    def load_styles(self):
         qss_path = os.path.join(os.path.dirname(__file__), ".." , "..","styles", "new_member_dialog.qss")
-        try:
-            with open(qss_path, "r") as f:
-                qss = f.read() % {
-                    "PRIMARY_COLOR": PRIMARY_COLOR,
-                    "SECONDARY_COLOR": SECONDARY_COLOR,
-                    "TEXT_COLOR": TEXT_COLOR
-                }
-                self.setStyleSheet(qss)
-        except Exception as e:
-            print(f"❌ Error cargando estilos de {qss_path}: {e}")
+        load_styles(self, qss_path)
 
     def select_photo(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.jpeg)")
@@ -84,7 +74,7 @@ class NewMemberDialog(QDialog):
             self.photo_input.setText(file_path)
 
     def on_submit(self):
-        if not self.first_name_input.text().strip() or not self.last_name_input.text().strip() or not self.cc_input.text().strip():
+        if not self.first_name_input.text().strip() or not self.last_name_input.text().strip():
             QMessageBox.warning(self, "Campos obligatorios", "Por favor ingrese nombres, apellidos y cédula.")
             return
         self.accept()

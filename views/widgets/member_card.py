@@ -1,9 +1,11 @@
+import os
+
 from PySide6.QtWidgets import QPushButton, QLabel, QVBoxLayout, QWidget
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QPainter, QBrush, QColor, QPen, QPainterPath
-import os
-from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
 
+from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
+from config import load_styles
 
 class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
     def __init__(self, member_id, name, photo_path, credit_info):
@@ -54,20 +56,10 @@ class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
 
         self.setLayout(layout) # Añadir el layout al botón
         self.setFixedSize(325, 225)  # Tamaño de la card
-        self.load_styles() # Cargar estilos desde el archivo QSS
 
-    def load_styles(self):
         qss_path = os.path.join(os.path.dirname(__file__), "..", "..", "styles", "member_card.qss")
-        try:
-            with open(qss_path, "r") as f:
-                qss = f.read() % {
-                    "PRIMARY_COLOR": PRIMARY_COLOR,
-                    "SECONDARY_COLOR": SECONDARY_COLOR,
-                    "TEXT_COLOR": TEXT_COLOR
-                }
-                self.setStyleSheet(qss)
-        except Exception as e:
-            print(f"❌ Error cargando estilos de {qss_path}: {e}")
+        load_styles(self, qss_path) # Cargar estilos desde el archivo QSS
+
 
     def create_rounded_avatar(self, photo_path, size=135, border=3, border_color="#153A66"):
         inner_diameter = size - 2 * border
@@ -88,7 +80,7 @@ class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
 
-        offset = int(border / 2)
+        offset = int(border // 2)
         diameter = size - border
         painter.drawEllipse(offset, offset, diameter, diameter)
 
