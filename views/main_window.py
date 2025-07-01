@@ -1,27 +1,17 @@
+import os
+
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
     QVBoxLayout, QStackedWidget, QSizePolicy
 )
-import os
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
-from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
-
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 
-
-# Function to load SVG icons
-def load_svg_icon(path: str, size: QSize = QSize(24, 24)) -> QIcon:
-    renderer = QSvgRenderer(path)
-    pixmap = QPixmap(size)
-    pixmap.fill(Qt.transparent)
-    painter = QPainter(pixmap)
-    renderer.render(painter)
-    painter.end()
-    return QIcon(pixmap)
+from config import load_styles, load_svg_icon
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -87,27 +77,14 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.stack)
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
-
-        self.load_styles()
+        qss_path = os.path.join(os.path.dirname(__file__), "..",  "styles", "main.qss")
+        load_styles(self, qss_path)
 
         # Configuración de botones 
         self.btn_home.setObjectName("NavBarButton")
         self.btn_assistant.setObjectName("NavBarButton")
         self.btn_members.setObjectName("NavBarButton")
         self.btn_data.setObjectName("NavBarButton")
-
-    def load_styles(self):
-        qss_path = os.path.join(os.path.dirname(__file__), "..",  "styles", "main.qss")
-        try:
-            with open(qss_path, "r") as f:
-                qss = f.read() % {
-                    "PRIMARY_COLOR": PRIMARY_COLOR,
-                    "SECONDARY_COLOR": SECONDARY_COLOR,
-                    "TEXT_COLOR": TEXT_COLOR
-                }
-                self.setStyleSheet(qss)
-        except Exception as e:
-            print(f"❌ Error cargando estilos de {qss_path}: {e}")
 
     def add_view(self, name, widget):
         self.views[name] = widget

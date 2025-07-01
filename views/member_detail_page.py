@@ -1,9 +1,10 @@
+import os
+
 from PySide6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QMessageBox, QScrollArea
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QSize
-import os
 
 from views.main_window import load_svg_icon
 
