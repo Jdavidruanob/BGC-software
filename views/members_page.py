@@ -10,14 +10,15 @@ from .widgets.member_card import MemberCard
 from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
 from views.main_window import load_svg_icon
 from views.widgets.new_member_dialog import NewMemberDialog
+from views.member_detail_page import MemberDetailPage
 
 
 
 class MembersPage(QWidget):
-    def __init__(self, db_manager):
+    def __init__(self, db_manager, main_window):
         super().__init__()
         self.db_manager = db_manager  # Guardamos referencia a la base de datos
-
+        self.main_window = main_window  # Guardamos referencia a la ventana principal
         main_layout = QVBoxLayout() # Layout principal
 
         # --- Encabezado: Título + Botón "Nuevo Socio"
@@ -68,6 +69,7 @@ class MembersPage(QWidget):
 
         for i, (member_id, name, photo, info) in enumerate(socios):
             card = MemberCard(member_id, name, photo, info)
+            card.mousePressEvent = lambda e, m_id=member_id: self.open_member_detail(m_id)
             grid.addWidget(card, i // 4, i % 4)
 
         grid.setObjectName("gridLayout-members")
@@ -113,9 +115,21 @@ class MembersPage(QWidget):
             socios = self.db_manager.get_all_members()
             for i, (member_id, name, photo, info) in enumerate(socios):
                 card = MemberCard(member_id, name, photo, info)
+                card.clicked.connect(lambda _, member_id=member_id: self.open_member_detail(member_id))
                 grid.addWidget(card, i // 4, i % 4) # Adjust the grid layout as needed
             content_widget.setLayout(grid)
             content_widget.setContentsMargins(80, 0, 80, 0)
             scroll.setWidget(content_widget)
+
+
+    def open_member_detail(self, member_id):
+        view_name = f"member_detail_{member_id}"
+        
+        if view_name not in self.main_window.views:
+            detail_view = MemberDetailPage(self.db_manager, member_id, self.main_window)
+            self.main_window.add_view(view_name, detail_view)
+        
+        self.main_window.show_view(view_name)
+
 
 

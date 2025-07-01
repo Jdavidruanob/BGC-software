@@ -1,0 +1,62 @@
+#memberDetailPage {
+    background-color: #f9fafb;
+    font-size: 18px;
+    color: #1f2937;
+}
+
+#leftPanel {
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+#memberName {
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 12px;
+    color: #111827;
+}
+
+#memberInfoRow {
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+QPushButton {
+    font-size: 16px;
+    padding: 10px 14px;
+    border-radius: 8px ;
+    color: #111827;
+    border: 1px solid #0A2F66
+}
+
+
+
+QPushButton:disabled {
+    background-color: #9ca3af;
+}
+
+#creditCard {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+#creditCard:hover {
+    background-color: #f3f4f6;
+    border-color: #cbd5e1;
+}
+
+#creditTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1e40af;
+}
+
+#creditInfo {
+    font-size: 16px;
+    color: #374151;
+}

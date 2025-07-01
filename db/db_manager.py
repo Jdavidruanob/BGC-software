@@ -86,3 +86,29 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
+    
+    def get_member_by_id(self, member_id):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT id, cc, nombres, apellidos, celular, saldo, photo_path, created_at
+                FROM socios
+                WHERE id = ?
+            """, (member_id,))
+            return cursor.fetchone()
+        except sqlite3.Error as e:
+            print(f"❌ Error obteniendo datos del socio: {e}")
+            return None
+
+    def get_active_credits_by_member(self, member_id):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT letra, capital, no_cuotas
+                FROM creditos
+                WHERE socio_id = ?
+            """, (member_id,))
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"❌ Error obteniendo créditos activos: {e}")
+            return []
