@@ -41,6 +41,23 @@ class DBManager:
                     FOREIGN KEY (socio_id) REFERENCES socios(id)
                 )
             """)
+            
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS aportes (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS config (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            """)
+
+
             self.conn.commit()
             print("✅ Tablas creadas.")
         except sqlite3.Error as e:
