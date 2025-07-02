@@ -1,0 +1,49 @@
+
+
+QFrame#HomeCard {
+    border: 2px solid #e4eaf1;
+    border-radius: 10px;
+}
+
+QFrame#HomeCardHeader {
+    background-color: %(PRIMARY_COLOR)s;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+QLabel#homeTitle {
+    background-color: %(PRIMARY_COLOR)s;
+    font-size: 32px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: white;
+}
+
+QLabel#homeSubtitle {
+    background-color: %(PRIMARY_COLOR)s;
+    font-size: 16px;
+    color: white;
+    margin-left: 10px;
+}
+
+/* Botones seleccionables */
+QPushButton[btnType="operacion"] {
+    background-color: #f1f5f9;
+    color: #647790;
+    border: 1px solid #e4eaf1;
+    border-radius: 2px;
+    font-size: 20px;
+    padding: 10px 20px;
+}
+
+QPushButton[btnType="operacion"]:hover {
+    border: 1px solid %(PRIMARY_COLOR)s;
+}
+
+QPushButton[btnType="operacion"]:checked {
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    font-weight: bold;
+}
+
+
