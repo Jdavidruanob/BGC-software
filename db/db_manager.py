@@ -87,6 +87,38 @@ class DBManager:
             print(f"❌ Error obteniendo socios: {e}")
             return []
     
+    def search_members_by_name(self, search_term):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT s.id,
+                    s.nombres,
+                    s.apellidos,
+                    COALESCE(s.photo_path, '') as photo_path,
+                    COUNT(c.letra) as creditos
+                FROM socios s
+                LEFT JOIN creditos c ON s.id = c.socio_id
+                WHERE s.nombres LIKE ? OR s.apellidos LIKE ?
+                GROUP BY s.id
+                ORDER BY s.nombres
+            """, (f"%{search_term}%", f"%{search_term}%"))
+
+            results = []
+            for row in cursor.fetchall():
+                member_id = row["id"]
+                primer_nombre = row["nombres"].split()[0]
+                primer_apellido = row["apellidos"].split()[0]
+                nombre_corto = f"{primer_nombre} {primer_apellido}"
+                foto = row["photo_path"] or "assets/photos/default_user.png"
+                creditos = row["creditos"]
+                label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)"
+                results.append((member_id, nombre_corto, foto, label))
+            return results
+        except sqlite3.Error as e:
+            print(f"❌ Error en búsqueda de socios: {e}")
+            return []
+
+
     def get_member_by_id(self, member_id):
         try:
             cursor = self.conn.cursor()
