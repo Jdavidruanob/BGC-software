@@ -90,7 +90,7 @@
 #creditTitle {
     font-size: 18px;
     font-weight: bold;
-    color: #1e40af;
+    color: %(PRIMARY_COLOR)s; 
 }
 
 #creditInfo {

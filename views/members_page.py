@@ -6,29 +6,28 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
+
 from .widgets.member_card import MemberCard
-from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
+from config import load_styles, load_svg_icon
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.member_detail_page import MemberDetailPage
-
-from config import load_styles, load_svg_icon
 
 
 class MembersPage(QWidget):
     def __init__(self, db_manager, main_window):
         super().__init__()
-        self.db_manager = db_manager  # Guardamos referencia a la base de datos
-        self.main_window = main_window  # Guardamos referencia a la ventana principal
-        main_layout = QVBoxLayout() # Layout principal
+        self.db_manager = db_manager
+        self.main_window = main_window
+
+        main_layout = QVBoxLayout()
 
         # --- Encabezado: Título + Botón "Nuevo Socio"
-        header_layout = QHBoxLayout() 
+        header_layout = QHBoxLayout()
         header_layout.setContentsMargins(80, 20, 80, 30)
 
         title = QLabel("Socios")
         title.setObjectName("title-members")
         header_layout.addWidget(title)
-
         header_layout.addStretch()
 
         new_btn = QPushButton("  Nuevo Socio")
@@ -41,49 +40,40 @@ class MembersPage(QWidget):
 
         main_layout.addLayout(header_layout)
 
-        # --- Barra de búsqueda con márgenes laterales
+        # --- Barra de búsqueda
         search_layout = QHBoxLayout()
-        search_layout.setContentsMargins(80, 0, 80, 30)  # Aplica el margen aquí
+        search_layout.setContentsMargins(80, 0, 80, 30)
 
-        search_box = QLineEdit()
-        search_box.setObjectName("searchBox-members")
-        search_box.setPlaceholderText(" Buscar socio por nombre")
+        self.search_box = QLineEdit()
+        self.search_box.setObjectName("searchBox-members")
+        self.search_box.setPlaceholderText(" Buscar socio por nombre")
+        self.search_box.textChanged.connect(self.filter_members)
 
-        # Ícono dentro del QLineEdit
         search_icon = load_svg_icon("assets/icons/search.svg")
-        search_action = QAction(search_icon, "", search_box)
-        search_box.addAction(search_action, QLineEdit.LeadingPosition)
+        search_action = QAction(search_icon, "", self.search_box)
+        self.search_box.addAction(search_action, QLineEdit.LeadingPosition)
 
-        search_layout.addWidget(search_box)
+        search_layout.addWidget(self.search_box)
         main_layout.addLayout(search_layout)
 
-        # --- Área de tarjetas con scroll
+        # --- Área con scroll y tarjetas
         scroll = QScrollArea()
-        scroll.setContentsMargins(80, 0, 80, 0)  # Márgenes laterales
+        scroll.setContentsMargins(80, 0, 80, 0)
         scroll.setWidgetResizable(True)
-        content_widget = QWidget()
-        grid = QGridLayout()
+        self.content_widget = QWidget()
+        self.cards_layout = QGridLayout()
 
-        # 🔄 Cargar socios desde la base de datos
-        socios = self.db_manager.get_all_members()
-
-        for i, (member_id, name, photo, info) in enumerate(socios):
-            card = MemberCard(member_id, name, photo, info)
-            card.clicked.connect(lambda _, member_id=member_id: self.open_member_detail(member_id))
-            grid.addWidget(card, i // 4, i % 4)
-
-        grid.setObjectName("gridLayout-members")
-
-        content_widget.setLayout(grid)
-        content_widget.setContentsMargins(80, 0, 80, 0)
-        content_widget.setObjectName("contentWidget-members")
-        scroll.setWidget(content_widget)
+        self.content_widget.setLayout(self.cards_layout)
+        self.content_widget.setContentsMargins(80, 0, 80, 0)
+        self.content_widget.setObjectName("contentWidget-members")
+        scroll.setWidget(self.content_widget)
         main_layout.addWidget(scroll)
 
         self.setLayout(main_layout)
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "members_page.qss")
         load_styles(self, qss_path)
 
+        self.refresh_members()  # Cargar al iniciar
 
     def open_new_member_dialog(self):
         dialog = NewMemberDialog(self)
@@ -93,32 +83,33 @@ class MembersPage(QWidget):
                 self.db_manager.add_member(cc, nombres, apellidos, phone, photo)
                 self.refresh_members()
 
-
     def refresh_members(self):
-        # Elimina y reconstruye las tarjetas
-        scroll = self.findChild(QScrollArea)
-        if scroll:
-            content_widget = QWidget()
-            grid = QGridLayout()
+        socios = self.db_manager.get_all_members()
+        self.update_member_cards(socios)
 
+    def update_member_cards(self, members):
+        # Limpiar layout
+        for i in reversed(range(self.cards_layout.count())):
+            widget = self.cards_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # Agregar nuevas tarjetas
+        for i, (member_id, name, photo, info) in enumerate(members):
+            card = MemberCard(member_id, name, photo, info)
+            card.clicked.connect(lambda _, member_id=member_id: self.open_member_detail(member_id))
+            self.cards_layout.addWidget(card, i // 4, i % 4)
+
+    def filter_members(self, text):
+        if text.strip() == "":
             socios = self.db_manager.get_all_members()
-            for i, (member_id, name, photo, info) in enumerate(socios):
-                card = MemberCard(member_id, name, photo, info)
-                card.clicked.connect(lambda _, member_id=member_id: self.open_member_detail(member_id))
-                grid.addWidget(card, i // 4, i % 4) # Adjust the grid layout as needed
-            content_widget.setLayout(grid)
-            content_widget.setContentsMargins(80, 0, 80, 0)
-            scroll.setWidget(content_widget)
-
+        else:
+            socios = self.db_manager.search_members_by_name(text)
+        self.update_member_cards(socios)
 
     def open_member_detail(self, member_id):
         view_name = f"member_detail_{member_id}"
-        
         if view_name not in self.main_window.views:
             detail_view = MemberDetailPage(self.db_manager, member_id, self.main_window)
             self.main_window.add_view(view_name, detail_view)
-        
         self.main_window.show_view(view_name)
-
-
-
