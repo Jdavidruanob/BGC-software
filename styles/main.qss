@@ -6,22 +6,23 @@ QWidget {
 QPushButton#NavBarButton {
     color: %(TEXT_COLOR)s;
     background-color: %(PRIMARY_COLOR)s;
-    border: none;
-    padding: 10px 20px;
+    padding: 10px;
     font-weight: bold;
     font-size: 18px;
     border-radius: 8px;
-    text-align: left;
+    margin-left: 10px; /* Espacio entre botones */
 }
 
+/* Hover: más oscuro */
 QPushButton#NavBarButton:hover {     
-    background-color: %(SECONDARY_COLOR)s;
+    background-color: #2a4a80;
 }
 
-QPushButton#NavBarButton:pressed {
+/* Activo (la página actual) */
+QPushButton#NavBarButton[active="true"] {
     background-color: %(SECONDARY_COLOR)s;
+    color: white;
 }
-
 QWidget#TopBar {
     background-color: %(PRIMARY_COLOR)s;
     padding: 12px;

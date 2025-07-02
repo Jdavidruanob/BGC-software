@@ -33,7 +33,7 @@ QLabel#title-members {
     /* margin-right: 80px; */
 }
 #newMemberButton:hover {
-    background-color: %(SECONDARY_COLOR)s;
+    background-color: #2a4a80;
 }
 
 #contentWidget-members {

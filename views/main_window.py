@@ -17,7 +17,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("bgc software")
-        self.resize(1100, 700)
+        #self.resize(1500, 700)
+        # inicializar en ventana completa 
+        self.setWindowState(Qt.WindowMaximized)
         self.views = {}
         
         # --- Widget central ---
@@ -56,7 +58,6 @@ class MainWindow(QMainWindow):
 
         for btn in [self.btn_home, self.btn_assistant, self.btn_members, self.btn_data]:
             btn.setIconSize(QSize(24, 24))
-            btn.setFixedHeight(40)
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             top_layout.addWidget(btn, alignment=Qt.AlignRight)
 
@@ -91,5 +92,25 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(widget)
 
     def show_view(self, name):
-        if name in self.views:
-            self.stack.setCurrentWidget(self.views[name])
+            if name in self.views:
+                self.stack.setCurrentWidget(self.views[name])
+                self.highlight_active_button(name)
+
+    def highlight_active_button(self, active_name):
+        # Mapea nombres a botones
+        buttons = {
+            "home": self.btn_home,
+            "assistant": self.btn_assistant,
+            "members": self.btn_members,
+            "data": self.btn_data,
+        }
+
+        for name, button in buttons.items():
+            if name == active_name:
+                button.setProperty("active", True)
+            else:
+                button.setProperty("active", False)
+
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.update()
