@@ -3,7 +3,7 @@
 PRIMARY_COLOR = "#153A66"     # Azul oscuro (fondo navbar)
 SECONDARY_COLOR = "#8C5B2F"   # Marrón (hover y botón activo)
 TEXT_COLOR = "#FFFFFF"        # Texto blanco
-
+#e3e9f1 bordes
 # functions globlaes
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QScrollArea

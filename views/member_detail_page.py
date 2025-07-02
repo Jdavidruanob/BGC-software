@@ -1,12 +1,12 @@
+from PySide6.QtWidgets import (
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QMessageBox, QScrollArea, QSizePolicy
+)
+from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QPen
+from PySide6.QtCore import Qt, QSize
 import os
 
-from PySide6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QFrame, QMessageBox, QScrollArea
-)
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import Qt, QSize
-
-from views.main_window import load_svg_icon
+from views.main_window import load_svg_icon, load_styles
+from config import PRIMARY_COLOR
 
 class MemberDetailPage(QWidget):
     def __init__(self, db_manager, member_id, main_window):
@@ -20,30 +20,38 @@ class MemberDetailPage(QWidget):
         self.setWindowTitle("Perfil de Socio")
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(40, 30, 40, 30)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(80, 30, 80, 30)
+        main_layout.setSpacing(20) 
 
-        # ✅ Botón de regreso
-        back_btn = QPushButton("⟵ Volver")
+        header_layout = QHBoxLayout()
+
+        # Botón de regreso
+        back_btn = QPushButton("←")
         back_btn.setObjectName("backButton")
         back_btn.clicked.connect(lambda: self.main_window.show_view("members"))
-        back_btn.setFixedWidth(100)
-        main_layout.addWidget(back_btn, alignment=Qt.AlignLeft)
+        header_layout.addWidget(back_btn)
 
-        # Paneles izquierdo y derecho
-        panel_layout = QHBoxLayout()
-        panel_layout.setSpacing(40)
+        # Título justo a la derecha del botón
+        title = QLabel("Perfil de Socio")
+        title.setObjectName("title-member-detail")
+        header_layout.addWidget(title)
+        header_layout.addStretch()  # Añade espacio entre el título y el botón
+
+        main_layout.addLayout(header_layout)
+
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(40)
 
         self.left_panel = self.create_left_panel()
         self.right_panel = self.create_right_panel()
 
-        panel_layout.addWidget(self.left_panel, 1)
-        panel_layout.addWidget(self.right_panel, 2)
+        content_layout.addWidget(self.left_panel, 1)
+        content_layout.addWidget(self.right_panel, 2)
 
-        main_layout.addLayout(panel_layout)
+        main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
-
-        self.load_styles()
+        qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "member_detail_page.qss")
+        load_styles(self, qss_path)
 
     def create_left_panel(self):
         member = self.db_manager.get_member_by_id(self.member_id)
@@ -55,44 +63,87 @@ class MemberDetailPage(QWidget):
         widget.setObjectName("leftPanel")
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignTop)
-        layout.setSpacing(15)
+        layout.setSpacing(12)
 
-        # Foto
-        pixmap = QPixmap(member["photo_path"] or "assets/images/default_user.png")
+        # Foto circular con margen
+        avatar_container = QWidget()
+        avatar_layout = QVBoxLayout()
+        avatar_layout.setAlignment(Qt.AlignCenter)
+        avatar_layout.setContentsMargins(0, 10, 0, 5)
+        #avatar_container.setStyleSheet("background-color: red;")  # Fondo transparente
+        avatar_container.setLayout(avatar_layout)
+
         photo_label = QLabel()
-        photo_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        photo_label.setFixedSize(175, 175)
         photo_label.setAlignment(Qt.AlignCenter)
+        photo_label.setScaledContents(True)
 
-        # Nombre
+        photo_path = member["photo_path"] or "assets/images/default_user.png"
+        if not os.path.exists(photo_path):
+            photo_path = "assets/images/default_user.png"
+
+        avatar_pixmap = self.create_rounded_avatar(photo_path, size=175, border=3, border_color=PRIMARY_COLOR)
+        photo_label.setPixmap(avatar_pixmap)
+
+        avatar_layout.addWidget(photo_label)
+
+        # Nombre y número del socio
         name_label = QLabel(f"{member['nombres']} {member['apellidos']}")
         name_label.setObjectName("memberName")
         name_label.setAlignment(Qt.AlignCenter)
 
-        # Cédula y otros
-        data_labels = [
-            ("Socio ID:", str(member["id"])),
-            ("Cédula:", member["cc"]),
+        id_label = QLabel(f"Socio #{member['id']}")
+        id_label.setAlignment(Qt.AlignCenter)
+        id_label.setObjectName("memberId")
+
+        # Datos
+        """ data_labels = [
             ("Teléfono:", member["celular"]),
+            ("Fecha de ingreso:", member["created_at"][:10]),
+            ("Saldo de aportes:", f"${member['saldo']:,}")
+        ] """
+
+        #data_labels = ["Telefono:", "Fecha de ingreso:", "Saldo de aportes:"]
+
+        data_labels = [
+            ("Teléfono:", member["celular"]),   
             ("Fecha de ingreso:", member["created_at"][:10]),
             ("Saldo de aportes:", f"${member['saldo']:,}")
         ]
 
-        layout.addWidget(photo_label)
+        layout.addWidget(avatar_container)
         layout.addWidget(name_label)
-
+        layout.addWidget(id_label)
+        
         for label, value in data_labels:
-            row = QLabel(f"<b>{label}</b> {value}")
+            row_widget = QWidget()
+            row = QHBoxLayout()
             row.setObjectName("memberInfoRow")
-            layout.addWidget(row)
+            row.setContentsMargins(0, 5, 0, 5)  # Márgenes entre filas
+
+            label_widget = QLabel(label)
+            label_widget.setObjectName("memberInfoLabel")
+            value_widget = QLabel(value)
+            value_widget.setObjectName("memberInfoValue")
+
+            row.addWidget(label_widget, alignment=Qt.AlignLeft)
+            row.addStretch()
+            row.addWidget(value_widget, alignment=Qt.AlignRight)
+
+            row_widget.setLayout(row)
+            row_widget.setObjectName("memberInfoRowWidget")
+            layout.addWidget(row_widget)
 
         # Botones
         button_row = QHBoxLayout()
+        button_row.setContentsMargins(0, 20, 0, 0)  # Márgenes para los botones
         edit_btn = QPushButton("  Editar")
+        edit_btn.setObjectName("editMemberButton")
         edit_btn.setIcon(load_svg_icon("assets/icons/edit.svg"))
 
         delete_btn = QPushButton("  Eliminar")
+        delete_btn.setObjectName("deleteMemberButton")
         delete_btn.setIcon(load_svg_icon("assets/icons/trash.svg"))
-        delete_btn.setStyleSheet("background-color: #FEE2E2; color: #B91C1C;")
 
         button_row.addWidget(edit_btn)
         button_row.addWidget(delete_btn)
@@ -126,39 +177,37 @@ class MemberDetailPage(QWidget):
 
         return scroll
 
-    def build_credit_card(self, credit):
-        letra = credit["letra"]
-        capital = credit["capital"]
-        cuotas = credit["no_cuotas"]
+    def create_rounded_avatar(self, photo_path, size=175, border=3, border_color="#153A66"):
+        inner_diameter = size - 2 * border
+        pixmap = QPixmap(photo_path).scaled(
+            inner_diameter, inner_diameter,
+            Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+        )
 
-        card = QFrame()
-        card.setObjectName("creditCard")
-        layout = QVBoxLayout()
-        layout.setContentsMargins(15, 10, 15, 10)
-        layout.setSpacing(6)
+        final = QPixmap(size, size)
+        final.fill(Qt.transparent)
 
-        title = QLabel(f"Crédito #{letra}")
-        title.setObjectName("creditTitle")
+        painter = QPainter(final)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
-        body = QLabel(f"Capital: ${capital:,}\nCuotas: {cuotas}")
-        body.setObjectName("creditInfo")
+        pen = QPen(QColor(border_color))
+        pen.setWidth(border)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
 
-        card.mousePressEvent = lambda e: self.on_credit_click(letra)
+        offset = int(border // 2)
+        diameter = size - border
+        painter.drawEllipse(offset, offset, diameter, diameter)
 
-        layout.addWidget(title)
-        layout.addWidget(body)
-        card.setLayout(layout)
-        return card
+        path = QPainterPath()
+        path.addEllipse(border, border, inner_diameter, inner_diameter)
+        painter.setClipPath(path)
+        painter.drawPixmap(border, border, pixmap)
+        painter.end()
+
+        return final
 
     def on_credit_click(self, letra):
         print(f"📄 Abrir detalle del crédito {letra}...")
         # Aquí puedes navegar a la vista del crédito usando self.main_window
-
-    def load_styles(self):
-        qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "member_detail_page.qss")
-        try:
-            with open(qss_path, "r") as f:
-                qss = f.read()
-                self.setStyleSheet(qss)
-        except Exception as e:
-            print(f"❌ Error cargando estilos de {qss_path}: {e}")
