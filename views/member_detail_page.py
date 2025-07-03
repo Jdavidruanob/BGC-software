@@ -211,3 +211,38 @@ class MemberDetailPage(QWidget):
     def on_credit_click(self, letra):
         print(f"📄 Abrir detalle del crédito {letra}...")
         # Aquí puedes navegar a la vista del crédito usando self.main_window
+
+
+    def build_credit_card(self, credito):
+        card = QFrame()
+        card.setObjectName("CreditCard")
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignTop)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        # Acceder usando claves del diccionario sqlite3.Row
+        letra = credito["letra"]
+        capital = credito["capital"]
+        interes = credito["interes"]
+        cuotas = credito["no_cuotas"]
+
+        lbl_letra = QLabel(f"🆔 Crédito #{letra}")
+        lbl_letra.setObjectName("creditCardTitle")
+
+        lbl_capital = QLabel(f"💰 Capital: ${capital:,.0f}")
+        lbl_capital.setObjectName("creditCardLabel")
+
+        lbl_interes = QLabel(f"📈 Interés mensual: {interes * 100:.2f}%")
+        lbl_interes.setObjectName("creditCardLabel")
+
+        lbl_cuotas = QLabel(f"📅 Cuotas totales: {cuotas}")
+        lbl_cuotas.setObjectName("creditCardLabel")
+
+        layout.addWidget(lbl_letra)
+        layout.addSpacing(5)
+        layout.addWidget(lbl_capital)
+        layout.addWidget(lbl_interes)
+        layout.addWidget(lbl_cuotas)
+
+        card.setLayout(layout)
+        return card

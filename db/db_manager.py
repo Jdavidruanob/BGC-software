@@ -153,7 +153,7 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT letra, capital, no_cuotas
+                SELECT letra, capital, interes, no_cuotas
                 FROM creditos
                 WHERE socio_id = ?
             """, (member_id,))
@@ -161,3 +161,25 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo créditos activos: {e}")
             return []
+        
+    def add_credit(self, socio_id, capital, interes, no_cuotas):
+        try:
+            cursor = self.conn.cursor()
+
+            # Asignar automáticamente un número de letra (id de crédito)
+            cursor.execute("SELECT MAX(letra) FROM creditos")
+            max_letra = cursor.fetchone()[0]
+            new_letra = (max_letra or 0) + 1
+
+            cursor.execute("""
+                INSERT INTO creditos (letra, capital, interes, no_cuotas, socio_id)
+                VALUES (?, ?, ?, ?, ?)
+            """, (new_letra, capital, interes, no_cuotas, socio_id))
+
+            self.conn.commit()
+            print(f"✅ Crédito #{new_letra} creado exitosamente para socio {socio_id}.")
+            return True
+        except Exception as e:
+            print(f"❌ Error al crear crédito: {e}")
+            return False
+
