@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
             btn.setIconSize(QSize(24, 24))
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             top_layout.addWidget(btn, alignment=Qt.AlignRight)
-
+        
 
         top_bar.setLayout(top_layout)
 
