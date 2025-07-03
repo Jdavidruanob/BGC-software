@@ -26,11 +26,19 @@ def main():
     db_path = "BGC-software.db"
     db_manager = DBManager(db_path)
 
+
+
     if not db_manager.connect():
         print("❌ No se pudo conectar a la base de datos.")
         sys.exit(1)
 
     db_manager.create_tables()
+    """ db_manager.add_credit(
+        socio_id= 2,
+        capital=1200000,
+        interes=0.015,        # 1.5% mensual
+        no_cuotas=12
+    ) """
 
     # Crear ventana principal
     window = MainWindow()
