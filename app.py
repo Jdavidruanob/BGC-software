@@ -34,11 +34,12 @@ def main():
 
     db_manager.create_tables()
     """ db_manager.add_credit(
-        socio_id= 2,
+        socio_ids=[1, 2],  # 👈 Lista, incluso si es un solo socio
         capital=1200000,
         interes=0.015,        # 1.5% mensual
         no_cuotas=12
     ) """
+
 
     # Crear ventana principal
     window = MainWindow()

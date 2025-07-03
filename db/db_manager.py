@@ -36,12 +36,19 @@ class DBManager:
                     capital INTEGER NOT NULL,
                     interes REAL NOT NULL,
                     no_cuotas INTEGER NOT NULL,
-                    socio_id INTEGER NOT NULL,
-                    fecha_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (socio_id) REFERENCES socios(id)
+                    fecha_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS socio_credito (
+                    socio_id INTEGER NOT NULL,
+                    credito_letra INTEGER NOT NULL,
+                    PRIMARY KEY (socio_id, credito_letra),
+                    FOREIGN KEY (socio_id) REFERENCES socios(id),
+                    FOREIGN KEY (credito_letra) REFERENCES creditos(letra)
+                )
+            """)   
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS aportes (
@@ -56,7 +63,6 @@ class DBManager:
                     value TEXT
                 )
             """)
-
 
             self.conn.commit()
             print("✅ Tablas creadas.")
@@ -83,9 +89,9 @@ class DBManager:
                        s.nombres,
                        s.apellidos,
                        COALESCE(s.photo_path, '') as photo_path,
-                       COUNT(c.letra) as creditos
+                       COUNT(sc.credito_letra) as creditos
                 FROM socios s
-                LEFT JOIN creditos c ON s.id = c.socio_id
+                LEFT JOIN socio_credito sc ON s.id = sc.socio_id
                 GROUP BY s.id
                 ORDER BY s.nombres
             """)
@@ -103,18 +109,18 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
-    
+
     def search_members_by_name(self, search_term):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
                 SELECT s.id,
-                    s.nombres,
-                    s.apellidos,
-                    COALESCE(s.photo_path, '') as photo_path,
-                    COUNT(c.letra) as creditos
+                       s.nombres,
+                       s.apellidos,
+                       COALESCE(s.photo_path, '') as photo_path,
+                       COUNT(sc.credito_letra) as creditos
                 FROM socios s
-                LEFT JOIN creditos c ON s.id = c.socio_id
+                LEFT JOIN socio_credito sc ON s.id = sc.socio_id
                 WHERE s.nombres LIKE ? OR s.apellidos LIKE ?
                 GROUP BY s.id
                 ORDER BY s.nombres
@@ -135,7 +141,6 @@ class DBManager:
             print(f"❌ Error en búsqueda de socios: {e}")
             return []
 
-
     def get_member_by_id(self, member_id):
         try:
             cursor = self.conn.cursor()
@@ -153,16 +158,17 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT letra, capital, interes, no_cuotas
-                FROM creditos
-                WHERE socio_id = ?
+                SELECT c.letra, c.capital, c.interes, c.no_cuotas
+                FROM creditos c
+                JOIN socio_credito sc ON c.letra = sc.credito_letra
+                WHERE sc.socio_id = ?
             """, (member_id,))
             return cursor.fetchall()
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo créditos activos: {e}")
             return []
-        
-    def add_credit(self, socio_id, capital, interes, no_cuotas):
+
+    def add_credit(self, socio_ids, capital, interes, no_cuotas):
         try:
             cursor = self.conn.cursor()
 
@@ -172,14 +178,19 @@ class DBManager:
             new_letra = (max_letra or 0) + 1
 
             cursor.execute("""
-                INSERT INTO creditos (letra, capital, interes, no_cuotas, socio_id)
-                VALUES (?, ?, ?, ?, ?)
-            """, (new_letra, capital, interes, no_cuotas, socio_id))
+                INSERT INTO creditos (letra, capital, interes, no_cuotas)
+                VALUES (?, ?, ?, ?)
+            """, (new_letra, capital, interes, no_cuotas))
+
+            for socio_id in socio_ids:
+                cursor.execute("""
+                    INSERT INTO socio_credito (socio_id, credito_letra)
+                    VALUES (?, ?)
+                """, (socio_id, new_letra))
 
             self.conn.commit()
-            print(f"✅ Crédito #{new_letra} creado exitosamente para socio {socio_id}.")
+            print(f"✅ Crédito #{new_letra} creado exitosamente.")
             return True
         except Exception as e:
             print(f"❌ Error al crear crédito: {e}")
             return False
-
