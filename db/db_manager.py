@@ -220,3 +220,18 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error eliminando socio: {e}")
             return False
+        
+    def update_member(self, member_id, nombres, apellidos, cc, phone, photo_path):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                UPDATE socios
+                SET nombres = ?, apellidos = ?, cc = ?, celular = ?, photo_path = ?
+                WHERE id = ?
+            """, (nombres, apellidos, cc, phone, photo_path, member_id))
+            self.conn.commit()
+            print(f"✅ Socio con ID {member_id} actualizado correctamente.")
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Error actualizando socio: {e}")
+            return False

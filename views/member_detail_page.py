@@ -7,6 +7,7 @@ import os
 
 from views.main_window import load_svg_icon, load_styles
 from config import PRIMARY_COLOR
+from views.widgets.new_member_dialog import NewMemberDialog
 
 class MemberDetailPage(QWidget):
     def __init__(self, db_manager, member_id, main_window):
@@ -140,6 +141,7 @@ class MemberDetailPage(QWidget):
         edit_btn = QPushButton("  Editar")
         edit_btn.setObjectName("editMemberButton")
         edit_btn.setIcon(load_svg_icon("assets/icons/edit.svg"))
+        edit_btn.clicked.connect(self.on_edit_member)
 
         delete_btn = QPushButton("  Eliminar")
         delete_btn.setObjectName("deleteMemberButton")
@@ -265,3 +267,37 @@ class MemberDetailPage(QWidget):
                 self.main_window.show_view("members")
             else:
                 QMessageBox.critical(self, "Error", "No se pudo eliminar el socio.")
+    def on_edit_member(self):
+        member = self.db_manager.get_member_by_id(self.member_id)
+        if not member:
+            QMessageBox.critical(self, "Error", "No se pudo cargar la información del socio.")
+            return
+
+        # Abre el diálogo con los datos actuales
+        dialog = NewMemberDialog(self)
+        dialog.first_name_input.setText(member["nombres"])
+        dialog.last_name_input.setText(member["apellidos"])
+        dialog.cc_input.setText(member["cc"])
+        dialog.phone_input.setText(member["celular"])
+        dialog.photo_input.setText(member["photo_path"] or "")
+
+        dialog.setWindowTitle("Editar Socio")
+        dialog.findChild(QPushButton, "CreateMemberButton").setText("Guardar cambios")
+
+        if dialog.exec():
+            cc, nombres, apellidos, phone, photo = dialog.get_data()
+            if nombres and apellidos and cc:
+                if self.db_manager.update_member(self.member_id, nombres, apellidos, cc, phone, photo):
+                    QMessageBox.information(self, "Actualizado", "Socio actualizado correctamente.")
+                    # Elimina la vista de detalle en caché para este socio
+                    view_name = f"member_detail_{self.member_id}"
+                    if hasattr(self.main_window, "views") and view_name in self.main_window.views:
+                        del self.main_window.views[view_name]
+                    # Refresca la vista actual y la lista de socios
+                    self.main_window.show_view("members")
+                    if hasattr(self.main_window, "views") and "members" in self.main_window.views:
+                        members_page = self.main_window.views["members"]
+                        if hasattr(members_page, "refresh_members"):
+                            members_page.refresh_members()
+                else:
+                    QMessageBox.critical(self, "Error", "No se pudo actualizar el socio.")
