@@ -279,15 +279,16 @@ class MemberDetailPage(QWidget):
         dialog.last_name_input.setText(member["apellidos"])
         dialog.cc_input.setText(member["cc"])
         dialog.phone_input.setText(member["celular"])
+        dialog.salde_input.setText(str(member["saldo"]) if member["saldo"] is not None else "")
         dialog.photo_input.setText(member["photo_path"] or "")
 
         dialog.setWindowTitle("Editar Socio")
         dialog.findChild(QPushButton, "CreateMemberButton").setText("Guardar cambios")
 
         if dialog.exec():
-            cc, nombres, apellidos, phone, photo = dialog.get_data()
-            if nombres and apellidos and cc:
-                if self.db_manager.update_member(self.member_id, nombres, apellidos, cc, phone, photo):
+            cc, nombres, apellidos, phone, photo, salde = dialog.get_data()
+            if nombres and apellidos:
+                if self.db_manager.update_member(self.member_id, nombres, apellidos, cc, phone, photo, salde):
                     QMessageBox.information(self, "Actualizado", "Socio actualizado correctamente.")
                     # Elimina la vista de detalle en caché para este socio
                     view_name = f"member_detail_{self.member_id}"

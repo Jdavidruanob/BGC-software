@@ -15,7 +15,7 @@ class NewMemberDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Nuevo Socio")
         self.setModal(True)
-        self.setFixedSize(600, 550)
+        self.setFixedSize(550, 650)
         self.setObjectName("NewMemberDialog")
 
         self.first_name_input = QLineEdit()
@@ -29,6 +29,9 @@ class NewMemberDialog(QDialog):
 
         self.phone_input = QLineEdit()
         self.phone_input.setObjectName("InputField")
+
+        self.salde_input = QLineEdit()
+        self.salde_input.setObjectName("InputField")
 
         self.photo_input = QLineEdit()
         self.photo_input.setObjectName("InputField")
@@ -46,6 +49,7 @@ class NewMemberDialog(QDialog):
             ("Apellidos:", self.last_name_input),
             ("Cédula:", self.cc_input),
             ("Celular:", self.phone_input),
+            ("Saldo:", self.salde_input),
             ("Foto (opcional):", None)
         ]:
             label = QLabel(label_text)
@@ -65,7 +69,7 @@ class NewMemberDialog(QDialog):
         layout.addWidget(create_btn, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
-        qss_path = os.path.join(os.path.dirname(__file__), ".." , "..","styles", "new_member_dialog.qss")
+        qss_path = os.path.join(os.path.dirname(__file__), ".." , "..", "styles", "new_member_dialog.qss")
         load_styles(self, qss_path)
 
     def select_photo(self):
@@ -84,5 +88,7 @@ class NewMemberDialog(QDialog):
         apellidos = self.last_name_input.text().strip()
         cc = self.cc_input.text().strip()
         phone = self.phone_input.text().strip()
+        saldo = self.salde_input.text().strip() or "0"
         photo = self.photo_input.text().strip() or DEFAULT_PHOTO
-        return (cc, nombres, apellidos, phone, photo)
+        
+        return (cc, nombres, apellidos, phone, photo, saldo)

@@ -85,13 +85,13 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error creando tablas: {e}")
 
-    def add_member(self, cc, nombres, apellidos, phone, photo_path):
+    def add_member(self, cc, nombres, apellidos, phone, photo_path, saldo=0):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO socios (cc, nombres, apellidos, celular, photo_path)
-                VALUES (?, ?, ?, ?, ?)
-            """, (cc, nombres, apellidos, phone, photo_path))
+                INSERT INTO socios (cc, nombres, apellidos, celular, photo_path, saldo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (cc, nombres, apellidos, phone, photo_path, saldo))
             self.conn.commit()
             print(f"✅ Socio '{nombres} {apellidos}' agregado correctamente.")
         except sqlite3.Error as e:
@@ -221,14 +221,14 @@ class DBManager:
             print(f"❌ Error eliminando socio: {e}")
             return False
         
-    def update_member(self, member_id, nombres, apellidos, cc, phone, photo_path):
+    def update_member(self, member_id, nombres, apellidos, cc, phone, photo_path, saldo):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
                 UPDATE socios
-                SET nombres = ?, apellidos = ?, cc = ?, celular = ?, photo_path = ?
+                SET nombres = ?, apellidos = ?, cc = ?, celular = ?, photo_path = ?, saldo = ?
                 WHERE id = ?
-            """, (nombres, apellidos, cc, phone, photo_path, member_id))
+            """, (nombres, apellidos, cc, phone, photo_path, saldo, member_id))
             self.conn.commit()
             print(f"✅ Socio con ID {member_id} actualizado correctamente.")
             return True
