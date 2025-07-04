@@ -78,9 +78,9 @@ class MembersPage(QWidget):
     def open_new_member_dialog(self):
         dialog = NewMemberDialog(self)
         if dialog.exec():
-            cc, nombres, apellidos, phone, photo = dialog.get_data()
-            if nombres and apellidos and cc:
-                self.db_manager.add_member(cc, nombres, apellidos, phone, photo)
+            cc, nombres, apellidos, phone, photo, saldo = dialog.get_data()
+            if nombres and apellidos:
+                self.db_manager.add_member(cc, nombres, apellidos, phone, photo, saldo)
                 self.refresh_members()
 
     def refresh_members(self):
