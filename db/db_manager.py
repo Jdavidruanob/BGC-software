@@ -20,11 +20,11 @@ class DBManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS socios (
                     id INTEGER PRIMARY KEY,
-                    cc TEXT UNIQUE,
+                    cc TEXT,
                     nombres TEXT NOT NULL,
                     apellidos TEXT NOT NULL,
                     saldo INTEGER DEFAULT 0,
-                    celular TEXT UNIQUE,
+                    celular TEXT,
                     photo_path TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
