@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, QSize
 import os
 
 from views.main_window import load_svg_icon, load_styles
+from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
 
@@ -57,7 +58,7 @@ class MemberDetailPage(QWidget):
     def create_left_panel(self):
         member = self.db_manager.get_member_by_id(self.member_id)
         if not member:
-            QMessageBox.critical(self, "Error", "No se pudo cargar la información del socio.")
+            show_error(self, "Error", "No se pudo cargar la información del socio.")
             return QWidget()
 
         widget = QFrame()
@@ -250,15 +251,15 @@ class MemberDetailPage(QWidget):
         return card
     
     def on_delete_member(self):
-        reply = QMessageBox.question(
+        reply = show_warning(
             self,
             "Confirmar eliminación",
             "¿Estás seguro de que deseas eliminar este socio? Esta acción no se puede deshacer.",
-            QMessageBox.Yes | QMessageBox.No
+            ask_confirmation=True
         )
         if reply == QMessageBox.Yes:
             if self.db_manager.delete_member(self.member_id):
-                QMessageBox.information(self, "Eliminado", "Socio eliminado correctamente.")
+                show_success(self, "Eliminado", "Socio eliminado correctamente.")
                 # Refrescar la lista de socios en MembersPage
                 if hasattr(self.main_window, "views") and "members" in self.main_window.views:
                     members_page = self.main_window.views["members"]
@@ -266,11 +267,11 @@ class MemberDetailPage(QWidget):
                         members_page.refresh_members()
                 self.main_window.show_view("members")
             else:
-                QMessageBox.critical(self, "Error", "No se pudo eliminar el socio.")
+                show_error(self, "Error", "No se pudo eliminar el socio.")
     def on_edit_member(self):
         member = self.db_manager.get_member_by_id(self.member_id)
         if not member:
-            QMessageBox.critical(self, "Error", "No se pudo cargar la información del socio.")
+            show_error(self, "Error", "No se pudo cargar la información del socio.")
             return
 
         # Abre el diálogo con los datos actuales
@@ -289,7 +290,7 @@ class MemberDetailPage(QWidget):
             cc, nombres, apellidos, phone, photo, salde = dialog.get_data()
             if nombres and apellidos:
                 if self.db_manager.update_member(self.member_id, nombres, apellidos, cc, phone, photo, salde):
-                    QMessageBox.information(self, "Actualizado", "Socio actualizado correctamente.")
+                    show_success(self, "Actualizado", "Socio actualizado correctamente.")
                     # Elimina la vista de detalle en caché para este socio
                     view_name = f"member_detail_{self.member_id}"
                     if hasattr(self.main_window, "views") and view_name in self.main_window.views:
@@ -301,4 +302,4 @@ class MemberDetailPage(QWidget):
                         if hasattr(members_page, "refresh_members"):
                             members_page.refresh_members()
                 else:
-                    QMessageBox.critical(self, "Error", "No se pudo actualizar el socio.")
+                    show_error(self, "Error", "No se pudo actualizar el socio.")

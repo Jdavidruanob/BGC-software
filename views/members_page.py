@@ -11,6 +11,7 @@ from .widgets.member_card import MemberCard
 from config import load_styles, load_svg_icon
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.member_detail_page import MemberDetailPage
+from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
 
 
 class MembersPage(QWidget):
@@ -81,6 +82,7 @@ class MembersPage(QWidget):
             cc, nombres, apellidos, phone, photo, saldo = dialog.get_data()
             if nombres and apellidos:
                 self.db_manager.add_member(cc, nombres, apellidos, phone, photo, saldo)
+                show_success(self, " ", "Socio creado exitosamente.")
                 self.refresh_members()
 
     def refresh_members(self):

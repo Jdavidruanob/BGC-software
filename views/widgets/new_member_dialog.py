@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from config import load_styles, load_svg_icon
+from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
 
 DEFAULT_PHOTO = "assets/images/default_user.png"
 
@@ -79,8 +80,9 @@ class NewMemberDialog(QDialog):
 
     def on_submit(self):
         if not self.first_name_input.text().strip() or not self.last_name_input.text().strip():
-            QMessageBox.warning(self, "Campos obligatorios", "Por favor ingrese nombres, apellidos y cédula.")
+            show_warning(self, "warning", "Por favor ingrese al menos un nombre y un apellido.")
             return
+        # Puedes agregar más validaciones aquí si lo deseas
         self.accept()
 
     def get_data(self):
