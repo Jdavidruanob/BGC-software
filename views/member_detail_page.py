@@ -144,7 +144,7 @@ class MemberDetailPage(QWidget):
         delete_btn = QPushButton("  Eliminar")
         delete_btn.setObjectName("deleteMemberButton")
         delete_btn.setIcon(load_svg_icon("assets/icons/trash.svg"))
-
+        delete_btn.clicked.connect(self.on_delete_member)              
         button_row.addWidget(edit_btn)
         button_row.addWidget(delete_btn)
 
@@ -246,3 +246,22 @@ class MemberDetailPage(QWidget):
 
         card.setLayout(layout)
         return card
+    
+    def on_delete_member(self):
+        reply = QMessageBox.question(
+            self,
+            "Confirmar eliminación",
+            "¿Estás seguro de que deseas eliminar este socio? Esta acción no se puede deshacer.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            if self.db_manager.delete_member(self.member_id):
+                QMessageBox.information(self, "Eliminado", "Socio eliminado correctamente.")
+                # Refrescar la lista de socios en MembersPage
+                if hasattr(self.main_window, "views") and "members" in self.main_window.views:
+                    members_page = self.main_window.views["members"]
+                    if hasattr(members_page, "refresh_members"):
+                        members_page.refresh_members()
+                self.main_window.show_view("members")
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo eliminar el socio.")

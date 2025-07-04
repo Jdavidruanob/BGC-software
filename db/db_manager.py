@@ -210,3 +210,13 @@ class DBManager:
         except Exception as e:
             print(f"❌ Error al crear crédito: {e}")
             return False
+    def delete_member(self, member_id):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("DELETE FROM socios WHERE id = ?", (member_id,))
+            self.conn.commit()
+            print(f"✅ Socio con ID {member_id} eliminado correctamente.")
+            return True
+        except sqlite3.Error as e:
+            print(f"❌ Error eliminando socio: {e}")
+            return False
