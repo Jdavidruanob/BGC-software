@@ -1,0 +1,17 @@
+QFrame#CreditCardWidget {
+    background-color: #ffffff;
+    border: 2px solid #e0e6ed;
+    border-radius: 12px;
+    padding: 10px;
+}
+
+QFrame#CreditCardWidget:hover {
+    border: 2px solid #153A66;
+    background-color: #f3f8ff;
+}
+
+QLabel#creditInfo {
+    font-size: 16px;
+    font-weight: 500;
+    color: #2b2b2b;
+}
