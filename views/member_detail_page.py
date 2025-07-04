@@ -9,6 +9,7 @@ from views.main_window import load_svg_icon, load_styles
 from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
+from views.widgets.credit_card_widget import CreditCardWidget
 
 class MemberDetailPage(QWidget):
     def __init__(self, db_manager, member_id, main_window):
@@ -165,7 +166,8 @@ class MemberDetailPage(QWidget):
 
         if credits:
             for credit in credits:
-                credit_widget = self.build_credit_card(credit)
+                credit_widget = CreditCardWidget(credit)
+                credit_widget.clicked.connect(self.on_credit_card_clicked)
                 layout.addWidget(credit_widget)
         else:
             no_credit_label = QLabel("Este socio no tiene créditos activos.")
@@ -211,10 +213,9 @@ class MemberDetailPage(QWidget):
 
         return final
 
-    def on_credit_click(self, letra):
+    def on_credit_card_clicked(self, letra):
         print(f"📄 Abrir detalle del crédito {letra}...")
         # Aquí puedes navegar a la vista del crédito usando self.main_window
-
 
     def build_credit_card(self, credito):
         card = QFrame()
