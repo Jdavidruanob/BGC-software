@@ -40,6 +40,7 @@ class DBManager:
                 )
             """)
 
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS socio_credito (
                     socio_id INTEGER NOT NULL,
@@ -48,7 +49,22 @@ class DBManager:
                     FOREIGN KEY (socio_id) REFERENCES socios(id),
                     FOREIGN KEY (credito_letra) REFERENCES creditos(letra)
                 )
-            """)   
+            """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS liquidaciones (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    credito_letra INTEGER NOT NULL,
+                    nro_cuota INTEGER NOT NULL,
+                    fecha_vencimiento DATE NOT NULL,
+                    valor_cuota INTEGER NOT NULL,
+                    interes_mes INTEGER NOT NULL,
+                    cuota_mensual INTEGER NOT NULL,
+                    saldo_capital INTEGER NOT NULL,
+                    fecha_pago DATE,
+                    FOREIGN KEY (credito_letra) REFERENCES creditos(letra)
+                )
+            """)
 
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS aportes (
