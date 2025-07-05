@@ -99,13 +99,6 @@ class MemberDetailPage(QWidget):
         id_label.setAlignment(Qt.AlignCenter)
         id_label.setObjectName("memberId")
 
-        # Datos
-        """ data_labels = [
-            ("Teléfono:", member["celular"]),
-            ("Fecha de ingreso:", member["created_at"][:10]),
-            ("Saldo de aportes:", f"${member['saldo']:,}")
-        ] """
-
         #data_labels = ["Telefono:", "Fecha de ingreso:", "Saldo de aportes:"]
 
         data_labels = [
