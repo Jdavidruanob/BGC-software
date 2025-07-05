@@ -1,0 +1,60 @@
+#assistantTopBar {
+    background-color: %(PRIMARY_COLOR)s;
+    border-radius: 12px;
+}
+
+#assistantTitle {
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    background-color: transparent;
+}
+
+#assistantHeader {
+    background-color: #f1f3f5;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+#headerLabel {
+    font-weight: 600;
+    color: #444;
+    background-color: transparent;
+}
+
+#operationRow {
+    background-color: white;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#opFecha, #opSocio, #opMonto, #opSaldo, #opNumero {
+    font-size: 14px;
+}
+
+/* Etiquetas tipo operación */
+#opTipo_aporte,
+#opTipo_pago_credito,
+#opTipo_nuevo_credito {
+    font-size: 13px;
+    padding: 2px 5px;
+    border-radius: 8px;
+}
+
+/* Colores específicos por tipo */
+#opTipo_aporte {
+    background-color: #28a745;
+    color: white;
+    margin-right: 160px;
+}
+
+#opTipo_pago_credito {
+    background-color: #fd7e14;
+    color: white;
+    margin-right: 120px;
+}
+
+#opTipo_nuevo_credito {
+    background-color: #007bff;
+    color: white;
+    margin-right: 120px;
+}

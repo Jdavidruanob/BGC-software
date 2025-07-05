@@ -17,6 +17,8 @@ class DBManager:
     def create_tables(self):
         try:
             cursor = self.conn.cursor()
+
+            # Tabla de socios
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS socios (
                     id INTEGER PRIMARY KEY,
@@ -30,9 +32,10 @@ class DBManager:
                 )
             """)
 
+            # Tabla de créditos
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS creditos (
-                    letra INTEGER PRIMARY KEY,
+                    letra INTEGER PRIMARY KEY AUTOINCREMENT,
                     capital INTEGER NOT NULL,
                     interes REAL NOT NULL,
                     no_cuotas INTEGER NOT NULL,
@@ -40,7 +43,7 @@ class DBManager:
                 )
             """)
 
-
+            # Relación muchos a muchos: socios - créditos
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS socio_credito (
                     socio_id INTEGER NOT NULL,
@@ -51,6 +54,7 @@ class DBManager:
                 )
             """)
 
+            # Tabla de liquidaciones: cada fila es una cuota programada
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS liquidaciones (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,10 +70,30 @@ class DBManager:
                 )
             """)
 
+            # Tabla de recibos (cabecera)
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS aportes (
-                    key TEXT PRIMARY KEY,
-                    value TEXT
+                CREATE TABLE IF NOT EXISTS recibos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    socio_id INTEGER NOT NULL,  -- quien entrega el dinero
+                    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    archivo_path TEXT,
+                    FOREIGN KEY (socio_id) REFERENCES socios(id)
+                )
+            """)
+
+            # Detalle de recibos (cada movimiento registrado)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS detalle_recibo (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    recibo_id INTEGER NOT NULL,
+                    tipo_operacion TEXT NOT NULL CHECK (tipo_operacion IN ('aporte', 'pago_credito')),
+                    socio_id INTEGER NOT NULL,  -- a quién aplica el movimiento
+                    credito_letra INTEGER,      -- si es pago_credito
+                    nro_cuota INTEGER,          -- si es pago_credito
+                    monto INTEGER NOT NULL,
+                    FOREIGN KEY (recibo_id) REFERENCES recibos(id),
+                    FOREIGN KEY (socio_id) REFERENCES socios(id),
+                    FOREIGN KEY (credito_letra) REFERENCES creditos(letra)
                 )
             """)
 
@@ -84,6 +108,7 @@ class DBManager:
             print("✅ Tablas creadas.")
         except sqlite3.Error as e:
             print(f"❌ Error creando tablas: {e}")
+
 
     def add_member(self, cc, nombres, apellidos, phone, photo_path, saldo=0):
         try:
@@ -222,6 +247,8 @@ class DBManager:
             return False
         
     def update_member(self, member_id, nombres, apellidos, cc, phone, photo_path, saldo):
+    
+        
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -235,3 +262,36 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error actualizando socio: {e}")
             return False
+        
+    def get_auxiliary_operations(self, limit=10, offset=0):
+        operaciones = [
+            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
+            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
+            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
+            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
+            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
+            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
+            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
+            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
+            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
+            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
+            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
+            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
+            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
+            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
+            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
+            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
+            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
+            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
+            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
+            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
+            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
+            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
+            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
+            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
+        
+        ]
+        start = offset
+        end = offset + limit
+        return operaciones[start:end]
+

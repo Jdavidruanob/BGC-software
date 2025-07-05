@@ -10,7 +10,6 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
-
 from config import load_styles, load_svg_icon
 
 class MainWindow(QMainWindow):
@@ -54,16 +53,12 @@ class MainWindow(QMainWindow):
         self.btn_data = QPushButton(" Datos")
         self.btn_data.setIcon(QIcon(os.path.join(icons_dir, "chart-area-line.svg")))
 
-        
-
         for btn in [self.btn_home, self.btn_assistant, self.btn_members, self.btn_data]:
             btn.setIconSize(QSize(24, 24))
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             top_layout.addWidget(btn, alignment=Qt.AlignRight)
-        
 
         top_bar.setLayout(top_layout)
-
         # Stack para vistas
         self.stack = QStackedWidget()
 

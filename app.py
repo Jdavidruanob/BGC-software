@@ -46,7 +46,7 @@ def main():
 
     # Crear y agregar vistas (se pasa db_manager si es necesario)
     window.add_view("home", HomePage())
-    window.add_view("assistant", AssistantPage())
+    window.add_view("assistant", AssistantPage(db_manager))
     window.add_view("members", MembersPage(db_manager, window))  # Se pasa db_manager
     window.add_view("data", DataPage())
 
