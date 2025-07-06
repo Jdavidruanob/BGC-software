@@ -41,3 +41,13 @@ def format_miles_colombian(value):
         return f"{value:,}".replace(',', '.')
     except Exception:
         return value
+    
+def format_money_colombian(value):
+    try:
+        value = float(value)
+        partes = f"{value:,.2f}".split('.')
+        miles = partes[0].replace(',', '.')
+        #decimales = partes[1]
+        return f"{miles}"
+    except Exception:
+        return str(value)

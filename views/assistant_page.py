@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import os
 
-from views.main_window import load_styles
+from config import load_styles, format_money_colombian
 
 class AssistantPage(QWidget):
     def __init__(self, db_manager):
@@ -93,11 +93,13 @@ class AssistantPage(QWidget):
         lbl_numero = QLabel(str(op["numero"]))
         lbl_numero.setObjectName("opNumero")
 
-        lbl_monto = QLabel(f"${op['monto']:,}")
+        lbl_monto = QLabel(f"{format_money_colombian(op['monto'])}")
         lbl_monto.setObjectName("opMonto")
+        lbl_monto.setProperty("montoTipo", "negativo" if op["monto"] < 0 else "positivo")
 
-        lbl_saldo = QLabel(f"${op['saldo']:,}")
+        lbl_saldo = QLabel(f"{format_money_colombian(op['saldo'])}")
         lbl_saldo.setObjectName("opSaldo")
+        lbl_saldo.setStyleSheet("font-weight: bold;")
 
         layout.addWidget(lbl_fecha)
         layout.addWidget(lbl_tipo)
