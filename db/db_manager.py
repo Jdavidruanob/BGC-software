@@ -271,27 +271,10 @@ class DBManager:
             {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
             {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
             {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
-            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
-            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
-            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
-            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
-            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
-            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
-            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
-            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
-            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
-            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
-            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
-            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
-            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
-            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
-            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
-            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
-            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
-            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
-        
+            {"fecha": "2025-02-10", "tipo": "Retiro", "socio": "Lucía Gómez", "numero": 1006, "monto": -70000, "saldo": 193000},
         ]
         start = offset
         end = offset + limit
         return operaciones[start:end]
+
 

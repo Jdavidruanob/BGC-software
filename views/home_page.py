@@ -71,10 +71,20 @@ class HomePage(QWidget):
         self.btn_nuevo_credito.setProperty("btnType", "operacion")
         self.btn_nuevo_credito.clicked.connect(self.toggle_nuevo_credito)
 
+
+        self.btn_retiro = QPushButton(" Retiro")
+        self.btn_retiro.setIconSize(QSize(26, 26))
+        self.btn_retiro.setIcon(load_svg_icon("assets/icons/cash-move.svg"))  # Usa un ícono adecuado
+        self.btn_retiro.setCheckable(True)
+        self.btn_retiro.setProperty("btnType", "operacion")
+        self.btn_retiro.clicked.connect(self.toggle_retiro)
+
         # Orden: Aporte - Pago Crédito - Nuevo Crédito
         button_row.addWidget(self.btn_aporte)
         button_row.addWidget(self.btn_pago_credito)
         button_row.addWidget(self.btn_nuevo_credito)
+        button_row.addWidget(self.btn_retiro)
+
 
         # Construir el contenedor
         container_layout.addWidget(header)
@@ -109,15 +119,28 @@ class HomePage(QWidget):
     def toggle_aporte(self):
         if self.btn_nuevo_credito.isChecked():
             self.btn_nuevo_credito.setChecked(False)
+        if self.btn_retiro.isChecked():
+            self.btn_retiro.setChecked(False)
         print(f"Aporte seleccionado: {self.btn_aporte.isChecked()}")
 
     def toggle_pago_credito(self):
         if self.btn_nuevo_credito.isChecked():
             self.btn_nuevo_credito.setChecked(False)
+        if self.btn_retiro.isChecked():
+            self.btn_retiro.setChecked(False)
         print(f"Pago Crédito seleccionado: {self.btn_pago_credito.isChecked()}")
 
     def toggle_nuevo_credito(self):
         if self.btn_nuevo_credito.isChecked():
             self.btn_aporte.setChecked(False)
             self.btn_pago_credito.setChecked(False)
+            self.btn_retiro.setChecked(False)
         print(f"Nuevo Crédito seleccionado: {self.btn_nuevo_credito.isChecked()}")
+
+    def toggle_retiro(self):
+        if self.btn_retiro.isChecked():
+            self.btn_aporte.setChecked(False)
+            self.btn_pago_credito.setChecked(False)
+            self.btn_nuevo_credito.setChecked(False)
+        print(f"Retiro seleccionado: {self.btn_retiro.isChecked()}")
+

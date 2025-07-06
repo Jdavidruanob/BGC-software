@@ -34,10 +34,12 @@
 /* Etiquetas tipo operación */
 #opTipo_aporte,
 #opTipo_pago_credito,
+#opTipo_retiro,
 #opTipo_nuevo_credito {
     font-size: 13px;
     padding: 2px 5px;
     border-radius: 8px;
+    font-weight: bold;
 }
 
 /* Colores específicos por tipo */
@@ -57,4 +59,20 @@
     background-color: #007bff;
     color: white;
     margin-right: 120px;
+}
+
+#opTipo_retiro {
+    background-color: #dc3545;
+    color: white;
+    margin-right: 160px;
+}
+
+
+#opMonto[montoTipo="positivo"] {
+    color: #28a745;
+    font-weight: bold;
+}
+#opMonto[montoTipo="negativo"] {
+    color: #dc3545;
+    font-weight: bold;
 }
