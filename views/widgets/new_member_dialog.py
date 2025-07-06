@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from config import load_styles, load_svg_icon
+from config import load_styles, load_svg_icon, format_miles_colombian
 from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
 
 DEFAULT_PHOTO = "assets/images/default_user.png"
@@ -36,6 +36,7 @@ class NewMemberDialog(QDialog):
 
         self.photo_input = QLineEdit()
         self.photo_input.setObjectName("InputField")
+        self.salde_input.textChanged.connect(self.on_saldo_changed)
 
         photo_btn = QPushButton("Seleccionar imagen")
         photo_btn.setObjectName("PhotoButton")
@@ -94,3 +95,17 @@ class NewMemberDialog(QDialog):
         photo = self.photo_input.text().strip() or DEFAULT_PHOTO
         
         return (cc, nombres, apellidos, phone, photo, saldo)
+    
+    def on_saldo_changed(self, text):
+        if not text:
+            return
+        cursor_pos = self.salde_input.cursorPosition()
+        # Solo números
+        clean = ''.join(c for c in text if c.isdigit())
+        formatted = format_miles_colombian(clean)
+        if formatted != text:
+            self.salde_input.blockSignals(True)
+            self.salde_input.setText(formatted)
+            # Ajusta el cursor al final
+            self.salde_input.setCursorPosition(len(formatted))
+            self.salde_input.blockSignals(False)
