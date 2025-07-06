@@ -32,3 +32,12 @@ def load_svg_icon(path: str, size: QSize = QSize(24, 24)) -> QIcon:
     renderer.render(painter)
     painter.end()
     return QIcon(pixmap)
+
+def format_miles_colombian(value):
+    try:
+        # Elimina puntos y comas para evitar doble formateo
+        value = value.replace('.', '').replace(',', '')
+        value = int(value)
+        return f"{value:,}".replace(',', '.')
+    except Exception:
+        return value
