@@ -10,6 +10,7 @@ from views.widgets.message_boxes import show_warning, show_success, show_error, 
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.widgets.credit_card_widget import CreditCardWidget
+from views.liquidation_page import CreditLiquidationPage
 
 class MemberDetailPage(QWidget):
     def __init__(self, db_manager, member_id, main_window):
@@ -160,7 +161,7 @@ class MemberDetailPage(QWidget):
         if credits:
             for credit in credits:
                 credit_widget = CreditCardWidget(credit)
-                credit_widget.clicked.connect(self.on_credit_card_clicked)
+                credit_widget.clicked.connect(lambda _, letra=credit["letra"]: self.on_credit_card_clicked(letra))
                 layout.addWidget(credit_widget)
         else:
             no_credit_label = QLabel("Este socio no tiene créditos activos.")
@@ -207,8 +208,18 @@ class MemberDetailPage(QWidget):
         return final
 
     def on_credit_card_clicked(self, letra):
-        print(f"📄 Abrir detalle del crédito {letra}...")
-        # Aquí puedes navegar a la vista del crédito usando self.main_window
+        credit = self.db_manager.get_credit_by_letra(letra)
+        if not credit:
+            show_error(self, "Error", "No se encontró el crédito.")
+            return
+
+        view_name = f"liquidation_credit_{letra}"
+        if view_name not in self.main_window.views:
+            liquidation_view = CreditLiquidationPage(credit, member_id = self.member_id, main_window=self.main_window)
+            self.main_window.add_view(view_name, liquidation_view)
+        self.main_window.show_view(view_name)
+
+
 
     def build_credit_card(self, credito):
         card = QFrame()
