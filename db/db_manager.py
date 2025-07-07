@@ -86,7 +86,7 @@ class DBManager:
                 CREATE TABLE IF NOT EXISTS detalle_recibo (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     recibo_id INTEGER NOT NULL,
-                    tipo_operacion TEXT NOT NULL CHECK (tipo_operacion IN ('aporte', 'pago_credito')),
+                    tipo_operacion TEXT NOT NULL CHECK (tipo_operacion IN ('aporte', 'pago_credito', 'retiro')),
                     socio_id INTEGER NOT NULL,  -- a quién aplica el movimiento
                     credito_letra INTEGER,      -- si es pago_credito
                     nro_cuota INTEGER,          -- si es pago_credito
@@ -276,5 +276,17 @@ class DBManager:
         start = offset
         end = offset + limit
         return operaciones[start:end]
+
+    def get_credit_by_letra(self, letra):
+        query = """
+        SELECT c.*, GROUP_CONCAT(s.nombres || ' ' || s.apellidos, ', ') AS socios
+        FROM creditos c
+        JOIN socio_credito sc ON sc.credito_letra = c.letra
+        JOIN socios s ON s.id = sc.socio_id
+        WHERE c.letra = ?
+        GROUP BY c.letra
+        """
+        return self.conn.execute(query, (letra,)).fetchone()
+
 
 
