@@ -288,5 +288,34 @@ class DBManager:
         """
         return self.conn.execute(query, (letra,)).fetchone()
 
+    def guardar_liquidaciones(self, lista_cuotas):
+        try:
+            query = """
+            INSERT INTO liquidaciones (
+                credito_letra,
+                nro_cuota,
+                fecha_vencimiento,
+                valor_cuota,
+                interes_mes,
+                cuota_mensual,
+                saldo_capital,
+                fecha_pago
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            self.conn.executemany(query, lista_cuotas)
+            self.conn.commit()
+            print("✅ Liquidaciones guardadas.")
+        except sqlite3.Error as e:
+            print(f"❌ Error guardando liquidaciones: {e}")
+
+
+    def marcar_pago_cuota(self, letra, nro_cuota, fecha_pago):
+        self.conn.execute("""
+            UPDATE liquidaciones
+            SET fecha_pago = ?
+            WHERE credito_letra = ? AND nro_cuota = ?
+        """, (fecha_pago, letra, nro_cuota))
+        self.conn.commit()
+
 
 
