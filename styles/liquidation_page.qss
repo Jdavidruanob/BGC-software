@@ -1,77 +1,90 @@
 #creditLiquidationPage {
-    background-color: #FAFAFA;
-    font-family: "Segoe UI", sans-serif;
     font-size: 16px;
     color: #333;
 }
 
-#liqTitle {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: #153A66;
+/* Top bar */
+#liqTopBar {
+    background-color: #153A66;
+    border-radius: 12px;
 }
 
-#liqInfoLabel {
-    font-size: 18px;
+#liqBackButton {
+    font-size: 16px;
     font-weight: 500;
-    color: #444;
-}
-
-#liqSocioLabel {
-    font-size: 18px;
-    font-style: italic;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-/* Botón de regreso */
-#backButton {
-    font-size: 18px;
-    font-weight: 500;
-    color: #153A66;
+    color: white;
     background-color: transparent;
     border: none;
     padding: 5px 10px;
 }
-#backButton:hover {
+#liqBackButton:hover {
     text-decoration: underline;
-    cursor: pointer;
 }
 
-/* Tabla */
-QTableWidget {
-    background-color: #ffffff;
-    border: 1px solid #ddd;
-    gridline-color: #ccc;
-    font-size: 17px;
-}
-
-QHeaderView::section {
-    background-color: #153A66;
-    color: white;
-    padding: 10px;
-    font-size: 18px;
+#liqTitle {
+    font-size: 22px;
     font-weight: bold;
-    border: 1px solid #ddd;
+    color: white;
+    background-color: transparent;
 }
 
-QTableWidget::item {
-    padding: 12px;
+/* Encabezado */
+#liqHeader {
+    background-color: #f1f3f5;
+    border-radius: 8px;
+}
+
+#liqInfoLabel {
+    font-weight: 600;
+    color: #444;
     font-size: 17px;
+    background-color: transparent;
+}
+
+/* Socios */
+#liqSocios {
+    font-size: 17px;
+    font-style: italic;
     color: #333;
+    padding: 5px 0 10px 5px;
 }
 
-QTableWidget::item:selected {
-    background-color: #D6E8FF;
-    color: #000;
+/* Fila de liquidación */
+#liqRow {
+    background-color: white;
+    border-bottom: 1px solid #e0e0e0;
 }
 
-QScrollBar:vertical {
-    width: 10px;
-    background: #F0F0F0;
+#liqItem {
+    font-size: 16px;
+    padding: 5px 8px;
+    border-right: 1px solid #EEEEEE;
 }
-QScrollBar::handle:vertical {
-    background: #888;
-    border-radius: 5px;
+
+
+/* Encabezado tipo tabla */
+#liqTableHeader {
+    background-color: #E9ECEF;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border: 1px solid #DADDE1;
+}
+
+#liqTableHeaderLabel {
+    font-weight: bold;
+    font-size: 15px;
+    color: #333;
+    padding: 8px 4px;
+    border-right: 1px solid #DADDE1;
+    background-color: transparent
+}
+
+/* Quitar última línea de separación */
+#liqTableHeader QLabel:last-child {
+    border-right: none;
+}
+
+/* Quitar borde derecho en última celda */
+#liqRow QLabel:last-child {
+    border-right: none;
 }
