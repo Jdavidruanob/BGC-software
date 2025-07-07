@@ -1,16 +1,77 @@
-#liqTitle {
-    font-size: 24px;
-    font-weight: bold;
-    color: #153A66;
-}
-
-#liqInfoLabel {
+#creditLiquidationPage {
+    background-color: #FAFAFA;
+    font-family: "Segoe UI", sans-serif;
     font-size: 16px;
     color: #333;
 }
 
+#liqTitle {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #153A66;
+}
+
+#liqInfoLabel {
+    font-size: 18px;
+    font-weight: 500;
+    color: #444;
+}
+
 #liqSocioLabel {
-    font-size: 15px;
-    color: #555;
-    margin-top: 10px;
+    font-size: 18px;
+    font-style: italic;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Botón de regreso */
+#backButton {
+    font-size: 18px;
+    font-weight: 500;
+    color: #153A66;
+    background-color: transparent;
+    border: none;
+    padding: 5px 10px;
+}
+#backButton:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Tabla */
+QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    gridline-color: #ccc;
+    font-size: 17px;
+}
+
+QHeaderView::section {
+    background-color: #153A66;
+    color: white;
+    padding: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 1px solid #ddd;
+}
+
+QTableWidget::item {
+    padding: 12px;
+    font-size: 17px;
+    color: #333;
+}
+
+QTableWidget::item:selected {
+    background-color: #D6E8FF;
+    color: #000;
+}
+
+QScrollBar:vertical {
+    width: 10px;
+    background: #F0F0F0;
+}
+QScrollBar::handle:vertical {
+    background: #888;
+    border-radius: 5px;
 }
