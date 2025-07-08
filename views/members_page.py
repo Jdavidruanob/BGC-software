@@ -70,13 +70,16 @@ class MembersPage(QWidget):
         scroll.setWidget(self.content_widget)
         main_layout.addWidget(scroll)
 
-        self.setLayout(main_layout)
+        self.setLayout(main_layout) 
+
+        # cargar estilos
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "members_page.qss")
         load_styles(self, qss_path)
 
         self.refresh_members()  # Cargar al iniciar
 
     def open_new_member_dialog(self):
+        """ Abre el diálogo para crear un nuevo socio """
         dialog = NewMemberDialog(self)
         if dialog.exec():
             cc, nombres, apellidos, phone, photo, saldo = dialog.get_data()
@@ -86,10 +89,12 @@ class MembersPage(QWidget):
                 self.refresh_members()
 
     def refresh_members(self):
+        """ Refresca la lista de socios desde la base de datos """
         socios = self.db_manager.get_all_members()
         self.update_member_cards(socios)
 
     def update_member_cards(self, members):
+        """ Actualiza las tarjetas de socios en la interfaz """
         # Limpiar layout
         for i in reversed(range(self.cards_layout.count())):
             widget = self.cards_layout.itemAt(i).widget()
@@ -103,6 +108,7 @@ class MembersPage(QWidget):
             self.cards_layout.addWidget(card, i // 4, i % 4)
 
     def filter_members(self, text):
+        """ Filtra los socios por el texto ingresado en la barra de búsqueda """
         if text.strip() == "":
             socios = self.db_manager.get_all_members()
         else:
@@ -110,6 +116,7 @@ class MembersPage(QWidget):
         self.update_member_cards(socios)
 
     def open_member_detail(self, member_id):
+        """ Abre la vista de detalle del socio seleccionado """
         view_name = f"member_detail_{member_id}"
         if view_name not in self.main_window.views:
             detail_view = MemberDetailPage(self.db_manager, member_id, self.main_window)

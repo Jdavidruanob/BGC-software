@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon
 
-
 class HomePage(QWidget):
     def __init__(self):
         super().__init__()
