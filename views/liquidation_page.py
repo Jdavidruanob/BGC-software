@@ -1,12 +1,12 @@
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QFrame
+    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QFrame,
+    QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt
 import os
 from datetime import datetime, timedelta
 
 from config import load_styles, format_money_colombian
-
 
 class CreditLiquidationPage(QWidget):
     def __init__(self, credit, member_id, main_window, db_manager):
@@ -71,41 +71,47 @@ class CreditLiquidationPage(QWidget):
         socios_label.setObjectName("liqSocios")
         main_layout.addWidget(socios_label)
 
-         # Encabezado de columnas (estilo tabla)
-        header_row = QFrame()
-        header_row.setObjectName("liqTableHeader")
-        header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(10, 5, 10, 5)
-        header_layout.setSpacing(20)
-
+        # ---- QTableWidget para la tabla de liquidación ----
         headers = [
             "Fecha", "Cuota", "Valor Cuota", "Intereses",
             "Total Mensual", "Saldo Capital", "Fecha Pago"
         ]
+        self.table = QTableWidget(0, len(headers))
+        self.table.setObjectName("liqTableWidget")
+        self.table.setHorizontalHeaderLabels(headers)
+        self.table.verticalHeader().setVisible(False)  # Oculta la columna de índices
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Ocupa todo el ancho
+        self.table.setSelectionMode(QTableWidget.NoSelection)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
+        self.table.setStyleSheet("""
+            QTableWidget#liqTableWidget {
+                background: white;
+                border: 1px solid #DADDE1;
+                font-size: 16px;
+            }
+            QHeaderView::section {
+                background: #E9ECEF;
+                font-weight: bold;
+                font-size: 15px;
+                color: #333;
+                border: 1px solid #DADDE1;
+                padding: 8px 4px;
+            }
+            QTableWidget::item {
+                padding: 5px 8px;
+                border-right: 1px solid #EEEEEE;
+            }
+            QTableWidget::item:last-child {
+                border-right: none;
+            }
+        """)
 
-        for h in headers:
-            lbl = QLabel(h)
-            lbl.setObjectName("liqTableHeaderLabel")
-            header_layout.addWidget(lbl)
-
-        header_row.setLayout(header_layout)
-        main_layout.addWidget(header_row)
-
-
-        # Scroll para las cuotas
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_content = QWidget()
-        self.scroll_layout = QVBoxLayout()
-        self.scroll_layout.setAlignment(Qt.AlignTop)
-        self.scroll_content.setLayout(self.scroll_layout)
-        self.scroll_area.setWidget(self.scroll_content)
-
-        main_layout.addWidget(self.scroll_area)
+        main_layout.addWidget(self.table)
 
         self.setLayout(main_layout)
 
-        # Estilos
+        # Estilos adicionales
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "liquidation_page.qss")
         load_styles(self, qss_path)
 
@@ -136,6 +142,8 @@ class CreditLiquidationPage(QWidget):
 
         cuotas_db = []
 
+        self.table.setRowCount(cuotas)
+
         for i in range(cuotas):
             nro_cuota = i + 1
             fecha = fecha_inicio + timedelta(days=30 * i)
@@ -145,17 +153,20 @@ class CreditLiquidationPage(QWidget):
             cuota_mensual = cuota_valor + intereses
             saldo -= cuota_valor
 
-            # Agregar visual
-            self.scroll_layout.addWidget(self.build_row(
+            row = [
                 fecha.strftime("%Y-%m-%d"),
-                nro_cuota,
-                cuota_valor,
-                intereses,
-                cuota_mensual,
-                max(0, saldo),
-                None  # fecha_pago (a futuro vendrá desde la base de datos)
-            ))
+                str(nro_cuota),
+                f"${format_money_colombian(cuota_valor)}",
+                f"${format_money_colombian(intereses)}",
+                f"${format_money_colombian(cuota_mensual)}",
+                f"${format_money_colombian(max(0, saldo))}",
+                ""  # Fecha pago vacía
+            ]
 
+            for col, val in enumerate(row):
+                item = QTableWidgetItem(val)
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(i, col, item)
 
             # Preparar para guardar en BD
             cuotas_db.append((
@@ -177,29 +188,3 @@ class CreditLiquidationPage(QWidget):
 
         if existing == 0:
             self.db_manager.guardar_liquidaciones(cuotas_db)
-
-
-    def build_row(self, fecha, nro_cuota, valor_cuota, intereses, total, saldo, fecha_pago=None):
-        row = QFrame()
-        row.setObjectName("liqRow")
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(20)
-
-        items = [
-            fecha,
-            str(nro_cuota),
-            f"${format_money_colombian(valor_cuota)}",
-            f"${format_money_colombian(intereses)}",
-            f"${format_money_colombian(total)}",
-            f"${format_money_colombian(saldo)}",
-            fecha_pago or " "  # Mostrar "—" si aún no tiene fecha de pago
-        ]
-
-        for i in items:
-            lbl = QLabel(i)
-            lbl.setObjectName("liqItem")
-            layout.addWidget(lbl)
-
-        row.setLayout(layout)
-        return row
