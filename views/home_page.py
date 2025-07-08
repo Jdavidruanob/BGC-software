@@ -1,26 +1,26 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QFrame
+    QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QFrame,
+    QScrollArea, QStackedWidget
 )
 from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon
+
 
 class HomePage(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("HomePage")
 
-        # --- Layout principal: horizontal para izquierda y derecha
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(80, 40, 80, 20)
         main_layout.setSpacing(30)
 
-        # ---------- PANEL IZQUIERDO (más ancho) ----------
+        # PANEL IZQUIERDO
         self.left_panel = QWidget()
         left_layout = QVBoxLayout()
         left_layout.setAlignment(Qt.AlignTop)
 
-        # Contenedor tipo tarjeta
         self.container = QFrame()
         self.container.setObjectName("HomeCard")
 
@@ -28,7 +28,7 @@ class HomePage(QWidget):
         container_layout.setAlignment(Qt.AlignTop)
         container_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Header azul
+        # HEADER
         header = QFrame()
         header.setObjectName("HomeCardHeader")
         header_layout = QVBoxLayout()
@@ -43,7 +43,7 @@ class HomePage(QWidget):
         header_layout.addWidget(subtitle)
         header.setLayout(header_layout)
 
-        # Botones de operaciones
+        # BOTONES
         button_row = QHBoxLayout()
         button_row.setContentsMargins(20, 20, 20, 20)
         button_row.setSpacing(0)
@@ -64,62 +64,113 @@ class HomePage(QWidget):
 
         self.btn_nuevo_credito = QPushButton(" Nuevo Crédito")
         self.btn_nuevo_credito.setIconSize(QSize(24, 24))
-
         self.btn_nuevo_credito.setIcon(load_svg_icon("assets/icons/circle-plus.svg"))
         self.btn_nuevo_credito.setCheckable(True)
         self.btn_nuevo_credito.setProperty("btnType", "operacion")
         self.btn_nuevo_credito.clicked.connect(self.toggle_nuevo_credito)
 
-
         self.btn_retiro = QPushButton(" Retiro")
         self.btn_retiro.setIconSize(QSize(26, 26))
-        self.btn_retiro.setIcon(load_svg_icon("assets/icons/cash-move.svg"))  # Usa un ícono adecuado
+        self.btn_retiro.setIcon(load_svg_icon("assets/icons/cash-move.svg"))
         self.btn_retiro.setCheckable(True)
         self.btn_retiro.setProperty("btnType", "operacion")
         self.btn_retiro.clicked.connect(self.toggle_retiro)
 
-        # Orden: Aporte - Pago Crédito - Nuevo Crédito
         button_row.addWidget(self.btn_aporte)
         button_row.addWidget(self.btn_pago_credito)
         button_row.addWidget(self.btn_nuevo_credito)
         button_row.addWidget(self.btn_retiro)
 
+        # FORMULARIOS: STACK + SCROLL
+        self.form_container = QFrame()
+        self.form_container.setObjectName("DynamicForm")
+        self.form_layout = QVBoxLayout()
+        self.form_container.setLayout(self.form_layout)
 
-        # Construir el contenedor
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.NoFrame)
+
+        self.stack = QStackedWidget()
+
+        self.page_aporte = QLabel("Formulario de Aporte")
+        self.page_pago = QLabel("Formulario de Pago de Crédito")
+        self.page_credito = QLabel("Formulario de Nuevo Crédito")
+        self.page_retiro = QLabel("Formulario de Retiro")
+        self.page_aporte_pago = QLabel("Formulario Combinado: Aporte + Pago Crédito")
+
+        for widget in [self.page_aporte, self.page_pago, self.page_credito, self.page_retiro, self.page_aporte_pago]:
+            widget.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+            widget.setStyleSheet("font-size: 16px; padding: 20px;")
+
+        self.stack.addWidget(self.page_aporte)         # 0
+        self.stack.addWidget(self.page_pago)           # 1
+        self.stack.addWidget(self.page_credito)        # 2
+        self.stack.addWidget(self.page_retiro)         # 3
+        self.stack.addWidget(self.page_aporte_pago)    # 4
+
+        scroll_area.setWidget(self.stack)
+        self.form_layout.addWidget(scroll_area)
+        self.form_container.setVisible(False)
+
+        # ARMADO
         container_layout.addWidget(header)
         container_layout.addLayout(button_row)
+        container_layout.addWidget(self.form_container)
         self.container.setLayout(container_layout)
 
-        # Añadir al layout izquierdo
         left_layout.addWidget(self.container)
         self.left_panel.setLayout(left_layout)
 
-        # ---------- PANEL DERECHO (por ahora solo un label) ----------
+        # PANEL DERECHO
         self.right_panel = QWidget()
         right_layout = QVBoxLayout()
-        right_layout.setAlignment(Qt.AlignTop) 
-
+        right_layout.setAlignment(Qt.AlignTop)
         self.right_label = QLabel("📌 Aquí irán más detalles...")
         self.right_label.setStyleSheet("font-size: 16px; color: #333;")
         right_layout.addWidget(self.right_label)
-
         self.right_panel.setLayout(right_layout)
 
-        # Añadir ambos paneles al layout principal
-        main_layout.addWidget(self.left_panel, 2.5)   # Izquierdo más ancho
-        main_layout.addWidget(self.right_panel, 1.5)  # Derecho más delgado
-
+        # FINAL
+        main_layout.addWidget(self.left_panel, 2.5)
+        main_layout.addWidget(self.right_panel, 1.5)
         self.setLayout(main_layout)
 
-        # Estilos
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "home_page.qss")
         load_styles(self, qss_path)
+
+    def actualizar_formulario(self):
+        if self.btn_nuevo_credito.isChecked():
+            self.stack.setCurrentIndex(2)
+            self.form_container.setVisible(True)
+            return
+        if self.btn_retiro.isChecked():
+            self.stack.setCurrentIndex(3)
+            self.form_container.setVisible(True)
+            return
+        if self.btn_aporte.isChecked() and self.btn_pago_credito.isChecked():
+            self.stack.setCurrentIndex(4)
+            self.form_container.setVisible(True)
+            return
+        if self.btn_aporte.isChecked():
+            self.stack.setCurrentIndex(0)
+            self.form_container.setVisible(True)
+            return
+        if self.btn_pago_credito.isChecked():
+            self.stack.setCurrentIndex(1)
+            self.form_container.setVisible(True)
+            return
+
+        # Nada seleccionado
+        self.form_container.setVisible(False)
+        self.stack.setCurrentIndex(-1)
 
     def toggle_aporte(self):
         if self.btn_nuevo_credito.isChecked():
             self.btn_nuevo_credito.setChecked(False)
         if self.btn_retiro.isChecked():
             self.btn_retiro.setChecked(False)
+        self.actualizar_formulario()
         print(f"Aporte seleccionado: {self.btn_aporte.isChecked()}")
 
     def toggle_pago_credito(self):
@@ -127,6 +178,7 @@ class HomePage(QWidget):
             self.btn_nuevo_credito.setChecked(False)
         if self.btn_retiro.isChecked():
             self.btn_retiro.setChecked(False)
+        self.actualizar_formulario()
         print(f"Pago Crédito seleccionado: {self.btn_pago_credito.isChecked()}")
 
     def toggle_nuevo_credito(self):
@@ -134,6 +186,7 @@ class HomePage(QWidget):
             self.btn_aporte.setChecked(False)
             self.btn_pago_credito.setChecked(False)
             self.btn_retiro.setChecked(False)
+        self.actualizar_formulario()
         print(f"Nuevo Crédito seleccionado: {self.btn_nuevo_credito.isChecked()}")
 
     def toggle_retiro(self):
@@ -141,5 +194,5 @@ class HomePage(QWidget):
             self.btn_aporte.setChecked(False)
             self.btn_pago_credito.setChecked(False)
             self.btn_nuevo_credito.setChecked(False)
+        self.actualizar_formulario()
         print(f"Retiro seleccionado: {self.btn_retiro.isChecked()}")
-
