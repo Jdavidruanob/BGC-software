@@ -150,6 +150,22 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
+        
+    def get_all_members_full(self):
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT s.*,
+                    COUNT(sc.credito_letra) as creditos
+                FROM socios s
+                LEFT JOIN socio_credito sc ON s.id = sc.socio_id
+                GROUP BY s.id
+                ORDER BY s.nombres
+            """)
+            return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"❌ Error obteniendo socios completos: {e}")
+            return []
 
     def search_members_by_name(self, search_term):
         try:
@@ -307,7 +323,6 @@ class DBManager:
             print("✅ Liquidaciones guardadas.")
         except sqlite3.Error as e:
             print(f"❌ Error guardando liquidaciones: {e}")
-
 
     def marcar_pago_cuota(self, letra, nro_cuota, fecha_pago):
         self.conn.execute("""

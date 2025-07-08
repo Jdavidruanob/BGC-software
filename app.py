@@ -46,7 +46,7 @@ def main():
     window = MainWindow()
 
     # Crear y agregar vistas 
-    window.add_view("home", HomePage())
+    window.add_view("home", HomePage(db_manager))
     window.add_view("assistant", AssistantPage(db_manager))
     window.add_view("members", MembersPage(db_manager, window))  # Se pasa db_manager y window para acceso a la ventana principal
     window.add_view("data", DataPage())
