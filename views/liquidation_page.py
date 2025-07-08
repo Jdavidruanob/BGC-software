@@ -193,7 +193,7 @@ class CreditLiquidationPage(QWidget):
             f"${format_money_colombian(intereses)}",
             f"${format_money_colombian(total)}",
             f"${format_money_colombian(saldo)}",
-            fecha_pago or "—"  # Mostrar "—" si aún no tiene fecha de pago
+            fecha_pago or " "  # Mostrar "—" si aún no tiene fecha de pago
         ]
 
         for i in items:

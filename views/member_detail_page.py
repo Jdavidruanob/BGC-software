@@ -54,10 +54,14 @@ class MemberDetailPage(QWidget):
 
         main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
+
+        # Cargar estilos
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "member_detail_page.qss")
         load_styles(self, qss_path)
 
     def create_left_panel(self):
+        """Crea el panel izquierdo con la información del socio."""
+
         member = self.db_manager.get_member_by_id(self.member_id)
         if not member:
             show_error(self, "Error", "No se pudo cargar la información del socio.")
@@ -151,31 +155,6 @@ class MemberDetailPage(QWidget):
 
         return widget
 
-    def create_right_panel(self):
-        container = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(20)
-
-        credits = self.db_manager.get_active_credits_by_member(self.member_id)
-
-        if credits:
-            for credit in credits:
-                credit_widget = CreditCardWidget(credit)
-                credit_widget.clicked.connect(lambda _, letra=credit["letra"]: self.on_credit_card_clicked(letra))
-                layout.addWidget(credit_widget)
-        else:
-            no_credit_label = QLabel("Este socio no tiene créditos activos.")
-            no_credit_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(no_credit_label)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_content.setLayout(layout)
-        scroll.setWidget(scroll_content)
-
-        return scroll
-
     def create_rounded_avatar(self, photo_path, size=175, border=3, border_color="#153A66"):
         inner_diameter = size - 2 * border
         pixmap = QPixmap(photo_path).scaled(
@@ -207,72 +186,6 @@ class MemberDetailPage(QWidget):
 
         return final
 
-    def on_credit_card_clicked(self, letra):
-        credit = self.db_manager.get_credit_by_letra(letra)
-        if not credit:
-            show_error(self, "Error", "No se encontró el crédito.")
-            return
-
-        view_name = f"liquidation_credit_{letra}"
-        if view_name not in self.main_window.views:
-            liquidation_view = CreditLiquidationPage(credit, member_id = self.member_id, main_window=self.main_window, db_manager=self.db_manager)
-            self.main_window.add_view(view_name, liquidation_view)
-        self.main_window.show_view(view_name)
-
-
-
-    def build_credit_card(self, credito):
-        card = QFrame()
-        card.setObjectName("CreditCard")
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignTop)
-        layout.setContentsMargins(15, 15, 15, 15)
-
-        # Acceder usando claves del diccionario sqlite3.Row
-        letra = credito["letra"]
-        capital = credito["capital"]
-        interes = credito["interes"]
-        cuotas = credito["no_cuotas"]
-
-        lbl_letra = QLabel(f"🆔 Crédito #{letra}")
-        lbl_letra.setObjectName("creditCardTitle")
-
-        lbl_capital = QLabel(f"💰 Capital: ${capital:,.0f}")
-        lbl_capital.setObjectName("creditCardLabel")
-
-        lbl_interes = QLabel(f"📈 Interés mensual: {interes * 100:.2f}%")
-        lbl_interes.setObjectName("creditCardLabel")
-
-        lbl_cuotas = QLabel(f"📅 Cuotas totales: {cuotas}")
-        lbl_cuotas.setObjectName("creditCardLabel")
-
-        layout.addWidget(lbl_letra)
-        layout.addSpacing(5)
-        layout.addWidget(lbl_capital)
-        layout.addWidget(lbl_interes)
-        layout.addWidget(lbl_cuotas)
-
-        card.setLayout(layout)
-        return card
-    
-    def on_delete_member(self):
-        reply = show_warning(
-            self,
-            "Confirmar eliminación",
-            "¿Estás seguro de que deseas eliminar este socio? Esta acción no se puede deshacer.",
-            ask_confirmation=True
-        )
-        if reply == QMessageBox.Yes:
-            if self.db_manager.delete_member(self.member_id):
-                show_success(self, "Eliminado", "Socio eliminado correctamente.")
-                # Refrescar la lista de socios en MembersPage
-                if hasattr(self.main_window, "views") and "members" in self.main_window.views:
-                    members_page = self.main_window.views["members"]
-                    if hasattr(members_page, "refresh_members"):
-                        members_page.refresh_members()
-                self.main_window.show_view("members")
-            else:
-                show_error(self, "Error", "No se pudo eliminar el socio.")
     def on_edit_member(self):
         member = self.db_manager.get_member_by_id(self.member_id)
         if not member:
@@ -308,3 +221,97 @@ class MemberDetailPage(QWidget):
                             members_page.refresh_members()
                 else:
                     show_error(self, "Error", "No se pudo actualizar el socio.")
+
+    def on_delete_member(self):
+        reply = show_warning(
+            self,
+            "Confirmar eliminación",
+            "¿Estás seguro de que deseas eliminar este socio? Esta acción no se puede deshacer.",
+            ask_confirmation=True
+        )
+        if reply == QMessageBox.Yes:
+            if self.db_manager.delete_member(self.member_id):
+                show_success(self, "Eliminado", "Socio eliminado correctamente.")
+                # Refrescar la lista de socios en MembersPage
+                if hasattr(self.main_window, "views") and "members" in self.main_window.views:
+                    members_page = self.main_window.views["members"]
+                    if hasattr(members_page, "refresh_members"):
+                        members_page.refresh_members()
+                self.main_window.show_view("members")
+            else:
+                show_error(self, "Error", "No se pudo eliminar el socio.")
+
+    def create_right_panel(self):
+        """Crea el panel derecho con las tarjetas de créditos activos del socio."""
+
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+
+        credits = self.db_manager.get_active_credits_by_member(self.member_id)
+
+        if credits:
+            for credit in credits:
+                credit_widget = CreditCardWidget(credit)
+                credit_widget.clicked.connect(lambda _, letra=credit["letra"]: self.on_credit_card_clicked(letra))
+                layout.addWidget(credit_widget)
+        else:
+            no_credit_label = QLabel("Este socio no tiene créditos activos.")
+            no_credit_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(no_credit_label)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll_content = QWidget()
+        scroll_content.setLayout(layout)
+        scroll.setWidget(scroll_content)
+
+        return scroll
+
+    def on_credit_card_clicked(self, letra):
+        credit = self.db_manager.get_credit_by_letra(letra)
+        if not credit:
+            show_error(self, "Error", "No se encontró el crédito.")
+            return
+
+        view_name = f"liquidation_credit_{letra}"
+        if view_name not in self.main_window.views:
+            liquidation_view = CreditLiquidationPage(credit, member_id = self.member_id, main_window=self.main_window, db_manager=self.db_manager)
+            self.main_window.add_view(view_name, liquidation_view)
+        self.main_window.show_view(view_name)
+
+    def build_credit_card(self, credito):
+        card = QFrame()
+        card.setObjectName("CreditCard")
+        layout = QVBoxLayout()
+        layout.setAlignment(Qt.AlignTop)
+        layout.setContentsMargins(15, 15, 15, 15)
+
+        # Acceder usando claves del diccionario sqlite3.Row
+        letra = credito["letra"]
+        capital = credito["capital"]
+        interes = credito["interes"]
+        cuotas = credito["no_cuotas"]
+
+        lbl_letra = QLabel(f"🆔 Crédito #{letra}")
+        lbl_letra.setObjectName("creditCardTitle")
+
+        lbl_capital = QLabel(f"💰 Capital: ${capital:,.0f}")
+        lbl_capital.setObjectName("creditCardLabel")
+
+        lbl_interes = QLabel(f"📈 Interés mensual: {interes * 100:.2f}%")
+        lbl_interes.setObjectName("creditCardLabel")
+
+        lbl_cuotas = QLabel(f"📅 Cuotas totales: {cuotas}")
+        lbl_cuotas.setObjectName("creditCardLabel")
+
+        layout.addWidget(lbl_letra)
+        layout.addSpacing(5)
+        layout.addWidget(lbl_capital)
+        layout.addWidget(lbl_interes)
+        layout.addWidget(lbl_cuotas)
+
+        card.setLayout(layout)
+        return card
+    
+

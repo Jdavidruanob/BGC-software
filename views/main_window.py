@@ -14,12 +14,10 @@ from config import load_styles, load_svg_icon
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
+        super().__init__() 
         self.setWindowTitle("bgc software")
-        #self.resize(1500, 700)
-        # inicializar en ventana completa 
-        self.setWindowState(Qt.WindowMaximized)
-        self.views = {}
+        self.setWindowState(Qt.WindowMaximized) # inicializar en ventana completa 
+        self.views = {} # Diccionario para almacenar vistas,  clave: nombre, valor: widget
         
         # --- Widget central ---
         central_widget = QWidget()
@@ -34,33 +32,36 @@ class MainWindow(QMainWindow):
         # Logo
         logo_label = QLabel("🔷 BGC")
         logo_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
-        top_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
         logo_label.setObjectName("logoLabel")
-
+        
+        top_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
         top_layout.addStretch()
 
         # Botones con íconos PNG
         icons_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "icons")
+        # Inicio
         self.btn_home = QPushButton(" Inicio")
-        self.btn_home.setIcon(load_svg_icon("assets/icons/home.svg"))
-
+        self.btn_home.setIcon(load_svg_icon("assets/icons/home.svg")) # Usa la función load_svg_icon para cargar el ícono SVG
+        # Auxiliar
         self.btn_assistant = QPushButton(" Auxiliar")
         self.btn_assistant.setIcon(QIcon(os.path.join(icons_dir, "library.svg")))
-
+        # Socios
         self.btn_members = QPushButton(" Socios")
         self.btn_members.setIcon(QIcon(os.path.join(icons_dir, "users-group.svg")))
-  
+        # Datos
         self.btn_data = QPushButton(" Datos")
         self.btn_data.setIcon(QIcon(os.path.join(icons_dir, "chart-area-line.svg")))
 
+        # Configuración de botones
         for btn in [self.btn_home, self.btn_assistant, self.btn_members, self.btn_data]:
             btn.setIconSize(QSize(24, 24))
             btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             top_layout.addWidget(btn, alignment=Qt.AlignRight)
 
-        top_bar.setLayout(top_layout)
+        top_bar.setLayout(top_layout) # Layout de la barra superior
+
         # Stack para vistas
-        self.stack = QStackedWidget()
+        self.stack = QStackedWidget() # QStackedWidget es un contenedor que permite apilar widgets uno encima del otro
 
         # Conexiones
         self.btn_home.clicked.connect(lambda: self.show_view("home"))
@@ -73,6 +74,8 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.stack)
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
+
+        # Cargar estilos
         qss_path = os.path.join(os.path.dirname(__file__), "..",  "styles", "main.qss")
         load_styles(self, qss_path)
 
@@ -82,17 +85,20 @@ class MainWindow(QMainWindow):
         self.btn_members.setObjectName("NavBarButton")
         self.btn_data.setObjectName("NavBarButton")
 
+
     def add_view(self, name, widget):
+        """ Agrega una vista al stack y al diccionario de vistas. """
         self.views[name] = widget
         self.stack.addWidget(widget)
 
     def show_view(self, name):
-            if name in self.views:
-                self.stack.setCurrentWidget(self.views[name])
-                self.highlight_active_button(name)
+        """ Muestra una vista específica y resalta el botón correspondiente. """
+        if name in self.views:
+            self.stack.setCurrentWidget(self.views[name])
+            self.highlight_active_button(name)
 
     def highlight_active_button(self, active_name):
-        # Mapea nombres a botones
+        """ Resalta el botón activo en la barra de navegación. """
         buttons = {
             "home": self.btn_home,
             "assistant": self.btn_assistant,
