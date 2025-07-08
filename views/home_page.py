@@ -5,12 +5,18 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon
+from views.widgets.form_aporte import FormAporte
+from views.widgets.form_pago_credito import FormPagoCredito
+from views.widgets.form_combinado import FormCombinado
+from views.widgets.form_nuevo_credito import FormNuevoCredito
+from views.widgets.form_retiro import FormRetiro
 
 
 class HomePage(QWidget):
-    def __init__(self):
+    def __init__(self, db_manager):
         super().__init__()
         self.setObjectName("HomePage")
+        self.db_manager = db_manager
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(80, 40, 80, 20)
@@ -81,6 +87,21 @@ class HomePage(QWidget):
         button_row.addWidget(self.btn_nuevo_credito)
         button_row.addWidget(self.btn_retiro)
 
+
+        # Botón Refrescar
+        self.btn_refrescar = QPushButton("🔄 Refrescar")
+        self.btn_refrescar.setFixedWidth(140)
+        self.btn_refrescar.setStyleSheet("margin-top: 5px; padding: 6px 10px;")
+        self.btn_refrescar.clicked.connect(self.refresh_forms)
+
+        refresh_row = QHBoxLayout()
+        refresh_row.addStretch()
+        refresh_row.addWidget(self.btn_refrescar)
+        refresh_row.setContentsMargins(20, 0, 20, 10)
+
+        container_layout.addLayout(refresh_row)
+
+
         # FORMULARIOS: STACK + SCROLL
         self.form_container = QFrame()
         self.form_container.setObjectName("DynamicForm")
@@ -93,21 +114,22 @@ class HomePage(QWidget):
 
         self.stack = QStackedWidget()
 
-        self.page_aporte = QLabel("Formulario de Aporte")
-        self.page_pago = QLabel("Formulario de Pago de Crédito")
-        self.page_credito = QLabel("Formulario de Nuevo Crédito")
-        self.page_retiro = QLabel("Formulario de Retiro")
-        self.page_aporte_pago = QLabel("Formulario Combinado: Aporte + Pago Crédito")
+        self.form_aporte = FormAporte(self.db_manager)
+        self.page_pago = FormPagoCredito()
+        self.form_nuevo_credito = FormNuevoCredito()
+        self.form_retiro = FormRetiro()
+        self.form_aporte_pago = FormCombinado()
 
-        for widget in [self.page_aporte, self.page_pago, self.page_credito, self.page_retiro, self.page_aporte_pago]:
-            widget.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
-            widget.setStyleSheet("font-size: 16px; padding: 20px;")
+        #for widget in [self.form_aporte, self.page_pago, self.form_nuevo_credito, self.form_retiro, self.form_aporte_pago]:
+            #widget.setStyleSheet("font-size: 16px; padding: 20px;")
 
-        self.stack.addWidget(self.page_aporte)         # 0
+        self.stack.addWidget(self.form_aporte)         # 0
         self.stack.addWidget(self.page_pago)           # 1
-        self.stack.addWidget(self.page_credito)        # 2
-        self.stack.addWidget(self.page_retiro)         # 3
-        self.stack.addWidget(self.page_aporte_pago)    # 4
+        self.stack.addWidget(self.form_nuevo_credito)  # 2
+        self.stack.addWidget(self.form_retiro)         # 3
+        self.stack.addWidget(self.form_aporte_pago)    # 4
+
+        #self.stack.setStyleSheet(""" background-color: trasparent; border-radius: 8px""")
 
         scroll_area.setWidget(self.stack)
         self.form_layout.addWidget(scroll_area)
@@ -171,7 +193,7 @@ class HomePage(QWidget):
         if self.btn_retiro.isChecked():
             self.btn_retiro.setChecked(False)
         self.actualizar_formulario()
-        print(f"Aporte seleccionado: {self.btn_aporte.isChecked()}")
+        #print(f"Aporte seleccionado: {self.btn_aporte.isChecked()}")
 
     def toggle_pago_credito(self):
         if self.btn_nuevo_credito.isChecked():
@@ -179,7 +201,7 @@ class HomePage(QWidget):
         if self.btn_retiro.isChecked():
             self.btn_retiro.setChecked(False)
         self.actualizar_formulario()
-        print(f"Pago Crédito seleccionado: {self.btn_pago_credito.isChecked()}")
+        #print(f"Pago Crédito seleccionado: {self.btn_pago_credito.isChecked()}")
 
     def toggle_nuevo_credito(self):
         if self.btn_nuevo_credito.isChecked():
@@ -187,7 +209,7 @@ class HomePage(QWidget):
             self.btn_pago_credito.setChecked(False)
             self.btn_retiro.setChecked(False)
         self.actualizar_formulario()
-        print(f"Nuevo Crédito seleccionado: {self.btn_nuevo_credito.isChecked()}")
+        #print(f"Nuevo Crédito seleccionado: {self.btn_nuevo_credito.isChecked()}")
 
     def toggle_retiro(self):
         if self.btn_retiro.isChecked():
@@ -195,4 +217,30 @@ class HomePage(QWidget):
             self.btn_pago_credito.setChecked(False)
             self.btn_nuevo_credito.setChecked(False)
         self.actualizar_formulario()
-        print(f"Retiro seleccionado: {self.btn_retiro.isChecked()}")
+        #print(f"Retiro seleccionado: {self.btn_retiro.isChecked()}")
+
+    def refresh_forms(self):
+        """Actualiza todos los formularios de la HomePage si implementan .refresh()"""
+        print("🔄 Actualizando formularios...")
+
+        # Aporte
+        if hasattr(self.form_aporte, "refresh"):
+            self.form_aporte.refresh()
+
+        """ # Pago Crédito
+        if hasattr(self.page_pago, "refresh"):
+            self.page_pago.refresh() """
+
+        """  # Nuevo Crédito (más adelante)
+        if hasattr(self.page_credito, "refresh"):
+            self.page_credito.refresh()
+
+        # Retiro (más adelante)
+        if hasattr(self.page_retiro, "refresh"):
+            self.page_retiro.refresh() """
+
+        """ # Aporte + Pago Crédito
+        if hasattr(self.form_aporte_pago, "refresh"):
+            self.form_aporte_pago.refresh() """
+
+        print("✅ Formularios actualizados.")
