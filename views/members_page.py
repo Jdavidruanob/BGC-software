@@ -122,3 +122,7 @@ class MembersPage(QWidget):
             detail_view = MemberDetailPage(self.db_manager, member_id, self.main_window)
             self.main_window.add_view(view_name, detail_view)
         self.main_window.show_view(view_name)
+
+    def refresh_view(self):
+        """Refresca la información visible en esta página."""
+        print("🔁 Refrescando vista members")

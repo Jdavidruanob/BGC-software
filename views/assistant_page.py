@@ -110,3 +110,7 @@ class AssistantPage(QWidget):
 
         row.setLayout(layout)
         return row
+    
+    def refresh_view(self):
+        """Refresca la información visible en esta página."""
+        print("🔁 Refrescando vista auxiliar")

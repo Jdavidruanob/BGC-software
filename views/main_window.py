@@ -92,11 +92,20 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(widget)
 
     def show_view(self, name):
-        """ Muestra una vista específica y resalta el botón correspondiente. """
+        """Muestra la vista y la refresca si tiene método 'refresh_view'."""
         if name in self.views:
-            self.stack.setCurrentWidget(self.views[name])
+            widget = self.views[name]
+            self.stack.setCurrentWidget(widget)
             self.highlight_active_button(name)
 
+            # Llama a refresh_view si existe
+            if hasattr(widget, "refresh_view"):
+                try:
+                    widget.refresh_view()
+                except Exception as e:
+                    print(f"❌ Error al refrescar vista '{name}': {e}")
+
+            
     def highlight_active_button(self, active_name):
         """ Resalta el botón activo en la barra de navegación. """
         buttons = {
