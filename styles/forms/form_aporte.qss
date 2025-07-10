@@ -1,0 +1,32 @@
+#formTitle {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+#ComboRecibiDe, #ComboSocio {
+    padding: 6px;
+    font-size: 14px;
+}
+
+#MontoInput {
+    padding: 6px;
+    font-size: 14px;
+    max-width: 160px;
+}
+
+#AddAporteButton {
+    margin-top: 10px;
+    font-size: 14px;
+    padding: 6px 10px;
+}
+
+#DeleteButton {
+    font-size: 14px;
+    border: none;
+    background: transparent;
+}
+#DeleteButton:hover {
+    background-color: #eee;
+    border-radius: 4px;
+}

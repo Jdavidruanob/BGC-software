@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 import os
 from datetime import datetime, timedelta
 
-from config import load_styles, format_money_colombian
+from config import load_styles, format_miles_colombian_int
 
 class CreditLiquidationPage(QWidget):
     def __init__(self, credit, member_id, main_window, db_manager):
@@ -54,7 +54,7 @@ class CreditLiquidationPage(QWidget):
 
         fields = [
             f"Letra: {credit['letra']}",
-            f"Capital: ${format_money_colombian(credit['capital'])}",
+            f"Capital: ${format_miles_colombian_int(credit['capital'])}",
             f"Fecha: {credit['fecha_inicio'][:10]}",
             f"Cuotas: {credit['no_cuotas']}"
         ]
@@ -156,10 +156,10 @@ class CreditLiquidationPage(QWidget):
             row = [
                 fecha.strftime("%Y-%m-%d"),
                 str(nro_cuota),
-                f"${format_money_colombian(cuota_valor)}",
-                f"${format_money_colombian(intereses)}",
-                f"${format_money_colombian(cuota_mensual)}",
-                f"${format_money_colombian(max(0, saldo))}",
+                f"${format_miles_colombian_int(cuota_valor)}",
+                f"${format_miles_colombian_int(intereses)}",
+                f"${format_miles_colombian_int(cuota_mensual)}",
+                f"${format_miles_colombian_int(max(0, saldo))}",
                 ""  # Fecha pago vacía
             ]
 
@@ -188,3 +188,5 @@ class CreditLiquidationPage(QWidget):
 
         if existing == 0:
             self.db_manager.guardar_liquidaciones(cuotas_db)
+
+            
