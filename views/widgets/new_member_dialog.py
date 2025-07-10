@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from config import load_styles, load_svg_icon, format_miles_colombian
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
 
 DEFAULT_PHOTO = "assets/images/default_user.png"
@@ -89,23 +89,33 @@ class NewMemberDialog(QDialog):
     def get_data(self):
         nombres = self.first_name_input.text().strip()
         apellidos = self.last_name_input.text().strip()
-        cc = self.cc_input.text().strip()
-        phone = self.phone_input.text().strip()
-        saldo = self.salde_input.text().strip() or "0"
-        photo = self.photo_input.text().strip() or DEFAULT_PHOTO
+        cc        = self.cc_input.text().strip()
+        phone     = self.phone_input.text().strip()
+        # Desformateamos aquí:
+        saldo_txt = self.salde_input.text().strip() or "0"
+        saldo     = parse_miles_colombian(saldo_txt)
+        photo     = self.photo_input.text().strip() or DEFAULT_PHOTO
         
         return (cc, nombres, apellidos, phone, photo, saldo)
+
     
+
     def on_saldo_changed(self, text):
         if not text:
             return
-        cursor_pos = self.salde_input.cursorPosition()
-        # Solo números
-        clean = ''.join(c for c in text if c.isdigit())
-        formatted = format_miles_colombian(clean)
+
+        # 1) parseamos a entero crudo
+        raw = parse_miles_colombian(text)
+
+        # 2) reformateamos a string con puntos
+        formatted = format_miles_colombian_int(raw)
+
+        # 3) actualizamos si cambió
         if formatted != text:
+            cursor = self.salde_input.cursorPosition()
             self.salde_input.blockSignals(True)
             self.salde_input.setText(formatted)
-            # Ajusta el cursor al final
+            # opcional: podrías restaurar cursor a 'cursor' o al final
             self.salde_input.setCursorPosition(len(formatted))
             self.salde_input.blockSignals(False)
+

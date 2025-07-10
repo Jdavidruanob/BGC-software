@@ -324,13 +324,47 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error guardando liquidaciones: {e}")
 
-    def marcar_pago_cuota(self, letra, nro_cuota, fecha_pago):
-        self.conn.execute("""
-            UPDATE liquidaciones
-            SET fecha_pago = ?
-            WHERE credito_letra = ? AND nro_cuota = ?
-        """, (fecha_pago, letra, nro_cuota))
-        self.conn.commit()
+    def create_aporte_recibo(self, recibi_de_id, aportes):
+        """
+        - recibi_de_id: int, socio que entrega el dinero
+        - aportes: lista de tuplas [(socio_id, monto), ...]
+        Devuelve el id del recibo creado.
+        """
+        try:
+            cursor = self.conn.cursor()
+            # 1. Insertar cabecera en recibos
+            cursor.execute("""
+                INSERT INTO recibos (socio_id)
+                VALUES (?)
+            """, (recibi_de_id,))
+            recibo_id = cursor.lastrowid
 
+            # 2. Para cada aporte: insertar detalle y actualizar saldo socio
+            for socio_id, monto in aportes:
+                # 2.1 insertar detalle
+                cursor.execute("""
+                    INSERT INTO detalle_recibo (
+                        recibo_id, tipo_operacion, socio_id, monto
+                    ) VALUES (?, 'aporte', ?, ?)
+                """, (recibo_id, socio_id, monto))
+                # 2.2 actualizar saldo
+                cursor.execute("""
+                    UPDATE socios
+                    SET saldo = saldo + ?
+                    WHERE id = ?
+                """, (monto, socio_id))
+
+            self.conn.commit()
+            return recibo_id
+
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error creando recibo de aporte: {e}")
+            return None
+
+    def get_recibo(self, recibo_id):
+        """(Opcional) devuelve cabecera y detalles si los necesitas luego."""
+        # implementación según conveniencia...
+        pass
 
 

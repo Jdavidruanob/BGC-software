@@ -33,21 +33,17 @@ def load_svg_icon(path: str, size: QSize = QSize(24, 24)) -> QIcon:
     painter.end()
     return QIcon(pixmap)
 
-def format_miles_colombian(value):
-    try:
-        # Elimina puntos y comas para evitar doble formateo
-        value = value.replace('.', '').replace(',', '')
-        value = int(value)
-        return f"{value:,}".replace(',', '.')
-    except Exception:
-        return value
-    
-def format_money_colombian(value):
-    try:
-        value = float(value)
-        partes = f"{value:,.2f}".split('.')
-        miles = partes[0].replace(',', '.')
-        #decimales = partes[1]
-        return f"{miles}"
-    except Exception:
-        return str(value)
+def format_miles_colombian_int(value: int) -> str:
+    """
+    Recibe un entero (100000) y devuelve '100.000'.
+    """
+    return f"{value:,}".replace(",", ".")
+
+def parse_miles_colombian(text: str) -> int:
+    """
+    Recibe un texto con puntos (p.ej. '123.456') 
+    y devuelve el entero 123456.
+    Cualquier caracter no dígito se elimina.
+    """
+    clean = "".join(ch for ch in text if ch.isdigit())
+    return int(clean) if clean else 0
