@@ -93,6 +93,8 @@ class MembersPage(QWidget):
         socios = self.db_manager.get_all_members()
         self.update_member_cards(socios)
 
+
+
     def update_member_cards(self, members):
         """ Actualiza las tarjetas de socios en la interfaz """
         # Limpiar layout
@@ -122,7 +124,9 @@ class MembersPage(QWidget):
             detail_view = MemberDetailPage(self.db_manager, member_id, self.main_window)
             self.main_window.add_view(view_name, detail_view)
         self.main_window.show_view(view_name)
+            
 
     def refresh_view(self):
         """Refresca la información visible en esta página."""
         print("🔁 Refrescando vista members")
+        self.refresh_members()

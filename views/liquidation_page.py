@@ -143,10 +143,11 @@ class CreditLiquidationPage(QWidget):
         cuotas_db = []
 
         self.table.setRowCount(cuotas)
-
+        fecha_primera_cuota = fecha_inicio + timedelta(days=30 * 1)
         for i in range(cuotas):
             nro_cuota = i + 1
-            fecha = fecha_inicio + timedelta(days=30 * i)
+            
+            fecha = fecha_primera_cuota + timedelta(days=30 * i)
 
             cuota_valor = cuota_final if i == cuotas - 1 else cuota_base
             intereses = round(saldo * interes)

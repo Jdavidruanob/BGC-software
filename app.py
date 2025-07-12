@@ -36,7 +36,7 @@ def main():
 
 
     """ db_manager.add_credit(
-        socio_ids=[3],  # 👈 Lista, incluso si es un solo socio
+        socio_ids=[1],  # 👈 Lista, incluso si es un solo socio
         capital=20000000,
         interes=0.01,        # 1.5% mensual
         no_cuotas=36

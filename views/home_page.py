@@ -1,15 +1,16 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QFrame,
-    QScrollArea, QStackedWidget
+    QScrollArea, QStackedWidget, QSizePolicy, QInputDialog
 )
 from PySide6.QtCore import Qt, QSize
-from config import load_styles, load_svg_icon
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.forms.form_aporte import FormAporte
 from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
+from views.widgets.message_boxes import show_error, show_success
 
 
 class HomePage(QWidget):
@@ -129,22 +130,93 @@ class HomePage(QWidget):
         left_layout.addWidget(self.container)
         self.left_panel.setLayout(left_layout)
 
-        # PANEL DERECHO
+        # --- PANEL DERECHO: ahora con Resumen de Caja ---
         self.right_panel = QWidget()
         right_layout = QVBoxLayout()
         right_layout.setAlignment(Qt.AlignTop)
-        self.right_label = QLabel("📌 Aquí irán más detalles...")
-        self.right_label.setStyleSheet("font-size: 16px; color: #333;")
-        right_layout.addWidget(self.right_label)
-        self.right_panel.setLayout(right_layout)
+        right_layout.setSpacing(20)
 
-        # FINAL
+        # 1) Widget de resumen
+        resumen = self.create_resumen_widget()
+        right_layout.addWidget(resumen)
+
+        self.right_panel.setLayout(right_layout)
         main_layout.addWidget(self.left_panel, 2.5)
         main_layout.addWidget(self.right_panel, 1.5)
         self.setLayout(main_layout)
 
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "home_page.qss")
         load_styles(self, qss_path)
+
+    def create_resumen_widget(self):
+        """Construye el widget 'Resumen de Caja'."""
+        # --- Recuperar datos ---
+        # Saldo en caja
+        row = self.db_manager.conn.execute(
+            "SELECT value FROM config WHERE key = ?", ("saldo_en_caja",)
+        ).fetchone()
+        saldo_caja = int(row["value"]) if row else 0
+
+        # Créditos activos (total)
+        # Asumimos que get_active_credits_by_member solo trae por socio;
+        # si quieres global, tendrías que un método new:
+        total_creditos = self.db_manager.conn.execute(
+            "SELECT COUNT(*) FROM socio_credito"
+        ).fetchone()[0]
+
+        # Total socios
+        total_socios = len(self.db_manager.get_all_members_full())
+
+        # --- Construcción visual ---
+        frame = QFrame()
+        frame.setObjectName("summaryCard")
+        v = QVBoxLayout(frame)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
+
+        # Header
+        header = QFrame()
+        header.setObjectName("summaryHeader")
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(10, 6, 10, 6)
+        lbl = QLabel("Resumen de Caja")
+        lbl.setObjectName("summaryTitle")
+        hl.addWidget(lbl)
+        header.setLayout(hl)
+
+        # Body
+        body = QWidget()
+        bl = QVBoxLayout(body)
+        bl.setContentsMargins(12, 12, 12, 12)
+        bl.setSpacing(8)
+
+        # Fila helper
+        def add_row(label, value, bold=False):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.addWidget(QLabel(label), alignment=Qt.AlignLeft)
+            val_lbl = QLabel(value)
+            if bold:
+                val_lbl.setObjectName("summaryValueBold")
+            else:
+                val_lbl.setObjectName("summaryValue")
+            row.addStretch()
+            row.addWidget(val_lbl, alignment=Qt.AlignRight)
+            bl.addLayout(row)
+
+        add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
+        add_row("Créditos Activos:", str(total_creditos), bold=True)
+        add_row("Total Socios:", str(total_socios), bold=True)
+
+        v.addWidget(header)
+        v.addWidget(body)
+
+        
+        return frame
+
+
+
+
 
     def update_form(self):
         if self.btn_nuevo_credito.isChecked():
@@ -231,6 +303,28 @@ class HomePage(QWidget):
         print("✅ Formularios actualizados.")
 
     def refresh_view(self):
-        """Refresca la información visible en esta página."""
         print("🔁 Refrescando vista home")
         self.refresh_forms()
+
+        # Actualiza el saldo en caja como suma de saldos de socios
+        try:
+            total_saldo = self.db_manager.conn.execute("SELECT SUM(saldo) FROM socios").fetchone()[0] or 0
+            self.db_manager.conn.execute("""
+                INSERT INTO config (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """, ("saldo_en_caja", str(total_saldo)))
+            self.db_manager.conn.commit()
+        except Exception as e:
+            print(f"❌ Error actualizando saldo_en_caja automático: {e}")
+
+        # 🔄 ACTUALIZAR EL WIDGET DEL PANEL DERECHO
+        # Elimina contenido anterior del right_panel
+        for i in reversed(range(self.right_panel.layout().count())):
+            widget = self.right_panel.layout().itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # Carga de nuevo el resumen
+        resumen_widget = self.create_resumen_widget()
+        self.right_panel.layout().addWidget(resumen_widget)
+
