@@ -154,6 +154,15 @@ class CreditLiquidationPage(QWidget):
             cuota_mensual = cuota_valor + intereses
             saldo -= cuota_valor
 
+                        # Buscar si existe fecha de pago en la BD
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("""
+                SELECT fecha_pago FROM liquidaciones
+                WHERE credito_letra = ? AND nro_cuota = ?
+            """, (self.credit["letra"], nro_cuota))
+            fecha_pago_row = cursor.fetchone()
+            fecha_pago_str = fecha_pago_row["fecha_pago"] if fecha_pago_row and fecha_pago_row["fecha_pago"] else ""
+
             row = [
                 fecha.strftime("%Y-%m-%d"),
                 str(nro_cuota),
@@ -161,7 +170,7 @@ class CreditLiquidationPage(QWidget):
                 f"${format_miles_colombian_int(intereses)}",
                 f"${format_miles_colombian_int(cuota_mensual)}",
                 f"${format_miles_colombian_int(max(0, saldo))}",
-                ""  # Fecha pago vacía
+                fecha_pago_str  # Mostrar solo si existe
             ]
 
             for col, val in enumerate(row):

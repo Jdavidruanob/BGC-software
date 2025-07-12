@@ -35,13 +35,13 @@ def main():
     db_manager.create_tables() # Crea las tablas si no existen
 
 
-    """ db_manager.add_credit(
-        socio_ids=[1],  # 👈 Lista, incluso si es un solo socio
-        capital=20000000,
-        interes=0.01,        # 1.5% mensual
-        no_cuotas=36
-    ) """
-
+    """     db_manager.add_credit(
+            socio_ids=[2],  # 👈 Lista, incluso si es un solo socio
+            capital=20000000,
+            interes=0.01,        # 1.5% mensual
+            no_cuotas=36
+        )
+    """
     # Crear ventana principal
     window = MainWindow()
 
