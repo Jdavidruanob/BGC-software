@@ -367,4 +367,17 @@ class DBManager:
         # implementación según conveniencia...
         pass
 
-
+    def get_letras_by_socio_id(self, socio_id):
+        """ Devuelve las letras de crédito asociadas a un socio. """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT c.letra, c.capital, c.interes, c.no_cuotas
+                FROM creditos c
+                JOIN socio_credito sc ON c.letra = sc.credito_letra
+                WHERE sc.socio_id = ?
+            """, (socio_id,))
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"❌ Error obteniendo letras por socio: {e}")
+            return []
