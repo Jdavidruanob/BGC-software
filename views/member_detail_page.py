@@ -43,16 +43,16 @@ class MemberDetailPage(QWidget):
 
         main_layout.addLayout(header_layout)
 
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(40)
+        self.content_layout = QHBoxLayout()
+        self.content_layout.setSpacing(40)
 
         self.left_panel = self.create_left_panel()
         self.right_panel = self.create_right_panel()
 
-        content_layout.addWidget(self.left_panel, 1)
-        content_layout.addWidget(self.right_panel, 2)
+        self.content_layout.addWidget(self.left_panel, 1)
+        self.content_layout.addWidget(self.right_panel, 2)
 
-        main_layout.addLayout(content_layout)
+        main_layout.addLayout(self.content_layout)
         self.setLayout(main_layout)
 
         # Cargar estilos
@@ -315,4 +315,17 @@ class MemberDetailPage(QWidget):
         card.setLayout(layout)
         return card
     
+    def refresh_view(self):
+        """Refresca los paneles izquierdo y derecho al mostrarse."""
+        print("🔁 Refrescando vista member_detail")
+        # Eliminar widgets antiguos
+        for i in reversed(range(self.content_layout.count())):
+            w = self.content_layout.takeAt(i).widget()
+            if w:
+                w.setParent(None)
 
+        # Reconstruir paneles
+        self.left_panel = self.create_left_panel()
+        self.right_panel = self.create_right_panel()
+        self.content_layout.addWidget(self.left_panel, 1)
+        self.content_layout.addWidget(self.right_panel, 2)

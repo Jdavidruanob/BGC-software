@@ -46,4 +46,35 @@ QPushButton[btnType="operacion"]:checked {
     font-weight: bold;
 }
 
+#summaryCard {
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    background-color: #FFF;
+}
+
+/* Header azul claro */
+#summaryHeader {
+    background-color: #F1F5F9;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+#summaryTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1E293B;
+    background-color: transparent;
+}
+
+/* Labels de valor */
+#summaryValue {
+    font-size: 14px;
+    color: #334155;
+}
+
+#summaryValueBold {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1E293B;
+}
 
