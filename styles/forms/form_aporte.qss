@@ -1,32 +1,64 @@
 #formTitle {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 600;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
+}
+
+#FormLabel {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 8px;
 }
 
 #ComboRecibiDe, #ComboSocio {
-    padding: 6px;
-    font-size: 14px;
+    height: 40px;
+    font-size: 15px;
+    padding: 4px 8px;
 }
 
 #MontoInput {
-    padding: 6px;
-    font-size: 14px;
-    max-width: 160px;
+    font-size: 15px;
+    padding: 4px 8px;
 }
 
 #AddAporteButton {
-    margin-top: 10px;
-    font-size: 14px;
-    padding: 6px 10px;
+    font-size: 15px;
+    padding: 6px 12px;
+    min-height: 36px;
+}
+
+#RegisterButton {
+    font-size: 16px;
+    padding: 8px 20px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+#RegisterButton:hover {
+    background-color: #2a4a80;
 }
 
 #DeleteButton {
-    font-size: 14px;
-    border: none;
     background: transparent;
+    border: none;
 }
 #DeleteButton:hover {
-    background-color: #eee;
+    background-color: #f0f0f0;
     border-radius: 4px;
+}
+
+
+/* Estilos para el popup (QAbstractItemView) */
+QComboBox QAbstractItemView {
+  font-size: 16px;        /* Mismo tamaño de fuente en la lista desplegable */
+  spacing: 6px;           /* Espacio vertical entre ítems */
+  outline: none;          /* Quitar borde azul al enfocar */
+}
+
+/* Altura de cada ítem */
+QComboBox QAbstractItemView::item {
+  min-height: 30px;
+  padding: 4px 8px;
 }

@@ -6,7 +6,6 @@
 /* Top bar */
 #liqTopBar {
     background-color: #153A66;
-    border-radius: 12px;
 }
 
 #liqBackButton {
@@ -31,7 +30,6 @@
 /* Encabezado */
 #liqHeader {
     background-color: #f1f3f5;
-    border-radius: 8px;
 }
 
 #liqInfoLabel {
@@ -66,7 +64,6 @@
 #liqTableHeader {
     background-color: #E9ECEF;
     border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
     border: 1px solid #DADDE1;
 }
 
@@ -88,3 +85,4 @@
 #liqRow QLabel:last-child {
     border-right: none;
 }
+
