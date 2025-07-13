@@ -199,4 +199,7 @@ class CreditLiquidationPage(QWidget):
         if existing == 0:
             self.db_manager.guardar_liquidaciones(cuotas_db)
 
-            
+    def refresh_view(self):
+        """Refresca la tabla de liquidación mostrando fechas de pago actualizadas."""
+        self.table.clearContents()
+        self.generate_liquidation_schedule()
