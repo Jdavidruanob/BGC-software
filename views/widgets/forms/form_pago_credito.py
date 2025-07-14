@@ -214,3 +214,13 @@ class FormPagoCredito(QWidget):
             w.setParent(None)
         self.pagos_widgets.clear()
         self.load_socios()
+
+    def refresh(self):
+        """Recarga la lista de socios y actualiza los combos existentes."""
+        self.load_socios()
+        for combo, _, _ in self.pagos_widgets:
+            combo.blockSignals(True)
+            combo.clear()
+            for socio in self.socios_data:
+                combo.addItem(f"{socio['nombres']} {socio['apellidos']}", userData=socio)
+            combo.blockSignals(False)
