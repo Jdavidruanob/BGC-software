@@ -1,0 +1,55 @@
+#formTitle {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+#FormLabel {
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+QComboBox, QLineEdit {
+  height: 40px;
+  font-size: 15px;
+  padding: 4px 8px;
+}
+
+#AddAporteButton, #AddPagoButton {
+  font-size: 15px;
+  padding: 6px 12px;
+  min-height: 36px;
+}
+
+#RegisterButton {
+  font-size: 16px;
+  padding: 8px 20px;
+  background-color: %(PRIMARY_COLOR)s;
+  color: white;
+  border-radius: 6px;
+  font-weight: bold;
+}
+#RegisterButton:hover {
+  background-color: #2a4a80;
+}
+
+#DeleteButton, #DeletePagoButton {
+  background: transparent;
+  border: none;
+}
+#DeleteButton:hover, #DeletePagoButton:hover {
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* Popup de QComboBox */
+QComboBox QAbstractItemView {
+  font-size: 16px;
+  spacing: 6px;
+  outline: none;
+}
+QComboBox QAbstractItemView::item {
+  min-height: 30px;
+  padding: 4px 8px;
+}
