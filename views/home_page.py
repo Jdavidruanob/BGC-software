@@ -104,7 +104,7 @@ class HomePage(QWidget):
         self.page_pago = FormPagoCredito(self.db_manager)
         self.form_nuevo_credito = FormNuevoCredito()
         self.form_retiro = FormRetiro()
-        self.form_aporte_pago = FormCombinado()
+        self.form_aporte_pago = FormCombinado(self.db_manager)
 
         #for widget in [self.form_aporte, self.page_pago, self.form_nuevo_credito, self.form_retiro, self.form_aporte_pago]:
             #widget.setStyleSheet("font-size: 16px; padding: 20px;")
@@ -284,9 +284,9 @@ class HomePage(QWidget):
         if hasattr(self.form_aporte, "refresh"):
             self.form_aporte.refresh()
 
-        """ # Pago Crédito
+        # Pago Crédito
         if hasattr(self.page_pago, "refresh"):
-            self.page_pago.refresh() """
+            self.page_pago.refresh()
 
         """  # Nuevo Crédito (más adelante)
         if hasattr(self.page_credito, "refresh"):
