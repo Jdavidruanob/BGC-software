@@ -7,15 +7,17 @@ from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
 import os
+from datetime import date
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()  # Evita que se cambie el valor al hacer scroll
 
 class FormPagoCredito(QWidget):
-    def __init__(self, db_manager=None):
+    def __init__(self, db_manager, assistant_page = None):
         super().__init__()
         self.db = db_manager
+        self.assistant_page = assistant_page
         self.socios_data = []
         self.pagos_widgets = []  # [(combo_socio, letras_container, wrapper_widget)]
 
@@ -205,56 +207,113 @@ class FormPagoCredito(QWidget):
                 except:
                     show_error(self, "", "Número de cuotas inválido.")
                     return
-                pagos.append((socio['id'], letra['letra'], n))
+                pagos.append((socio['id'], letra['letra'], n, socio))  # 👈 incluimos objeto socio
 
         if not pagos:
             show_warning(self, "", "Agrega al menos un pago.")
             return
 
-        cursor = self.db.conn.cursor()
-        # 3) Validar cuotas pendientes
-        for _, letra_id, n in pagos:
-            cursor.execute(
-                "SELECT COUNT(*) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL",
-                (letra_id,)
-            )
-            faltantes = cursor.fetchone()[0]
-            if n > faltantes:
-                show_error(self, "Error de cuotas",
-                           f"Sólo quedan {faltantes} cuotas pendientes para la letra {letra_id}.")
-                return
+        try:
+            cursor = self.db.conn.cursor()
 
-        # 4) Crear recibo
-        cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
-        recibo_id = cursor.lastrowid
-
-        # 5) Registrar detalle y marcar pagos
-        for socio_id, letra_id, n in pagos:
-            cursor.execute(
-                "SELECT nro_cuota, valor_cuota, interes_mes FROM liquidaciones "
-                "WHERE credito_letra = ? AND fecha_pago IS NULL "
-                "ORDER BY nro_cuota LIMIT ?", (letra_id, n)
-            )
-            filas = cursor.fetchall()
-            for fila in filas:
-                nro = fila['nro_cuota']
-                monto = fila['valor_cuota'] + fila['interes_mes']
+            # Validar cuotas pendientes
+            for _, letra_id, n, _ in pagos:
                 cursor.execute(
-                    "INSERT INTO detalle_recibo "
-                    "(recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) "
-                    "VALUES (?, 'pago_credito', ?, ?, ?, ?)",
-                    (recibo_id, socio_id, letra_id, nro, monto)
+                    "SELECT COUNT(*) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL",
+                    (letra_id,)
                 )
-                cursor.execute(
-                    "UPDATE liquidaciones SET fecha_pago = DATE('now') "
-                    "WHERE credito_letra = ? AND nro_cuota = ?",
-                    (letra_id, nro)
-                )
+                faltantes = cursor.fetchone()[0]
+                if n > faltantes:
+                    show_error(self, "Error de cuotas",
+                            f"Sólo quedan {faltantes} cuotas pendientes para la letra {letra_id}.")
+                    return
 
-        self.db.conn.commit()
-        show_success(self, "", f"Pago registrado en recibo #{recibo_id}")
-        
-        for _,_,w in self.pagos_widgets:
-            w.setParent(None)
-        self.pagos_widgets.clear()
+            # Crear recibo
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
+            recibo_id = cursor.lastrowid
+            fecha_actual = date.today().strftime("%Y-%m-%d")
+
+            # Obtener saldo actual en caja desde config
+            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
+
+            for socio_id, letra_id, n, socio_data in pagos:
+                cursor.execute(
+                    "SELECT nro_cuota, valor_cuota, interes_mes FROM liquidaciones "
+                    "WHERE credito_letra = ? AND fecha_pago IS NULL "
+                    "ORDER BY nro_cuota LIMIT ?", (letra_id, n)
+                )
+                filas = cursor.fetchall()
+                for fila in filas:
+                    nro = fila['nro_cuota']
+                    monto = fila['valor_cuota'] + fila['interes_mes']
+
+                    # Insertar detalle
+                    cursor.execute(
+                        "INSERT INTO detalle_recibo "
+                        "(recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) "
+                        "VALUES (?, 'pago_credito', ?, ?, ?, ?)",
+                        (recibo_id, socio_id, letra_id, nro, monto)
+                    )
+
+                    # Marcar cuota como pagada
+                    cursor.execute(
+                        "UPDATE liquidaciones SET fecha_pago = DATE('now') "
+                        "WHERE credito_letra = ? AND nro_cuota = ?",
+                        (letra_id, nro)
+                    )
+
+                    # Sumar al saldo en caja y actualizar en config
+                    saldo_caja += monto
+                    self.db.set_config_value("saldo_en_caja", str(saldo_caja))
+
+                    # Agregar al libro auxiliar
+                    if self.assistant_page:
+                        nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
+                        self.db.add_to_auxiliar(
+                            fecha=fecha_actual,
+                            tipo="Pago Credito",
+                            socio=nombre,
+                            numero=recibo_id,
+                            monto=monto,
+                            saldo=saldo_caja
+                        )
+
+                        self.assistant_page.add_operation({
+                            "fecha": fecha_actual,
+                            "tipo": "Pago Credito",
+                            "socio": nombre,
+                            "numero": recibo_id,
+                            "monto": monto,
+                            "saldo": saldo_caja
+                        })
+
+            self.db.conn.commit()
+            show_success(self, "", f"Pago registrado en recibo #{recibo_id}")
+
+            # Limpiar formulario
+            for _, _, w in self.pagos_widgets:
+                w.setParent(None)
+            self.pagos_widgets.clear()
+            self.load_socios()
+
+        except Exception as e:
+            self.db.conn.rollback()
+            show_error(self, "", f"Error al registrar el pago:\n{e}")
+
+    def refresh(self):
+        """Recarga la lista de socios y actualiza los combos existentes."""
         self.load_socios()
+        for combo, _, _ in self.pagos_widgets:
+            socio_actual = combo.currentData()
+            combo.blockSignals(True)
+            combo.clear()
+            for socio in self.socios_data:
+                nombre = f"{socio['nombres']} {socio['apellidos']}"
+                combo.addItem(nombre, userData=socio)
+            # Reestablecer selección si era válida
+            if socio_actual:
+                for i in range(combo.count()):
+                    if combo.itemData(i)['id'] == socio_actual['id']:
+                        combo.setCurrentIndex(i)
+                        break
+            combo.blockSignals(False)

@@ -405,15 +405,17 @@ class DBManager:
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
-        
-    def get_saldo_caja_actual(self):
+    def get_config_value_as_int(self, key):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT value FROM config WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        return int(row["value"]) if row else 0
+
+    def set_config_value(self, key, value):
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT SUM(CASE WHEN tipo_operacion = 'aporte' THEN monto
-                            WHEN tipo_operacion = 'pago_credito' THEN monto
-                            WHEN tipo_operacion = 'retiro' THEN -monto
-                            ELSE 0 END)
-            FROM detalle_recibo
-        """)
-        result = cursor.fetchone()
-        return result[0] if result[0] is not None else 0
+            INSERT INTO config (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """, (key, value))
+        self.conn.commit()
+

@@ -173,8 +173,10 @@ class FormAporte(QWidget):
             cursor = self.db.conn.cursor()
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
-
             fecha_actual = date.today().strftime("%Y-%m-%d")
+
+            # Obtener saldo actual de caja desde tabla config
+            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")  # 👈 necesitas implementar esta función si no existe
 
             for socio_id, monto in aportes:
                 # Insertar detalle
@@ -185,12 +187,13 @@ class FormAporte(QWidget):
                 # Actualizar saldo del socio
                 cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (monto, socio_id))
 
-                # Obtener nombre socio
+                # Incrementar saldo de caja
+                saldo_caja += monto
+                self.db.set_config_value("saldo_en_caja", str(saldo_caja))  # 👈 también necesitas esta función en db_manager
+
+                # Obtener nombre del socio
                 socio = next((s for s in self.socios_data if s["id"] == socio_id), None)
                 nombre = f"{socio['nombres']} {socio['apellidos']}" if socio else "Desconocido"
-
-                # Obtener saldo actualizado de caja
-                saldo = self.db.get_saldo_caja_actual()
 
                 # Agregar a tabla auxiliar
                 self.db.add_to_auxiliar(
@@ -199,10 +202,10 @@ class FormAporte(QWidget):
                     socio=nombre,
                     numero=recibo_id,
                     monto=monto,
-                    saldo=saldo
+                    saldo=saldo_caja
                 )
 
-                # Agregar visualmente en AssistantPage
+                # Mostrar en pantalla
                 if self.assistant_page:
                     self.assistant_page.add_operation({
                         "fecha": fecha_actual,
@@ -210,18 +213,16 @@ class FormAporte(QWidget):
                         "socio": nombre,
                         "numero": recibo_id,
                         "monto": monto,
-                        "saldo": saldo
+                        "saldo": saldo_caja
                     })
 
             self.db.conn.commit()
             show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.")
-            self.clear_form()  # 👈 Limpia después de mostrar éxito
+            self.clear_form()
 
         except Exception as e:
             self.db.conn.rollback()
             show_error(self, "", f"Error al registrar aporte:\n{e}")
-
-
 
     def refresh(self):
         """Recarga lista de socios en todos los combos."""
@@ -240,20 +241,6 @@ class FormAporte(QWidget):
             (combo.currentData(), parse_miles_colombian(input.text()))
             for combo, input, _ in self.aportes_widgets
         ]
-    
-
-
-    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo):
-        """Agrega una entrada al libro auxiliar."""
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO libro_auxiliar (fecha, tipo, socio, numero, monto, saldo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (fecha, tipo, socio, numero, monto, saldo))
-            self.conn.commit()
-        except Exception as e:
-            print(f"❌ Error al insertar en libro_auxiliar: {e}")
 
     def clear_form(self):
         """Limpia todos los aportes y reinicia el formulario con una fila."""
