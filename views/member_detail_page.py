@@ -111,7 +111,6 @@ class MemberDetailPage(QWidget):
             ("Fecha de ingreso:", member["created_at"][:10]),
             ("Saldo de aportes:", f"${format_miles_colombian_int(member['saldo'])}")
         ]
-        print(f"Saldo: {member['saldo']}")
 
         layout.addWidget(avatar_container)
         layout.addWidget(name_label)
