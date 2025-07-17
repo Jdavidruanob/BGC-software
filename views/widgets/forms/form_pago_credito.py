@@ -7,6 +7,11 @@ from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
 import os
+
+class NoScrollComboBox(QComboBox):
+    def wheelEvent(self, event):
+        event.ignore()  # Evita que se cambie el valor al hacer scroll
+
 class FormPagoCredito(QWidget):
     def __init__(self, db_manager=None):
         super().__init__()
@@ -25,7 +30,7 @@ class FormPagoCredito(QWidget):
         # "Recibí de:"
         lbl_recibi = QLabel("Recibí de:")
         lbl_recibi.setObjectName("FormLabel")
-        self.combo_recibi_de = QComboBox()
+        self.combo_recibi_de = NoScrollComboBox()
         self.combo_recibi_de.setObjectName("ComboRecibiDe")
         self.combo_recibi_de.setMinimumHeight(40)
         self.combo_recibi_de.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -87,7 +92,7 @@ class FormPagoCredito(QWidget):
     def agregar_pago(self):
         """Agrega bloque para un socio + sus letras a pagar."""
         # Combo socio
-        combo = QComboBox()
+        combo = NoScrollComboBox()
         combo.setObjectName("ComboSocioPago")
         combo.setMinimumHeight(36)
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -110,7 +115,7 @@ class FormPagoCredito(QWidget):
             letra_row = QHBoxLayout()
             letra_row.setContentsMargins(0,0,0,0)
 
-            letra_combo = QComboBox()
+            letra_combo = NoScrollComboBox()
             letra_combo.setObjectName("LetraCombo")
             letra_combo.setMinimumHeight(34)
             letra_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -194,7 +199,7 @@ class FormPagoCredito(QWidget):
             socio = combo.currentData()
             for i in range(letras_container.count()):
                 w = letras_container.itemAt(i).widget()
-                letra = w.findChild(QComboBox, "LetraCombo").currentData()
+                letra = w.findChild(NoScrollComboBox, "LetraCombo").currentData()
                 try:
                     n = int(w.findChild(QLineEdit, "CuotasInput").text())
                 except:
@@ -207,9 +212,48 @@ class FormPagoCredito(QWidget):
             return
 
         cursor = self.db.conn.cursor()
-        # Aquí tu lógica de validación y registro...
+        # 3) Validar cuotas pendientes
+        for _, letra_id, n in pagos:
+            cursor.execute(
+                "SELECT COUNT(*) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL",
+                (letra_id,)
+            )
+            faltantes = cursor.fetchone()[0]
+            if n > faltantes:
+                show_error(self, "Error de cuotas",
+                           f"Sólo quedan {faltantes} cuotas pendientes para la letra {letra_id}.")
+                return
+
+        # 4) Crear recibo
+        cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
+        recibo_id = cursor.lastrowid
+
+        # 5) Registrar detalle y marcar pagos
+        for socio_id, letra_id, n in pagos:
+            cursor.execute(
+                "SELECT nro_cuota, valor_cuota, interes_mes FROM liquidaciones "
+                "WHERE credito_letra = ? AND fecha_pago IS NULL "
+                "ORDER BY nro_cuota LIMIT ?", (letra_id, n)
+            )
+            filas = cursor.fetchall()
+            for fila in filas:
+                nro = fila['nro_cuota']
+                monto = fila['valor_cuota'] + fila['interes_mes']
+                cursor.execute(
+                    "INSERT INTO detalle_recibo "
+                    "(recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) "
+                    "VALUES (?, 'pago_credito', ?, ?, ?, ?)",
+                    (recibo_id, socio_id, letra_id, nro, monto)
+                )
+                cursor.execute(
+                    "UPDATE liquidaciones SET fecha_pago = DATE('now') "
+                    "WHERE credito_letra = ? AND nro_cuota = ?",
+                    (letra_id, nro)
+                )
+
         self.db.conn.commit()
-        show_success(self, "", "Pago registrado correctamente.")
+        show_success(self, "", f"Pago registrado en recibo #{recibo_id}")
+        
         for _,_,w in self.pagos_widgets:
             w.setParent(None)
         self.pagos_widgets.clear()

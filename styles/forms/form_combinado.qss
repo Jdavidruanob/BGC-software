@@ -22,7 +22,7 @@ QComboBox, QLineEdit {
   min-height: 36px;
 }
 
-#RegisterButton {
+#createReceipt {
   font-size: 16px;
   padding: 8px 20px;
   background-color: %(PRIMARY_COLOR)s;
@@ -30,7 +30,7 @@ QComboBox, QLineEdit {
   border-radius: 6px;
   font-weight: bold;
 }
-#RegisterButton:hover {
+#createReceipt:hover {
   background-color: #2a4a80;
 }
 

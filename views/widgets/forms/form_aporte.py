@@ -7,6 +7,10 @@ from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.message_boxes import show_success, show_error, show_warning
 
+class NoScrollComboBox(QComboBox):
+    def wheelEvent(self, event):
+        event.ignore()  # Evita que se cambie el valor al hacer scroll
+
 class FormAporte(QWidget):
     def __init__(self, db_manager):
         super().__init__()
@@ -25,7 +29,7 @@ class FormAporte(QWidget):
         # "Recibí de:"
         lbl_recibi = QLabel("Recibí de:")
         lbl_recibi.setObjectName("FormLabel")
-        self.combo_recibi_de = QComboBox()
+        self.combo_recibi_de = NoScrollComboBox()
         self.combo_recibi_de.setObjectName("ComboRecibiDe")
         self.combo_recibi_de.setMinimumHeight(40)
         self.combo_recibi_de.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -85,7 +89,7 @@ class FormAporte(QWidget):
 
     def agregar_aporte(self):
         """Agrega una fila con ComboSocio + MontoInput + DeleteButton."""
-        combo = QComboBox()
+        combo = NoScrollComboBox()
         combo.setObjectName("ComboSocio")
         combo.setMinimumHeight(36)
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

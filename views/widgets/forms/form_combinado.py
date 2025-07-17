@@ -8,6 +8,10 @@ from config import load_styles, load_svg_icon, format_miles_colombian_int, parse
 from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
 import os
 
+class NoScrollComboBox(QComboBox):
+    def wheelEvent(self, event):
+        event.ignore()  # Evita que se cambie el valor al hacer scroll
+
 class FormCombinado(QWidget):
     def __init__(self, db_manager):
         
@@ -16,7 +20,7 @@ class FormCombinado(QWidget):
         self.socios_data = []
         self.aportes_widgets = []
         #------
-        self.socios_data = []
+       # self.socios_data = []
         self.pagos_widgets = []
         
         # --- Layout principal ---
@@ -29,7 +33,7 @@ class FormCombinado(QWidget):
         # "Recibí de:"
         lbl_recibi = QLabel("Recibí de:")
         lbl_recibi.setObjectName("FormLabel")
-        self.combo_recibi_de = QComboBox()
+        self.combo_recibi_de = NoScrollComboBox()
         self.combo_recibi_de.setObjectName("ComboRecibiDe")
         self.combo_recibi_de.setMinimumHeight(40)
         self.combo_recibi_de.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -54,15 +58,6 @@ class FormCombinado(QWidget):
         self.btn_agregar_aporte.clicked.connect(self.agregar_aporte)
         main_layout.addWidget(self.btn_agregar_aporte, alignment=Qt.AlignLeft)
 
-        # Espacio y botón registrar
-        main_layout.addStretch()
-        self.btn_registrar = QPushButton("Registrar Aporte")
-        self.btn_registrar.setObjectName("RegisterButton")
-        self.btn_registrar.setMinimumHeight(44)
-        self.btn_registrar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.btn_registrar.clicked.connect(self.on_register_aporte)
-        main_layout.addWidget(self.btn_registrar, alignment=Qt.AlignHCenter)
-
         # PAGOS
         # Sección dinámicos de pagos
         pagos_label = QLabel("Pagos a registrar:")
@@ -83,19 +78,18 @@ class FormCombinado(QWidget):
         self.btn_agregar_pago.clicked.connect(self.agregar_pago)
         main_layout.addWidget(self.btn_agregar_pago, alignment=Qt.AlignLeft)
 
-        # Espacio y botón registrar
+        # Espacio y botón general para crear el recibo
         main_layout.addStretch()
-        self.btn_registrar = QPushButton("Registrar Pago")
-        self.btn_registrar.setObjectName("RegisterButton")
+        self.btn_registrar = QPushButton("Crear Recibo")
+        self.btn_registrar.setObjectName("createReceipt")
         self.btn_registrar.setMinimumHeight(44)
         self.btn_registrar.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.btn_registrar.clicked.connect(self.on_register_pagos)
+        self.btn_registrar.clicked.connect(self.on_register_combinado)
         main_layout.addWidget(self.btn_registrar, alignment=Qt.AlignHCenter)
 
         # Carga inicial
         self.load_socios()
-
-         # Estilos
+        # Estilos
         qss_path = os.path.join(
             os.path.dirname(__file__),
             "..", "..", "..", "styles", "forms", "form_combinado.qss"
@@ -119,7 +113,7 @@ class FormCombinado(QWidget):
 
     def agregar_aporte(self):
         """Agrega una fila con ComboSocio + MontoInput + DeleteButton."""
-        combo = QComboBox()
+        combo = NoScrollComboBox()
         combo.setObjectName("ComboSocio")
         combo.setMinimumHeight(36)
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -178,75 +172,10 @@ class FormCombinado(QWidget):
             self.aportes_widgets[:] = [t for t in self.aportes_widgets if t[2] is not wrapper]
         btn_eliminar.clicked.connect(eliminar)
 
-
-    def on_register_aporte(self):
-        """Valida datos, registra recibo y muestra mensaje."""
-        recibi = self.combo_recibi_de.currentData()
-        if not recibi:
-            show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
-            return
-
-        aportes = []
-        for combo, monto_input, _ in self.aportes_widgets:
-            socio = combo.currentData()
-            raw = parse_miles_colombian(monto_input.text())
-            if not socio or raw <= 0:
-                show_error(self, "", "Revisa que todos los aportes tengan socio y monto válido.")
-                return
-            aportes.append((socio['id'], raw))
-
-        if not aportes:
-            show_warning(self, "", "Debes agregar al menos un aporte.")
-            return
-
-        try:
-            recibo_id = self.db.create_aporte_recibo(recibi['id'], aportes)
-            if recibo_id:
-                show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.")
-            else:
-                show_error(self, "", "No se pudo registrar el aporte. Intenta nuevamente.")
-        except Exception as e:
-            show_error(self, "", f"Error al registrar aporte:\n{e}")
-
-
-    def on_register_pagos(self):
-        """Valida y registra el pago en la BD."""
-        recibi = self.combo_recibi_de.currentData()
-        if not recibi:
-            show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
-            return
-
-        pagos = []
-        for combo, letras_container, _ in self.pagos_widgets:
-            socio = combo.currentData()
-            for i in range(letras_container.count()):
-                w = letras_container.itemAt(i).widget()
-                letra = w.findChild(QComboBox, "LetraCombo").currentData()
-                try:
-                    n = int(w.findChild(QLineEdit, "CuotasInput").text())
-                except:
-                    show_error(self, "", "Número de cuotas inválido.")
-                    return
-                pagos.append((socio['id'], letra['letra'], n))
-
-        if not pagos:
-            show_warning(self, "", "Agrega al menos un pago.")
-            return
-
-        cursor = self.db.conn.cursor()
-        # Aquí tu lógica de validación y registro...
-        self.db.conn.commit()
-        show_success(self, "", "Pago registrado correctamente.")
-        for _,_,w in self.pagos_widgets:
-            w.setParent(None)
-        self.pagos_widgets.clear()
-        self.load_socios()
-
-
     def agregar_pago(self):
         """Agrega bloque para un socio + sus letras a pagar."""
         # Combo socio
-        combo = QComboBox()
+        combo = NoScrollComboBox()
         combo.setObjectName("ComboSocioPago")
         combo.setMinimumHeight(36)
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -269,7 +198,7 @@ class FormCombinado(QWidget):
             letra_row = QHBoxLayout()
             letra_row.setContentsMargins(0,0,0,0)
 
-            letra_combo = QComboBox()
+            letra_combo = NoScrollComboBox()
             letra_combo.setObjectName("LetraCombo")
             letra_combo.setMinimumHeight(34)
             letra_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -340,3 +269,100 @@ class FormCombinado(QWidget):
         btn_delete_pago.clicked.connect(lambda: wrapper_widget.setParent(None))
 
         self.pagos_widgets.append((combo, letras_container, wrapper_widget))
+
+    def on_register_combinado(self):
+        recibi = self.combo_recibi_de.currentData()
+        if not recibi:
+            show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
+            return
+
+        aportes = []
+        for combo, monto_input, _ in self.aportes_widgets:
+            socio = combo.currentData()
+            monto = parse_miles_colombian(monto_input.text())
+            if socio and monto > 0:
+                aportes.append((socio['id'], monto))
+
+        pagos = []
+        cursor = self.db.conn.cursor()
+        for combo, letras_container, _ in self.pagos_widgets:
+            socio = combo.currentData()
+            for i in range(letras_container.count()):
+                w = letras_container.itemAt(i).widget()
+                letra = w.findChild(NoScrollComboBox, "LetraCombo")
+                cuotas_input = w.findChild(QLineEdit, "CuotasInput")
+                if letra is None or cuotas_input is None:
+                    continue
+                letra_data = letra.currentData()
+                try:
+                    n = int(cuotas_input.text())
+                except:
+                    show_error(self, "", "Número de cuotas inválido.")
+                    return
+                if letra_data and n > 0:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL",
+                        (letra_data['letra'],)
+                    )
+                    faltantes = cursor.fetchone()[0]
+                    if n > faltantes:
+                        show_error(self, "Error de cuotas",
+                                   f"Sólo quedan {faltantes} cuotas pendientes para la letra {letra_data['letra']}.")
+                        return
+                    pagos.append((socio['id'], letra_data['letra'], n))
+
+        if not aportes or not pagos:
+            show_warning(self, "", "Debes agregar al menos un aporte y un pago.")
+            return
+
+        try:
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
+            recibo_id = cursor.lastrowid 
+
+            for socio_id, monto in aportes:
+                cursor.execute("""
+                    INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
+                    VALUES (?, 'aporte', ?, ?)
+                """, (recibo_id, socio_id, monto))
+                cursor.execute("""
+                    UPDATE socios SET saldo = saldo + ? WHERE id = ?
+                """, (monto, socio_id))
+
+            for socio_id, letra_id, n in pagos:
+                cursor.execute("""
+                    SELECT nro_cuota, valor_cuota, interes_mes FROM liquidaciones
+                    WHERE credito_letra = ? AND fecha_pago IS NULL
+                    ORDER BY nro_cuota LIMIT ?
+                """, (letra_id, n))
+                for fila in cursor.fetchall():
+                    nro = fila['nro_cuota']
+                    monto = fila['valor_cuota'] + fila['interes_mes']
+                    cursor.execute("""
+                        INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto)
+                        VALUES (?, 'pago_credito', ?, ?, ?, ?)
+                    """, (recibo_id, socio_id, letra_id, nro, monto))
+                    cursor.execute("""
+                        UPDATE liquidaciones SET fecha_pago = DATE('now')
+                        WHERE credito_letra = ? AND nro_cuota = ?
+                    """, (letra_id, nro))
+
+            self.db.conn.commit()
+            show_success(self, "", f"Recibo combinado #{recibo_id} creado exitosamente.")
+            self.limpiar_formulario()
+        except Exception as e:
+            self.db.conn.rollback()
+            show_error(self, "", f"Error al crear recibo combinado:\n{e}")
+
+    def limpiar_formulario(self):
+        """Limpia todos los campos y reinicia el formulario."""
+        self.combo_recibi_de.setCurrentIndex(-1)
+
+        for _, _, widget in self.aportes_widgets:
+            widget.setParent(None)
+        self.aportes_widgets.clear()
+
+        for _, _, widget in self.pagos_widgets:
+            widget.setParent(None)
+        self.pagos_widgets.clear()
+
+        self.load_socios()
