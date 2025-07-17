@@ -97,6 +97,19 @@ class DBManager:
                 )
             """)
 
+            # Libro Auxiliar
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS auxiliar (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    fecha TEXT NOT NULL,
+                    tipo TEXT NOT NULL,
+                    socio TEXT NOT NULL,
+                    numero INTEGER NOT NULL,
+                    monto INTEGER NOT NULL,
+                    saldo INTEGER NOT NULL
+                )
+            """)
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS config (
                     key TEXT PRIMARY KEY,
@@ -278,20 +291,6 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error actualizando socio: {e}")
             return False
-        
-    def get_auxiliary_operations(self, limit=10, offset=0):
-        operaciones = [
-            {"fecha": "2025-01-15", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1001, "monto": 100000, "saldo": 1200000},
-            {"fecha": "2025-01-17", "tipo": "Nuevo Credito", "socio": "Nathalia Burbano", "numero": 3, "monto": 1500000, "saldo": 0},
-            {"fecha": "2025-02-01", "tipo": "Pago Credito", "socio": "Carlos Pérez", "numero": 1002, "monto": 125000, "saldo": 1075000},
-            {"fecha": "2025-02-01", "tipo": "Aporte", "socio": "Lucía Gómez", "numero": 1003, "monto": 50000, "saldo": 200000},
-            {"fecha": "2025-02-05", "tipo": "Pago Credito", "socio": "Nathalia Burbano", "numero": 1004, "monto": 125000, "saldo": 1375000},
-            {"fecha": "2025-02-07", "tipo": "Aporte", "socio": "Carlos Pérez", "numero": 1005, "monto": 80000, "saldo": 1150000},
-            {"fecha": "2025-02-10", "tipo": "Retiro", "socio": "Lucía Gómez", "numero": 1006, "monto": -70000, "saldo": 193000},
-        ]
-        start = offset
-        end = offset + limit
-        return operaciones[start:end]
 
     def get_credit_by_letra(self, letra):
         query = """
@@ -381,3 +380,40 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo letras por socio: {e}")
             return []
+        
+    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo):
+        """Agrega una operación al libro auxiliar."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (fecha, tipo, socio, numero, monto, saldo))
+            self.conn.commit()
+        except Exception as e:
+            print(f"❌ Error insertando en auxiliar: {e}")
+
+
+    def get_auxiliary_operations(self, limit=20, offset=0):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT fecha, tipo, socio, numero, monto, saldo
+            FROM auxiliar
+            ORDER BY fecha DESC, id DESC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+        
+    def get_saldo_caja_actual(self):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT SUM(CASE WHEN tipo_operacion = 'aporte' THEN monto
+                            WHEN tipo_operacion = 'pago_credito' THEN monto
+                            WHEN tipo_operacion = 'retiro' THEN -monto
+                            ELSE 0 END)
+            FROM detalle_recibo
+        """)
+        result = cursor.fetchone()
+        return result[0] if result[0] is not None else 0

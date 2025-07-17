@@ -41,13 +41,21 @@ def main():
         interes=0.01,        # 1.5% mensual
         no_cuotas=12
     ) """
-   
+    """ db_manager.add_member("10101010", "Carlos", "Pérez", "3111234567", None)
+    db_manager.add_member("20202020", "Lucía", "Gómez", "3127654321", None)
+    db_manager.add_member("30303030", "Andrés", "Ruiz", "3139876543", None)
+    db_manager.add_member("40404040", "Nathalia", "Burbano", "3145678910", None)
+    db_manager.add_member("50505050", "Jorge", "Mena", "3155555555", None) """
+
     # Crear ventana principal
     window = MainWindow()
 
-    # Crear y agregar vistas 
-    window.add_view("home", HomePage(db_manager))
-    window.add_view("assistant", AssistantPage(db_manager))
+    assistant_page = AssistantPage(db_manager)
+    home_page = HomePage(db_manager, assistant_page)
+
+    # Crear y agregar vistas
+    window.add_view("home", home_page)
+    window.add_view("assistant", assistant_page)
     window.add_view("members", MembersPage(db_manager, window))  # Se pasa db_manager y window para acceso a la ventana principal
     window.add_view("data", DataPage())
 
