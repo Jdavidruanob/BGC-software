@@ -73,6 +73,11 @@ class AssistantPage(QWidget):
             self.scroll_layout.addWidget(self.build_operation_row(op))
         self.current_page += 1
 
+    def add_operation(self, op):
+        """Agrega una nueva operación al inicio del libro auxiliar."""
+        widget = self.build_operation_row(op)
+        self.scroll_layout.insertWidget(0, widget)
+
     def build_operation_row(self, op):
         row = QFrame()
         row.setObjectName("operationRow")
@@ -110,7 +115,13 @@ class AssistantPage(QWidget):
 
         row.setLayout(layout)
         return row
-    
+
     def refresh_view(self):
         """Refresca la información visible en esta página."""
         print("🔁 Refrescando vista auxiliar")
+        while self.scroll_layout.count():
+            child = self.scroll_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        self.current_page = 0
+        self.load_next_page()

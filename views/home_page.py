@@ -14,10 +14,11 @@ from views.widgets.message_boxes import show_error, show_success
 
 
 class HomePage(QWidget):
-    def __init__(self, db_manager):
+    def __init__(self, db_manager, assistant_page):
         super().__init__()
         self.setObjectName("HomePage")
         self.db_manager = db_manager
+        self.assistant_page = assistant_page
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(80, 40, 80, 20)
@@ -100,7 +101,7 @@ class HomePage(QWidget):
 
         self.stack = QStackedWidget()
 
-        self.form_aporte = FormAporte(self.db_manager)
+        self.form_aporte = FormAporte(self.db_manager, self.assistant_page)
         self.page_pago = FormPagoCredito(self.db_manager)
         self.form_nuevo_credito = FormNuevoCredito()
         self.form_retiro = FormRetiro()
