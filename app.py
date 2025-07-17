@@ -36,12 +36,12 @@ def main():
 
 
     """ db_manager.add_credit(
-        socio_ids=[1],  # 👈 Lista, incluso si es un solo socio
+        socio_ids=[1,2,3,4],  # 👈 Lista, incluso si es un solo socio
         capital=2000000,
         interes=0.01,        # 1.5% mensual
         no_cuotas=12
-    ) """
-    """ db_manager.add_member("10101010", "Carlos", "Pérez", "3111234567", None)
+    )
+    db_manager.add_member("10101010", "Carlos", "Pérez", "3111234567", None)
     db_manager.add_member("20202020", "Lucía", "Gómez", "3127654321", None)
     db_manager.add_member("30303030", "Andrés", "Ruiz", "3139876543", None)
     db_manager.add_member("40404040", "Nathalia", "Burbano", "3145678910", None)

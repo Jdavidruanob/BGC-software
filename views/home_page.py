@@ -102,7 +102,7 @@ class HomePage(QWidget):
         self.stack = QStackedWidget()
 
         self.form_aporte = FormAporte(self.db_manager, self.assistant_page)
-        self.page_pago = FormPagoCredito(self.db_manager)
+        self.page_pago = FormPagoCredito(self.db_manager, self.assistant_page)
         self.form_nuevo_credito = FormNuevoCredito()
         self.form_retiro = FormRetiro()
         self.form_aporte_pago = FormCombinado(self.db_manager)
@@ -214,10 +214,6 @@ class HomePage(QWidget):
 
         
         return frame
-
-
-
-
 
     def update_form(self):
         if self.btn_nuevo_credito.isChecked():
