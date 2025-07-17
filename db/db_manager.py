@@ -122,19 +122,6 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error creando tablas: {e}")
 
-
-    def add_member(self, cc, nombres, apellidos, phone, photo_path, saldo=0):
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT INTO socios (cc, nombres, apellidos, celular, photo_path, saldo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (cc, nombres, apellidos, phone, photo_path, saldo))
-            self.conn.commit()
-            print(f"✅ Socio '{nombres} {apellidos}' agregado correctamente.")
-        except sqlite3.Error as e:
-            print(f"❌ Error agregando socio: {e}")
-
     def get_all_members(self):
         try:
             cursor = self.conn.cursor()
@@ -264,33 +251,91 @@ class DBManager:
         except Exception as e:
             print(f"❌ Error al crear crédito: {e}")
             return False
-    def delete_member(self, member_id):
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("DELETE FROM socios WHERE id = ?", (member_id,))
-            self.conn.commit()
-            print(f"✅ Socio con ID {member_id} eliminado correctamente.")
-            return True
-        except sqlite3.Error as e:
-            print(f"❌ Error eliminando socio: {e}")
-            return False
         
-    def update_member(self, member_id, nombres, apellidos, cc, phone, photo_path, saldo):
-    
-        
+
+# socios operacones
+
+    def add_member(self, cc, nombres, apellidos, phone, photo_path, saldo=0):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                UPDATE socios
-                SET nombres = ?, apellidos = ?, cc = ?, celular = ?, photo_path = ?, saldo = ?
-                WHERE id = ?
-            """, (nombres, apellidos, cc, phone, photo_path, saldo, member_id))
+                INSERT INTO socios (cc, nombres, apellidos, celular, photo_path, saldo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (cc, nombres, apellidos, phone, photo_path, saldo))
+
+            # Actualizar saldo_en_caja en config
+            saldo_actual = self.get_config_value_as_int("saldo_en_caja")
+            nuevo_saldo = saldo_actual + saldo
+            self.set_config_value("saldo_en_caja", str(nuevo_saldo))
+
             self.conn.commit()
-            print(f"✅ Socio con ID {member_id} actualizado correctamente.")
+            print(f"✅ Socio '{nombres} {apellidos}' agregado correctamente.")
+        except Exception as e:
+            print(f"❌ Error agregando socio: {e}")
+
+
+    def delete_member(self, socio_id):
+        try:
+            cursor = self.conn.cursor()
+
+            # Obtener saldo del socio antes de eliminarlo
+            cursor.execute("SELECT saldo FROM socios WHERE id = ?", (socio_id,))
+            row = cursor.fetchone()
+            if not row:
+                print("⚠️ Socio no encontrado.")
+                return False
+            saldo_socio = row[0]
+
+            # Eliminar socio
+            cursor.execute("DELETE FROM socios WHERE id = ?", (socio_id,))
+
+            # Restar del saldo en caja
+            saldo_caja = self.get_config_value_as_int("saldo_en_caja")
+            nuevo_saldo = saldo_caja - saldo_socio
+            self.set_config_value("saldo_en_caja", str(nuevo_saldo))
+
+            self.conn.commit()
+            print(f"🗑️ Socio con ID {socio_id} eliminado.")
             return True
-        except sqlite3.Error as e:
-            print(f"❌ Error actualizando socio: {e}")
+        except Exception as e:
+            print(f"❌ Error al eliminar socio: {e}")
+            self.conn.rollback()
             return False
+
+        
+    def update_member(self, socio_id, cc, nombres, apellidos, phone, photo_path, nuevo_saldo):
+        try:
+            cursor = self.conn.cursor()
+
+            # Obtener saldo anterior
+            cursor.execute("SELECT saldo FROM socios WHERE id = ?", (socio_id,))
+            row = cursor.fetchone()
+            if not row:
+                print("⚠️ Socio no encontrado.")
+                return False
+            saldo_anterior = row[0]
+
+            # Actualizar datos
+            cursor.execute("""
+                UPDATE socios
+                SET cc = ?, nombres = ?, apellidos = ?, celular = ?, photo_path = ?, saldo = ?
+                WHERE id = ?
+            """, (cc, nombres, apellidos, phone, photo_path, nuevo_saldo, socio_id))
+
+            # Ajustar saldo_en_caja
+            diferencia = nuevo_saldo - saldo_anterior
+            saldo_caja = self.get_config_value_as_int("saldo_en_caja")
+            nuevo_saldo_caja = saldo_caja + diferencia
+            self.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
+
+            self.conn.commit()
+            print(f"✏️ Socio '{nombres} {apellidos}' actualizado correctamente.")
+            return True
+        except Exception as e:
+            print(f"❌ Error actualizando socio: {e}")
+            self.conn.rollback()
+            return False
+
 
     def get_credit_by_letra(self, letra):
         query = """

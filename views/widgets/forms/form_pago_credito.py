@@ -263,6 +263,7 @@ class FormPagoCredito(QWidget):
                     )
 
                     # Sumar al saldo en caja y actualizar en config
+                    print(f"saldo: {saldo_caja} monto: {monto}")
                     saldo_caja += monto
                     self.db.set_config_value("saldo_en_caja", str(saldo_caja))
 

@@ -35,17 +35,18 @@ def main():
     db_manager.create_tables() # Crea las tablas si no existen
 
 
-    """ db_manager.add_credit(
+    db_manager.add_credit(
         socio_ids=[1,2,3,4],  # 👈 Lista, incluso si es un solo socio
         capital=2000000,
         interes=0.01,        # 1.5% mensual
         no_cuotas=12
     )
+    
     db_manager.add_member("10101010", "Carlos", "Pérez", "3111234567", None)
     db_manager.add_member("20202020", "Lucía", "Gómez", "3127654321", None)
     db_manager.add_member("30303030", "Andrés", "Ruiz", "3139876543", None)
     db_manager.add_member("40404040", "Nathalia", "Burbano", "3145678910", None)
-    db_manager.add_member("50505050", "Jorge", "Mena", "3155555555", None) """
+    db_manager.add_member("50505050", "Jorge", "Mena", "3155555555", None)
 
     # Crear ventana principal
     window = MainWindow()
@@ -63,7 +64,9 @@ def main():
     window.show() # Mostrar la ventana principal
 
     print("✅ Aplicación iniciada correctamente.")
+
     sys.exit(app.exec())
+    
 
 if __name__ == "__main__":
     main()

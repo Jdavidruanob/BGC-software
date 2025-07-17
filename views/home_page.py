@@ -302,18 +302,7 @@ class HomePage(QWidget):
     def refresh_view(self):
         print("🔁 Refrescando vista home")
         self.refresh_forms()
-
-        # Actualiza el saldo en caja como suma de saldos de socios
-        try:
-            total_saldo = self.db_manager.conn.execute("SELECT SUM(saldo) FROM socios").fetchone()[0] or 0
-            self.db_manager.conn.execute("""
-                INSERT INTO config (key, value) VALUES (?, ?)
-                ON CONFLICT(key) DO UPDATE SET value = excluded.value
-            """, ("saldo_en_caja", str(total_saldo)))
-            self.db_manager.conn.commit()
-        except Exception as e:
-            print(f"❌ Error actualizando saldo_en_caja automático: {e}")
-
+        
         # 🔄 ACTUALIZAR EL WIDGET DEL PANEL DERECHO
         # Elimina contenido anterior del right_panel
         for i in reversed(range(self.right_panel.layout().count())):
