@@ -1,0 +1,51 @@
+#formTitle {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+#FormLabel {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+#ComboSocio {
+    height: 40px;
+    font-size: 15px;
+    padding: 4px 8px;
+}
+
+#MontoInput, QLineEdit {
+    font-size: 15px;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#RegisterButton {
+    font-size: 16px;
+    padding: 8px 20px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+#RegisterButton:hover {
+    background-color: #2a4a80;
+}
+
+/* Estilo consistente para listas desplegables */
+QComboBox QAbstractItemView {
+    font-size: 16px;
+    spacing: 6px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 30px;
+    padding: 4px 8px;
+    
+}
+

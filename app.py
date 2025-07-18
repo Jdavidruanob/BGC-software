@@ -31,12 +31,6 @@ def main():
 
     db_manager.create_tables() # Crea las tablas si no existen
 
-    db_manager.add_credit(
-        socio_ids=[1,2,3,4],  # Lista, incluso si es un solo socio
-        capital=2000000,
-        interes=0.01,        # 1.5% mensual
-        no_cuotas=12
-    )
 
     db_manager.add_member("10101010", "Carlos", "Pérez", "3111234567", None)
     db_manager.add_member("20202020", "Lucía", "Gómez", "3127654321", None)
