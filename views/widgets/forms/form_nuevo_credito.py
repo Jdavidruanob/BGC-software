@@ -3,21 +3,23 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QComboBox, QSizePolicy, QSpacerItem, QScrollArea, QFrame
 )
 from PySide6.QtCore import Qt, QSize
-from datetime import date
+from datetime import date, timedelta
 import os
 
 from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
 from views.widgets.message_boxes import show_success, show_error, show_warning
+from views.liquidation_page import CreditLiquidationPage
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()  # Evita scroll accidental
 
 class FormNuevoCredito(QWidget):
-    def __init__(self, db_manager, assistant_page=None):
+    def __init__(self, db_manager, window, assistant_page=None):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
+        self.main_window = window
         self.socios_data = []
         self.socios_seleccionados = []
 
@@ -64,12 +66,14 @@ class FormNuevoCredito(QWidget):
                 self.capital_input.blockSignals(False)
 
         self.capital_input.textChanged.connect(on_text_changed)
+        self.capital_input.textChanged.connect(lambda _: self.actualizar_resumen_credito())
 
         # Cuotas
         self.cuotas_input = QLineEdit()
         self.cuotas_input.setPlaceholderText("Número de cuotas")
         self.cuotas_input.setAlignment(Qt.AlignRight)
         self.cuotas_input.setFixedHeight(36)
+        self.cuotas_input.textChanged.connect(lambda _: self.actualizar_resumen_credito())
 
         # Interés
         self.interes_input = QLineEdit()
@@ -83,17 +87,33 @@ class FormNuevoCredito(QWidget):
         fields_row.addWidget(self.interes_input)
 
         layout.addLayout(fields_row)
+
+        # Resumen dinámico
+        resumen_row = QHBoxLayout()
+        resumen_row.setSpacing(24)
+
+        self.label_cuota = QLabel()
+        self.label_cuota.setStyleSheet("font-size: 15px;")
+
+        self.label_fecha_final = QLabel()
+        self.label_fecha_final.setStyleSheet("font-size: 15px;")
+
+        resumen_row.addWidget(self._etiqueta("Cuota estimada:"))
+        resumen_row.addWidget(self.label_cuota)
+        resumen_row.addSpacing(40)
+        resumen_row.addWidget(self._etiqueta("Último pago:"))
+        resumen_row.addWidget(self.label_fecha_final)
+
+        layout.addLayout(resumen_row)
         layout.addSpacerItem(QSpacerItem(0, 20))
 
         # Botón registrar
         self.btn_registrar = QPushButton("Crear Crédito")
         self.btn_registrar.setObjectName("RegisterButton")
         self.btn_registrar.setMinimumHeight(44)
-        self.btn_registrar.clicked.connect(self.on_register_credito)
         layout.addWidget(self.btn_registrar, alignment=Qt.AlignHCenter)
 
         self.setLayout(layout)
-
         self.load_socios()
 
         # Estilos
@@ -101,6 +121,40 @@ class FormNuevoCredito(QWidget):
             os.path.dirname(__file__), "..", "..", "..", "styles", "forms", "form_nuevo_credito.qss"
         )
         load_styles(self, qss_path)
+
+    def _etiqueta(self, texto):
+        lbl = QLabel(texto)
+        lbl.setStyleSheet("font-size: 15px; font-weight: bold;")
+        return lbl
+
+    def actualizar_resumen_credito(self):
+        try:
+            capital = parse_miles_colombian(self.capital_input.text())
+            cuotas = int(self.cuotas_input.text())
+            if capital <= 0 or cuotas <= 0:
+                self.label_cuota.setText("")
+                self.label_fecha_final.setText("")
+                return
+
+            # Calcular cuota base tentativa
+            for redondeo in [10000, 9000, 8000, 7000, 6000, 5000, 2000, 1000]:
+                posible_cuota = round((capital / cuotas) / redondeo) * redondeo
+                total_normales = posible_cuota * (cuotas - 1)
+                ultima_cuota = capital - total_normales
+                if 10000 <= ultima_cuota <= posible_cuota * 1.5:
+                    cuota_base = posible_cuota
+                    break
+            else:
+                cuota_base = capital // cuotas
+
+            fecha_final = date.today() + timedelta(days=30 * cuotas)
+
+            self.label_cuota.setText(f"${format_miles_colombian_int(cuota_base)}")
+            self.label_fecha_final.setText(fecha_final.strftime("%Y-%m-%d"))
+
+        except:
+            self.label_cuota.setText("")
+            self.label_fecha_final.setText("")
 
     def load_socios(self):
         try:
@@ -148,6 +202,7 @@ class FormNuevoCredito(QWidget):
         wrapper.setLayout(layout)
         self.selected_container.addWidget(wrapper)
 
+
     def on_register_credito(self):
         try:
             if not self.socios_seleccionados:
@@ -164,7 +219,12 @@ class FormNuevoCredito(QWidget):
 
             socio_ids = [s['id'] for s in self.socios_seleccionados]
             letra = self.db.add_credit(socio_ids, capital, interes, cuotas)
-
+            view_name = f"liquidation_credit_{letra}"
+            credit = self.db.get_credit_by_letra(letra)
+            for id in socio_ids:
+                liquidation_view = CreditLiquidationPage(credit, member_id = id, main_window=self.main_window, db_manager=self.db)
+                self.main_window.add_view(view_name, liquidation_view)
+            
             if letra:
                 saldo_actual = self.db.get_config_value_as_int("saldo_en_caja")
                 nuevo_saldo = saldo_actual - capital

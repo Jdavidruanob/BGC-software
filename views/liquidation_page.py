@@ -124,29 +124,32 @@ class CreditLiquidationPage(QWidget):
         cuotas = self.credit["no_cuotas"]
         fecha_inicio = datetime.strptime(self.credit["fecha_inicio"][:10], "%Y-%m-%d")
 
-        cuota_base = round((capital / cuotas) / 10000) * 10000
-        total_redondeado = cuota_base * cuotas
-        diferencia = total_redondeado - capital
+        cuota_base = None
+        cuota_final = None
 
-        cuotas_normales = cuotas - 1
-        total_normales = cuota_base * cuotas_normales
-        cuota_final = capital - total_normales
+        # Buscar el mejor redondeo que cumpla condiciones
+        for redondeo in [10000, 9000, 8000, 7000, 6000, 5000, 2000, 1000]:
+            posible_cuota = round((capital / cuotas) / redondeo) * redondeo
+            total_normales = posible_cuota * (cuotas - 1)
+            ultima_cuota = capital - total_normales
 
-        if cuota_final < 10000:
-            cuota_final = 10000
-            cuotas_normales = cuotas - 1
-            total_normales = capital - cuota_final
-            cuota_base = round(total_normales / cuotas_normales / 10000) * 10000
+            if 10000 <= ultima_cuota <= posible_cuota * 1.5:
+                cuota_base = posible_cuota
+                cuota_final = ultima_cuota
+                break
+
+        if cuota_base is None:
+            # Último recurso: sin redondear, pero garantizando últimas condiciones mínimas
+            cuota_base = capital // cuotas
+            cuota_final = capital - cuota_base * (cuotas - 1)
 
         saldo = capital
-
         cuotas_db = []
-
         self.table.setRowCount(cuotas)
-        fecha_primera_cuota = fecha_inicio + timedelta(days=30 * 1)
+        fecha_primera_cuota = fecha_inicio + timedelta(days=30)
+
         for i in range(cuotas):
             nro_cuota = i + 1
-            
             fecha = fecha_primera_cuota + timedelta(days=30 * i)
 
             cuota_valor = cuota_final if i == cuotas - 1 else cuota_base
@@ -154,7 +157,7 @@ class CreditLiquidationPage(QWidget):
             cuota_mensual = cuota_valor + intereses
             saldo -= cuota_valor
 
-                        # Buscar si existe fecha de pago en la BD
+            # Buscar si ya fue pagada
             cursor = self.db_manager.conn.cursor()
             cursor.execute("""
                 SELECT fecha_pago FROM liquidaciones
@@ -170,7 +173,7 @@ class CreditLiquidationPage(QWidget):
                 f"${format_miles_colombian_int(intereses)}",
                 f"${format_miles_colombian_int(cuota_mensual)}",
                 f"${format_miles_colombian_int(max(0, saldo))}",
-                fecha_pago_str  # Mostrar solo si existe
+                fecha_pago_str
             ]
 
             for col, val in enumerate(row):
@@ -178,7 +181,6 @@ class CreditLiquidationPage(QWidget):
                 item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(i, col, item)
 
-            # Preparar para guardar en BD
             cuotas_db.append((
                 self.credit["letra"],
                 nro_cuota,
@@ -187,10 +189,9 @@ class CreditLiquidationPage(QWidget):
                 intereses,
                 cuota_mensual,
                 max(0, saldo),
-                None  # fecha_pago por ahora es NULL
+                None
             ))
 
-        # Guardar en la BD si aún no existen
         existing = self.db_manager.conn.execute(
             "SELECT COUNT(*) FROM liquidaciones WHERE credito_letra = ?",
             (self.credit["letra"],)
@@ -198,6 +199,8 @@ class CreditLiquidationPage(QWidget):
 
         if existing == 0:
             self.db_manager.guardar_liquidaciones(cuotas_db)
+
+
 
     def refresh_view(self):
         """Refresca la tabla de liquidación mostrando fechas de pago actualizadas."""
