@@ -229,7 +229,6 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
 
-            # Asignar automáticamente un número de letra (id de crédito)
             cursor.execute("SELECT MAX(letra) FROM creditos")
             max_letra = cursor.fetchone()[0]
             new_letra = (max_letra or 0) + 1
@@ -247,10 +246,11 @@ class DBManager:
 
             self.conn.commit()
             print(f"✅ Crédito #{new_letra} creado exitosamente.")
-            return True
+            return new_letra  # 👈 RETORNAMOS el número de letra
         except Exception as e:
             print(f"❌ Error al crear crédito: {e}")
-            return False
+            return None
+
         
 
 # socios operacones
