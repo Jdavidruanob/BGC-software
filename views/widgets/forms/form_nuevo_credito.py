@@ -159,15 +159,21 @@ class FormNuevoCredito(QWidget):
     def load_socios(self):
         try:
             self.socios_data = self.db.get_all_members_full()
+            self.combo_socios.blockSignals(True)
             self.combo_socios.clear()
+            self.combo_socios.addItem("-- Selecciona un socio --", userData=None)  # 👈 opción vacía
             if not self.socios_data:
                 show_warning(self, "", "No hay socios registrados.")
+                self.combo_socios.blockSignals(False)
                 return
             for socio in self.socios_data:
                 nombre = f"{socio['nombres']} {socio['apellidos']}"
                 self.combo_socios.addItem(nombre, userData=socio)
+            self.combo_socios.setCurrentIndex(0)
+            self.combo_socios.blockSignals(False)
         except Exception as e:
             show_error(self, "", f"Error cargando socios:\n{e}")
+
 
     def agregar_socio_seleccionado(self):
         socio = self.combo_socios.currentData()
@@ -194,6 +200,7 @@ class FormNuevoCredito(QWidget):
         def eliminar():
             wrapper.setParent(None)
             self.socios_seleccionados.remove(socio)
+            self.combo_socios.setCurrentIndex(0)  # 👈 Permite volver a seleccionarlo
 
         btn.clicked.connect(eliminar)
 
