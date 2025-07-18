@@ -105,7 +105,7 @@ class HomePage(QWidget):
         self.page_pago = FormPagoCredito(self.db_manager, self.assistant_page)
         self.form_nuevo_credito = FormNuevoCredito()
         self.form_retiro = FormRetiro()
-        self.form_aporte_pago = FormCombinado(self.db_manager)
+        self.form_aporte_pago = FormCombinado(self.db_manager, self.assistant_page)
 
         #for widget in [self.form_aporte, self.page_pago, self.form_nuevo_credito, self.form_retiro, self.form_aporte_pago]:
             #widget.setStyleSheet("font-size: 16px; padding: 20px;")

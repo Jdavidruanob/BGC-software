@@ -7,16 +7,18 @@ from PySide6.QtCore import Qt, QSize
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
 import os
+from datetime import date
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()  # Evita que se cambie el valor al hacer scroll
 
 class FormCombinado(QWidget):
-    def __init__(self, db_manager):
+    def __init__(self, db_manager, assistant_page):
         
         super().__init__()
         self.db = db_manager
+        self.assistant_page = assistant_page
         self.socios_data = []
         self.aportes_widgets = []
         #------
@@ -270,6 +272,7 @@ class FormCombinado(QWidget):
 
         self.pagos_widgets.append((combo, letras_container, wrapper_widget))
 
+
     def on_register_combinado(self):
         recibi = self.combo_recibi_de.currentData()
         if not recibi:
@@ -281,7 +284,7 @@ class FormCombinado(QWidget):
             socio = combo.currentData()
             monto = parse_miles_colombian(monto_input.text())
             if socio and monto > 0:
-                aportes.append((socio['id'], monto))
+                aportes.append((socio['id'], monto, socio))
 
         pagos = []
         cursor = self.db.conn.cursor()
@@ -307,9 +310,9 @@ class FormCombinado(QWidget):
                     faltantes = cursor.fetchone()[0]
                     if n > faltantes:
                         show_error(self, "Error de cuotas",
-                                   f"Sólo quedan {faltantes} cuotas pendientes para la letra {letra_data['letra']}.")
+                                f"Sólo quedan {faltantes} cuotas pendientes para la letra {letra_data['letra']}.")
                         return
-                    pagos.append((socio['id'], letra_data['letra'], n))
+                    pagos.append((socio['id'], letra_data['letra'], n, socio))
 
         if not aportes or not pagos:
             show_warning(self, "", "Debes agregar al menos un aporte y un pago.")
@@ -317,18 +320,42 @@ class FormCombinado(QWidget):
 
         try:
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
-            recibo_id = cursor.lastrowid 
+            recibo_id = cursor.lastrowid
+            fecha_actual = date.today().strftime("%Y-%m-%d")
+            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
 
-            for socio_id, monto in aportes:
+            # Procesar aportes uno a uno
+            for socio_id, monto, socio_data in aportes:
                 cursor.execute("""
                     INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
                     VALUES (?, 'aporte', ?, ?)
                 """, (recibo_id, socio_id, monto))
-                cursor.execute("""
-                    UPDATE socios SET saldo = saldo + ? WHERE id = ?
-                """, (monto, socio_id))
+                cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (monto, socio_id))
 
-            for socio_id, letra_id, n in pagos:
+                saldo_caja += monto
+                self.db.set_config_value("saldo_en_caja", str(saldo_caja))
+
+                nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
+                self.db.add_to_auxiliar(
+                    fecha=fecha_actual,
+                    tipo="Aporte",
+                    socio=nombre,
+                    numero=recibo_id,
+                    monto=monto,
+                    saldo=saldo_caja
+                )
+                if self.assistant_page:
+                    self.assistant_page.add_operation({
+                        "fecha": fecha_actual,
+                        "tipo": "Aporte",
+                        "socio": nombre,
+                        "numero": recibo_id,
+                        "monto": monto,
+                        "saldo": saldo_caja
+                    })
+
+            # Procesar pagos de crédito uno a uno
+            for socio_id, letra_id, n, socio_data in pagos:
                 cursor.execute("""
                     SELECT nro_cuota, valor_cuota, interes_mes FROM liquidaciones
                     WHERE credito_letra = ? AND fecha_pago IS NULL
@@ -346,12 +373,36 @@ class FormCombinado(QWidget):
                         WHERE credito_letra = ? AND nro_cuota = ?
                     """, (letra_id, nro))
 
+                    saldo_caja += monto
+                    self.db.set_config_value("saldo_en_caja", str(saldo_caja))
+
+                    nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
+                    self.db.add_to_auxiliar(
+                        fecha=fecha_actual,
+                        tipo="Pago Credito",
+                        socio=nombre,
+                        numero=recibo_id,
+                        monto=monto,
+                        saldo=saldo_caja
+                    )
+                    if self.assistant_page:
+                        self.assistant_page.add_operation({
+                            "fecha": fecha_actual,
+                            "tipo": "Pago Credito",
+                            "socio": nombre,
+                            "numero": recibo_id,
+                            "monto": monto,
+                            "saldo": saldo_caja
+                        })
+
             self.db.conn.commit()
             show_success(self, "", f"Recibo combinado #{recibo_id} creado exitosamente.")
             self.limpiar_formulario()
+
         except Exception as e:
             self.db.conn.rollback()
             show_error(self, "", f"Error al crear recibo combinado:\n{e}")
+
 
     def limpiar_formulario(self):
         """Limpia todos los campos y reinicia el formulario."""
