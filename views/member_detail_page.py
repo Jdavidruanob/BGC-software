@@ -269,10 +269,6 @@ class MemberDetailPage(QWidget):
         return scroll
 
     def on_credit_card_clicked(self, letra):
-        credit = self.db_manager.get_credit_by_letra(letra)
-        if not credit:
-            show_error(self, "Error", "No se encontró el crédito.")
-            return
         view_name = f"liquidation_credit_{letra}"
         self.main_window.show_view(view_name)
 

@@ -278,7 +278,7 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
 
-            # Obtener saldo del socio antes de eliminarlo
+            # 1. Obtener saldo del socio antes de eliminarlo
             cursor.execute("SELECT saldo FROM socios WHERE id = ?", (socio_id,))
             row = cursor.fetchone()
             if not row:
@@ -286,21 +286,54 @@ class DBManager:
                 return False
             saldo_socio = row[0]
 
-            # Eliminar socio
+            # 2. Obtener letras de créditos del socio
+            cursor.execute("""
+                SELECT credito_letra FROM socio_credito WHERE socio_id = ?
+            """, (socio_id,))
+            letras = [row[0] for row in cursor.fetchall()]
+
+            # 3. Eliminar relación socio_credito
+            cursor.execute("DELETE FROM socio_credito WHERE socio_id = ?", (socio_id,))
+
+            # 4. Verificar qué créditos quedaron sin socios
+            letras_a_eliminar = []
+            for letra in letras:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM socio_credito WHERE credito_letra = ?
+                """, (letra,))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    letras_a_eliminar.append(letra)
+
+            # 5. Eliminar liquidaciones y créditos sin socios
+            for letra in letras_a_eliminar:
+                cursor.execute("DELETE FROM liquidaciones WHERE credito_letra = ?", (letra,))
+                cursor.execute("DELETE FROM creditos WHERE letra = ?", (letra,))
+                print(f"🗑️ Crédito #{letra} eliminado por no tener más socios.")
+
+            # 6. Eliminar detalle_recibo relacionados con el socio
+            cursor.execute("DELETE FROM detalle_recibo WHERE socio_id = ?", (socio_id,))
+
+            # 7. Eliminar recibos donde el socio sea quien entregó el dinero
+            cursor.execute("DELETE FROM recibos WHERE socio_id = ?", (socio_id,))
+
+            # 8. Eliminar al socio
             cursor.execute("DELETE FROM socios WHERE id = ?", (socio_id,))
 
-            # Restar del saldo en caja
+            # 9. Actualizar saldo en caja
             saldo_caja = self.get_config_value_as_int("saldo_en_caja")
             nuevo_saldo = saldo_caja - saldo_socio
             self.set_config_value("saldo_en_caja", str(nuevo_saldo))
 
             self.conn.commit()
-            print(f"🗑️ Socio con ID {socio_id} eliminado.")
+            print(f"🗑️ Socio con ID {socio_id} eliminado junto con datos relacionados.")
             return True
+
         except Exception as e:
             print(f"❌ Error al eliminar socio: {e}")
             self.conn.rollback()
             return False
+
 
         
     def update_member(self, socio_id, cc, nombres, apellidos, phone, photo_path, nuevo_saldo):
