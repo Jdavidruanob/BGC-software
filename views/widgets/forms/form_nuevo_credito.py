@@ -111,6 +111,8 @@ class FormNuevoCredito(QWidget):
         self.btn_registrar = QPushButton("Crear Crédito")
         self.btn_registrar.setObjectName("RegisterButton")
         self.btn_registrar.setMinimumHeight(44)
+        self.btn_registrar.clicked.connect(self.on_register_credito)
+
         layout.addWidget(self.btn_registrar, alignment=Qt.AlignHCenter)
 
         self.setLayout(layout)
@@ -274,3 +276,8 @@ class FormNuevoCredito(QWidget):
 
         except Exception as e:
             show_error(self, "", f"Error al crear crédito:\n{e}")
+
+    def refresh(self):
+        """Refresca el formulario: limpia inputs, recarga socios y borra etiquetas previas."""
+        self.load_socios()  # Recarga lista de socios
+

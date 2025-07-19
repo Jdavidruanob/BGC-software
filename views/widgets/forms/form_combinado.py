@@ -417,3 +417,7 @@ class FormCombinado(QWidget):
         self.pagos_widgets.clear()
 
         self.load_socios()
+    
+    def refresh(self):
+        """Recarga lista de socios en todos los combos."""
+        self.load_socios()

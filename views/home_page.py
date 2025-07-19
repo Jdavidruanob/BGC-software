@@ -163,7 +163,7 @@ class HomePage(QWidget):
         # Asumimos que get_active_credits_by_member solo trae por socio;
         # si quieres global, tendrías que un método new:
         total_creditos = self.db_manager.conn.execute(
-            "SELECT COUNT(*) FROM socio_credito"
+            "SELECT COUNT(*) FROM creditos"
         ).fetchone()[0]
 
         # Total socios
@@ -277,26 +277,22 @@ class HomePage(QWidget):
     def refresh_forms(self):
         """Actualiza todos los formularios de la HomePage si implementan .refresh()"""
         print("🔄 Actualizando formularios...")
-
         # Aporte
-        if hasattr(self.form_aporte, "refresh"):
-            self.form_aporte.refresh()
-
+        self.form_aporte.refresh()
         # Pago Crédito
-        if hasattr(self.page_pago, "refresh"):
-            self.page_pago.refresh()
+        self.page_pago.refresh()
+        # Aporte + Pago Crédito
+        self.form_aporte_pago.refresh()
+        # Nuevo Crédito 
+        self.form_nuevo_credito.refresh()
+        
 
-        """  # Nuevo Crédito (más adelante)
-        if hasattr(self.page_credito, "refresh"):
-            self.page_credito.refresh()
-
+        """
         # Retiro (más adelante)
         if hasattr(self.page_retiro, "refresh"):
             self.page_retiro.refresh() """
 
-        """ # Aporte + Pago Crédito
-        if hasattr(self.form_aporte_pago, "refresh"):
-            self.form_aporte_pago.refresh() """
+        
 
         print("✅ Formularios actualizados.")
 
