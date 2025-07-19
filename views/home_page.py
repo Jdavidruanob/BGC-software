@@ -105,7 +105,7 @@ class HomePage(QWidget):
         self.form_aporte = FormAporte(self.db_manager, self.assistant_page)
         self.page_pago = FormPagoCredito(self.db_manager, self.assistant_page)
         self.form_nuevo_credito = FormNuevoCredito(self.db_manager, self.main_window, self.assistant_page)
-        self.form_retiro = FormRetiro()
+        self.form_retiro = FormRetiro(self.db_manager)
         self.form_aporte_pago = FormCombinado(self.db_manager, self.assistant_page)
 
         #for widget in [self.form_aporte, self.page_pago, self.form_nuevo_credito, self.form_retiro, self.form_aporte_pago]:
@@ -285,12 +285,8 @@ class HomePage(QWidget):
         self.form_aporte_pago.refresh()
         # Nuevo Crédito 
         self.form_nuevo_credito.refresh()
-        
-
-        """
         # Retiro (más adelante)
-        if hasattr(self.page_retiro, "refresh"):
-            self.page_retiro.refresh() """
+        self.form_retiro.refresh()
 
         
 

@@ -269,11 +269,12 @@ class MemberDetailPage(QWidget):
         return scroll
 
     def on_credit_card_clicked(self, letra):
+        credit = self.db_manager.get_credit_by_letra(letra)
         view_name = f"liquidation_credit_{letra}"
+        liquidation_view = CreditLiquidationPage(credit, member_id = self.member_id, main_window=self.main_window, db_manager=self.db_manager)
+        self.main_window.add_view(view_name, liquidation_view)
         self.main_window.show_view(view_name)
-
-        #liquidation_view = CreditLiquidationPage(credit, member_id = self.member_id, main_window=self.main_window, db_manager=self.db_manager)
-        #self.main_window.add_view(view_name, liquidation_view)
+        
 
     def build_credit_card(self, credito):
         card = QFrame()
