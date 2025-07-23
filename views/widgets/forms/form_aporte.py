@@ -1,3 +1,5 @@
+# views/forms/form_aporte.py
+
 import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
@@ -8,27 +10,27 @@ from datetime import date
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
 from views.widgets.message_boxes import show_success, show_error, show_warning
 
+# Importar la función generar_recibo_general
+from utils.recibo_generator import generar_recibo_general, DEFAULT_GASTOS_ADMIN # Importamos también la constante si la usamos
+
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
-        event.ignore()  # Evita que se cambie el valor al hacer scroll
+        event.ignore()
 
 class FormAporte(QWidget):
     def __init__(self, db_manager, assistant_page=None):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
-        self.socios_data = []
+        self.socios_data = [] # Esta lista debe contener los dicts completos de los socios con su 'saldo' actual
         self.aportes_widgets = []
 
-        # Layout principal
         main_layout = QVBoxLayout()
         main_layout.setAlignment(Qt.AlignTop)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(16)
         self.setLayout(main_layout)
 
-        
-        # "Recibí de:"
         lbl_recibi = QLabel("Recibí de:")
         lbl_recibi.setObjectName("FormLabel")
         self.combo_recibi_de = NoScrollComboBox()
@@ -38,7 +40,6 @@ class FormAporte(QWidget):
         main_layout.addWidget(lbl_recibi)
         main_layout.addWidget(self.combo_recibi_de)
 
-        # Sección dinámicos de aportes
         aporte_section_label = QLabel("Aportes a registrar:")
         aporte_section_label.setObjectName("FormLabel")
         main_layout.addWidget(aporte_section_label)
@@ -47,7 +48,6 @@ class FormAporte(QWidget):
         self.aportes_container.setSpacing(12)
         main_layout.addLayout(self.aportes_container)
 
-        # Botón agregar nueva fila
         self.btn_agregar_aporte = QPushButton(" Agregar aporte")
         self.btn_agregar_aporte.setObjectName("AddAporteButton")
         self.btn_agregar_aporte.setIcon(load_svg_icon("assets/icons/plus.svg"))
@@ -55,7 +55,6 @@ class FormAporte(QWidget):
         self.btn_agregar_aporte.clicked.connect(self.agregar_aporte)
         main_layout.addWidget(self.btn_agregar_aporte, alignment=Qt.AlignLeft)
 
-        # Espacio y botón registrar
         main_layout.addStretch()
         self.btn_registrar = QPushButton("Registrar Aporte")
         self.btn_registrar.setObjectName("RegisterButton")
@@ -64,11 +63,8 @@ class FormAporte(QWidget):
         self.btn_registrar.clicked.connect(self.on_register)
         main_layout.addWidget(self.btn_registrar, alignment=Qt.AlignHCenter)
 
-        # Carga inicial y primera fila
         self.load_socios()
 
-
-        # Estilos
         qss_path = os.path.join(
             os.path.dirname(__file__),
             "..", "..", "..", "styles", "forms", "form_aporte.qss"
@@ -76,9 +72,9 @@ class FormAporte(QWidget):
         load_styles(self, qss_path)
 
     def load_socios(self):
-        """Carga lista de socios para combo_recibi_de."""
         try:
-            self.socios_data = self.db.get_all_members_full()
+            # Asegúrate de que get_all_members_full() retorne el 'saldo' actual de cada socio
+            self.socios_data = self.db.get_all_members_full() 
             self.combo_recibi_de.clear()
             if not self.socios_data:
                 show_warning(self, "", "No hay socios registrados.")
@@ -86,11 +82,18 @@ class FormAporte(QWidget):
             for socio in self.socios_data:
                 nombre = f"{socio['nombres']} {socio['apellidos']}"
                 self.combo_recibi_de.addItem(nombre, userData=socio)
+            
+            # Recargar los combos existentes si se recargan los socios después de agregar aportes
+            for combo, _, _ in self.aportes_widgets:
+                combo.clear()
+                for socio in self.socios_data:
+                    nombre = f"{socio['nombres']} {socio['apellidos']}"
+                    combo.addItem(nombre, userData=socio)
+
         except Exception as e:
             show_error(self, "", f"Error cargando socios:\n{e}")
 
     def agregar_aporte(self):
-        """Agrega una fila con ComboSocio + MontoInput + DeleteButton."""
         combo = NoScrollComboBox()
         combo.setObjectName("ComboSocio")
         combo.setMinimumHeight(36)
@@ -156,16 +159,40 @@ class FormAporte(QWidget):
             show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
             return
 
-        aportes = []
+        # Lista para los datos que se guardarán en la DB
+        aportes_for_db = [] 
+        # Lista para los datos que se pasarán al generador de recibos Excel
+        aportes_for_recibo = [] 
+
         for combo, monto_input, _ in self.aportes_widgets:
-            socio = combo.currentData()
-            raw = parse_miles_colombian(monto_input.text())
-            if not socio or raw <= 0:
+            socio_selected = combo.currentData()
+            raw_monto = parse_miles_colombian(monto_input.text())
+            
+            if not socio_selected or raw_monto <= 0:
                 show_error(self, "", "Revisa que todos los aportes tengan socio y monto válido.")
                 return
-            aportes.append((socio['id'], raw))
+            
+            # Es CRUCIAL obtener el saldo actual del socio ANTES de aplicar el aporte.
+            # Asumimos que `self.socios_data` está actualizado o que tenemos un método para obtener el saldo actual.
+            # Lo más seguro es que `get_all_members_full()` ya te devuelva el saldo.
+            socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
+            if not socio_data_full:
+                show_error(self, "", f"No se encontraron datos completos para el socio ID: {socio_selected['id']}")
+                return
 
-        if not aportes:
+            saldo_antes_aporte = socio_data_full['saldo'] # Este es el saldo actual del socio
+            
+            aportes_for_db.append((socio_data_full['id'], raw_monto))
+            # Para el recibo, necesitamos: (socio_data_dict, monto_aporte_int, saldo_socio_antes, saldo_socio_despues)
+            # El saldo_despues_aporte se calcula para el recibo, no se usa para la DB update (que es relativa)
+            aportes_for_recibo.append((
+                socio_data_full, 
+                raw_monto, 
+                saldo_antes_aporte, 
+                saldo_antes_aporte + raw_monto # Nuevo saldo para mostrar en el recibo
+            ))
+
+        if not aportes_for_db:
             show_warning(self, "", "Debes agregar al menos un aporte.")
             return
 
@@ -173,83 +200,97 @@ class FormAporte(QWidget):
             cursor = self.db.conn.cursor()
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
-            fecha_actual = date.today().strftime("%Y-%m-%d")
+            fecha_actual_db_format = date.today().strftime("%Y-%m-%d")
 
-            # Obtener saldo actual de caja desde tabla config
-            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")  # 👈 necesitas implementar esta función si no existe
-
-            for socio_id, monto in aportes:
-                # Insertar detalle
+            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
+            
+            # Recorrer los aportes para actualizar la DB y el log
+            for socio_id, monto_aporte_db in aportes_for_db:
                 cursor.execute("""
                     INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                    VALUES (?, 'aporte', ?, ?)""", (recibo_id, socio_id, monto))
+                    VALUES (?, 'aporte', ?, ?)""", (recibo_id, socio_id, monto_aporte_db))
 
-                # Actualizar saldo del socio
-                cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (monto, socio_id))
+                cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (monto_aporte_db, socio_id))
 
-                # Incrementar saldo de caja
-                saldo_caja += monto
-                self.db.set_config_value("saldo_en_caja", str(saldo_caja))  # 👈 también necesitas esta función en db_manager
+                saldo_caja += monto_aporte_db # Acumular el saldo en caja
 
-                # Obtener nombre del socio
-                socio = next((s for s in self.socios_data if s["id"] == socio_id), None)
-                nombre = f"{socio['nombres']} {socio['apellidos']}" if socio else "Desconocido"
+                socio_info_for_log = next((s for s in self.socios_data if s["id"] == socio_id), None)
+                nombre_socio_log = f"{socio_info_for_log['nombres']} {socio_info_for_log['apellidos']}" if socio_info_for_log else "Desconocido"
 
-                # Agregar a tabla auxiliar
                 self.db.add_to_auxiliar(
-                    fecha=fecha_actual,
+                    fecha=fecha_actual_db_format,
                     tipo="Aporte",
-                    socio=nombre,
+                    socio=nombre_socio_log,
                     numero=recibo_id,
-                    monto=monto,
+                    monto=monto_aporte_db,
                     saldo=saldo_caja
                 )
 
-                # Mostrar en pantalla
                 if self.assistant_page:
                     self.assistant_page.add_operation({
-                        "fecha": fecha_actual,
+                        "fecha": fecha_actual_db_format,
                         "tipo": "Aporte",
-                        "socio": nombre,
+                        "socio": nombre_socio_log,
                         "numero": recibo_id,
-                        "monto": monto,
+                        "monto": monto_aporte_db,
                         "saldo": saldo_caja
                     })
+            
+            # Finalmente, actualizar el saldo en caja en la configuración global
+            self.db.set_config_value("saldo_en_caja", str(saldo_caja))
 
             self.db.conn.commit()
-            show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.")
-            self.clear_form()
+
+            # Obtener los gastos de administración.
+            # Si DEFAULT_GASTOS_ADMIN es fijo, puedes usarlo directamente.
+            # Si viene de la DB:
+            # gastos_admin_value = self.db.get_config_value_as_int("gastos_administracion") 
+            # O simplemente usar la constante si es fija:
+            gastos_admin_value = DEFAULT_GASTOS_ADMIN 
+
+            # Llamar a la función generar_recibo_general para crear el recibo Excel
+            recibo_path = generar_recibo_general(
+                db_manager=self.db, # Pasamos la instancia de DBManager
+                recibo_id=recibo_id,
+                recibi_de_data=recibi, # Dict completo del socio que recibe
+                aportes_info=aportes_for_recibo, # La lista ya preparada
+                pagos_credito_info=[], # En este formulario de Aportes, esta lista siempre va vacía
+                gastos_admin=gastos_admin_value # Pasa el valor de gastos de administración
+            )
+            
+            if recibo_path:
+                show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados. Archivo: {recibo_path}")
+            else:
+                show_warning(self, "", "Recibo creado y saldos actualizados, pero hubo un error al generar el archivo Excel.")
+            
+            self.clear_form() # Limpia el formulario y recarga socios
+            self.load_socios() # Asegura que los saldos de los socios en los combos se actualicen
 
         except Exception as e:
             self.db.conn.rollback()
             show_error(self, "", f"Error al registrar aporte:\n{e}")
+            import traceback
+            traceback.print_exc() # Para depuración
 
     def refresh(self):
-        """Recarga lista de socios en todos los combos."""
+        # Este método ahora puede simplemente llamar a load_socios
+        # que ya se encarga de actualizar los combos existentes
         self.load_socios()
-        for combo, _, _ in self.aportes_widgets:
-            combo.clear()
-            for socio in self.socios_data:
-                nombre = f"{socio['nombres']} {socio['apellidos']}"
-                combo.addItem(nombre, userData=socio)
+        # Y también limpiar el formulario si es necesario
+        self.clear_form()
 
     def get_socio_recibi_de(self):
         return self.combo_recibi_de.currentData()
 
     def get_aportes(self):
+        # Esta función no es usada directamente por on_register, pero si la necesitas en otro lado
         return [
             (combo.currentData(), parse_miles_colombian(input.text()))
             for combo, input, _ in self.aportes_widgets
         ]
 
     def clear_form(self):
-        """Limpia todos los aportes y reinicia el formulario con una fila."""
-        # Eliminar widgets visuales
         for _, _, wrapper in self.aportes_widgets:
-            wrapper.setParent(None)
-        self.aportes_widgets.clear()
-
-        # Cargar de nuevo la lista de socios (por si se actualizó)
-        self.load_socios()
-
-
+            wrapper.setParent(None) # Elimina los widgets del layout
+        self.aportes_widgets.clear() # Vacía la lista
+        # self.load_socios() # Ya se llama después de generar el recibo, o al inicio del formulario
