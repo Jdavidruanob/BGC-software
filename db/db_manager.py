@@ -226,33 +226,40 @@ class DBManager:
             return []
 
     def add_credit(self, socio_ids, capital, interes, no_cuotas):
-        try:
-            cursor = self.conn.cursor()
+            try:
+                cursor = self.conn.cursor()
 
-            cursor.execute("SELECT MAX(letra) FROM creditos")
-            max_letra = cursor.fetchone()[0]
-            new_letra = (max_letra or 0) + 1
+                # *** CAMBIO AQUÍ: ***
+                # Quita las líneas de cálculo de max_letra y new_letra
+                # cursor.execute("SELECT MAX(letra) FROM creditos")
+                # max_letra = cursor.fetchone()[0]
+                # new_letra = (max_letra or 0) + 1
 
-            cursor.execute("""
-                INSERT INTO creditos (letra, capital, interes, no_cuotas)
-                VALUES (?, ?, ?, ?)
-            """, (new_letra, capital, interes, no_cuotas))
-
-            for socio_id in socio_ids:
+                # Inserta SIN mencionar 'letra' en la lista de columnas.
+                # SQLite lo asignará automáticamente porque es AUTOINCREMENT.
                 cursor.execute("""
-                    INSERT INTO socio_credito (socio_id, credito_letra)
-                    VALUES (?, ?)
-                """, (socio_id, new_letra))
+                    INSERT INTO creditos (capital, interes, no_cuotas, fecha_inicio) 
+                    VALUES (?, ?, ?, CURRENT_TIMESTAMP) 
+                """, (capital, interes, no_cuotas)) # <-- Quita new_letra de aquí
 
-            self.conn.commit()
-            print(f"✅ Crédito #{new_letra} creado exitosamente.")
-            return new_letra  # 👈 RETORNAMOS el número de letra
-        except Exception as e:
-            print(f"❌ Error al crear crédito: {e}")
-            return None
+                # Obtén la letra generada por AUTOINCREMENT
+                new_letra = cursor.lastrowid # <--- ¡Ahora sí usa lastrowid para obtener el ID generado!
 
-        
+                for socio_id in socio_ids:
+                    cursor.execute("""
+                        INSERT INTO socio_credito (socio_id, credito_letra)
+                        VALUES (?, ?)
+                    """, (socio_id, new_letra))
 
+                self.conn.commit()
+                print(f"✅ Crédito #{new_letra} creado exitosamente.")
+                return new_letra
+            except Exception as e:
+                print(f"❌ Error al crear crédito: {e}")
+                self.conn.rollback() # Añade rollback en caso de error
+                return None
+
+    
 # socios operacones
 
     def add_member(self, cc, nombres, apellidos, phone, photo_path, saldo=0):
@@ -526,3 +533,19 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo saldo del socio {member_id}: {e}")
             return 0 # Retorna 0 en caso de error o si el socio no existe
+
+    def set_sequence_start_value(self, table_name: str, start_value: int):
+            """
+            Establece el valor de la secuencia AUTOINCREMENT para una tabla dada.
+            Usa INSERT OR REPLACE para asegurar que la entrada existe o se actualiza.
+            Esto asegura que el próximo ID insertado sea start_value + 1.
+            """
+            try:
+                cursor = self.conn.cursor()
+                # *** CAMBIO AQUÍ: Usamos INSERT OR REPLACE ***
+                cursor.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES (?, ?)", (table_name, start_value))
+                self.conn.commit()
+                print(f"✅ Secuencia de '{table_name}' establecida a {start_value}. Siguiente ID será {start_value + 1}.")
+            except Exception as e:
+                print(f"❌ Error al establecer la secuencia para '{table_name}': {e}")
+                self.conn.rollback()
