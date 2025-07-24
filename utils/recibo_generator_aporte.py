@@ -35,9 +35,6 @@ TOTAL_GENERAL_CELL = 'K22' # Celda para el Total a Pagar
 
 DEFAULT_GASTOS_ADMIN = 3000 
 
-
-
-
 def generar_recibo_solo_aportes(
     db_manager, 
     recibo_id: int,
@@ -55,7 +52,7 @@ def generar_recibo_solo_aportes(
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
-        file_name = f"Recibo_Aporte_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         wb = load_workbook(TEMPLATE_APORTE_PATH)

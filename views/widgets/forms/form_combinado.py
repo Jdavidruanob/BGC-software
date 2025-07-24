@@ -518,7 +518,7 @@ class FormCombinado(QWidget):
                         
                         self.db.add_to_auxiliar(
                             fecha=fecha_actual,
-                            tipo=f"Pago Credito - Letra {letra_id} Cuota {nro}", 
+                            tipo=f"Pago Credito", 
                             socio=nombre_socio_log,
                             numero=recibo_id,
                             monto=monto_total_cuota,
