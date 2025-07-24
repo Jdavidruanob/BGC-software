@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import os
 from datetime import datetime, timedelta
-
+from dateutil.relativedelta import relativedelta
 from config import load_styles, format_miles_colombian_int
 
 class CreditLiquidationPage(QWidget):
@@ -150,8 +150,7 @@ class CreditLiquidationPage(QWidget):
 
         for i in range(cuotas):
             nro_cuota = i + 1
-            fecha = fecha_primera_cuota + timedelta(days=30 * i)
-
+            fecha = fecha_inicio + relativedelta(months=+nro_cuota)
             cuota_valor = cuota_final if i == cuotas - 1 else cuota_base
             intereses = round(saldo * interes)
             cuota_mensual = cuota_valor + intereses

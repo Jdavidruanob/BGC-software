@@ -9,6 +9,7 @@ import os
 from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
 from views.widgets.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
+from utils.credit_liquidation_generator import generar_liquidacion_credito
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -227,14 +228,15 @@ class FormNuevoCredito(QWidget):
                 return
 
             socio_ids = [s['id'] for s in self.socios_seleccionados]
-            letra = self.db.add_credit(socio_ids, capital, interes, cuotas)
-            view_name = f"liquidation_credit_{letra}"
-            credit = self.db.get_credit_by_letra(letra)
-            for id in socio_ids:
-                liquidation_view = CreditLiquidationPage(credit, member_id = id, main_window=self.main_window, db_manager=self.db)
-                self.main_window.add_view(view_name, liquidation_view)
             
+            # La función add_credit guarda el crédito y devuelve la letra
+            letra = self.db.add_credit(socio_ids, capital, interes, cuotas)
+            
+            # Obtener los datos completos del crédito recién creado para pasarlos al generador
+            credit_data_from_db = self.db.get_credit_by_letra(letra) 
+
             if letra:
+                # Actualizar saldo caja global
                 saldo_actual = self.db.get_config_value_as_int("saldo_en_caja")
                 nuevo_saldo = saldo_actual - capital
                 self.db.set_config_value("saldo_en_caja", str(nuevo_saldo))
@@ -242,6 +244,7 @@ class FormNuevoCredito(QWidget):
                 fecha_actual = date.today().strftime("%Y-%m-%d")
                 nombres = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
 
+                # Guardar en auxiliar
                 self.db.add_to_auxiliar(
                     fecha=fecha_actual,
                     tipo="Nuevo Credito",
@@ -251,6 +254,7 @@ class FormNuevoCredito(QWidget):
                     saldo=nuevo_saldo
                 )
 
+                # Agregar visual en AssistantPage
                 if self.assistant_page:
                     self.assistant_page.add_operation({
                         "fecha": fecha_actual,
@@ -261,21 +265,41 @@ class FormNuevoCredito(QWidget):
                         "saldo": nuevo_saldo
                     })
 
-                show_success(self, "", "Crédito creado exitosamente.")
+                # --- Generar el archivo de liquidación Excel ---
+                generated_liq_path = generar_liquidacion_credito(
+                    credit_data=credit_data_from_db,
+                    socios_list=self.socios_seleccionados # Pasamos la lista de diccionarios de socios
+                )
+                
+                # Crear la vista de liquidación en la UI (esto ya lo tienes)
+                for id_socio in socio_ids: # Iterar por cada socio para la vista
+                    liquidation_view = CreditLiquidationPage(
+                        credit_data_from_db, 
+                        member_id=id_socio, 
+                        main_window=self.main_window, 
+                        db_manager=self.db
+                    )
+                    view_name = f"liquidation_credit_{letra}_{id_socio}" # Un nombre único por socio si lo necesitas
+                    self.main_window.add_view(view_name, liquidation_view)
 
+                show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}. Liquidación generada en:\n{generated_liq_path}")
+
+                # Limpiar el formulario
                 self.capital_input.clear()
                 self.interes_input.setText("0.01")
                 self.cuotas_input.clear()
                 self.socios_seleccionados.clear()
-
-                # Limpia las etiquetas
                 while self.selected_container.count():
                     item = self.selected_container.takeAt(0)
                     if item.widget():
                         item.widget().deleteLater()
+                self.load_socios() # Recargar socios y resetear el combo
+                self.actualizar_resumen_credito() # Limpiar el resumen
 
         except Exception as e:
             show_error(self, "", f"Error al crear crédito:\n{e}")
+            import traceback
+            traceback.print_exc() # Para ver el error completo en la consola
 
     def refresh(self):
         """Refresca el formulario: limpia inputs, recarga socios y borra etiquetas previas."""
