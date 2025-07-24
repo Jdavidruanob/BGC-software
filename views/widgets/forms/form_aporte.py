@@ -11,7 +11,7 @@ from config import load_styles, load_svg_icon, format_miles_colombian_int, parse
 from views.widgets.message_boxes import show_success, show_error, show_warning
 
 # Importar la función generar_recibo_general
-from utils.recibo_generator import generar_recibo_general, DEFAULT_GASTOS_ADMIN # Importamos también la constante si la usamos
+from utils.recibo_generator_aporte import generar_recibo_solo_aportes, DEFAULT_GASTOS_ADMIN # Importamos también la constante si la usamos
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -173,18 +173,15 @@ class FormAporte(QWidget):
                 return
             
             # Es CRUCIAL obtener el saldo actual del socio ANTES de aplicar el aporte.
-            # Asumimos que `self.socios_data` está actualizado o que tenemos un método para obtener el saldo actual.
-            # Lo más seguro es que `get_all_members_full()` ya te devuelva el saldo.
             socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
             if not socio_data_full:
                 show_error(self, "", f"No se encontraron datos completos para el socio ID: {socio_selected['id']}")
                 return
 
-            saldo_antes_aporte = socio_data_full['saldo'] # Este es el saldo actual del socio
+            saldo_antes_aporte = socio_data_full['saldo'] 
             
             aportes_for_db.append((socio_data_full['id'], raw_monto))
             # Para el recibo, necesitamos: (socio_data_dict, monto_aporte_int, saldo_socio_antes, saldo_socio_despues)
-            # El saldo_despues_aporte se calcula para el recibo, no se usa para la DB update (que es relativa)
             aportes_for_recibo.append((
                 socio_data_full, 
                 raw_monto, 
@@ -195,6 +192,12 @@ class FormAporte(QWidget):
         if not aportes_for_db:
             show_warning(self, "", "Debes agregar al menos un aporte.")
             return
+        
+        # Validar si se excede el límite de 10 aportes para el template
+        if len(aportes_for_db) > 10:
+            show_warning(self, "", "No se pueden registrar más de 10 aportes en un solo recibo. Por favor, genere un segundo recibo si es necesario.")
+            return
+
 
         try:
             cursor = self.db.conn.cursor()
@@ -242,19 +245,15 @@ class FormAporte(QWidget):
             self.db.conn.commit()
 
             # Obtener los gastos de administración.
-            # Si DEFAULT_GASTOS_ADMIN es fijo, puedes usarlo directamente.
-            # Si viene de la DB:
-            # gastos_admin_value = self.db.get_config_value_as_int("gastos_administracion") 
-            # O simplemente usar la constante si es fija:
-            gastos_admin_value = DEFAULT_GASTOS_ADMIN 
+            gastos_admin_value = DEFAULT_GASTOS_ADMIN # Usamos la constante importada
 
-            # Llamar a la función generar_recibo_general para crear el recibo Excel
-            recibo_path = generar_recibo_general(
+            # Llamar a la función generar_recibo_solo_aportes para crear el recibo Excel
+            # YA NO SE PASA pagos_credito_info
+            recibo_path = generar_recibo_solo_aportes(
                 db_manager=self.db, # Pasamos la instancia de DBManager
                 recibo_id=recibo_id,
                 recibi_de_data=recibi, # Dict completo del socio que recibe
                 aportes_info=aportes_for_recibo, # La lista ya preparada
-                pagos_credito_info=[], # En este formulario de Aportes, esta lista siempre va vacía
                 gastos_admin=gastos_admin_value # Pasa el valor de gastos de administración
             )
             
@@ -271,6 +270,7 @@ class FormAporte(QWidget):
             show_error(self, "", f"Error al registrar aporte:\n{e}")
             import traceback
             traceback.print_exc() # Para depuración
+
 
     def refresh(self):
         # Este método ahora puede simplemente llamar a load_socios
