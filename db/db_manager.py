@@ -497,3 +497,19 @@ class DBManager:
         """, (key, value))
         self.conn.commit()
 
+    # --- MÉTODO QUE FALTABA ---
+    def get_total_cuotas_credito(self, credito_letra):
+        """
+        Obtiene el número total de cuotas para un crédito específico.
+        Este valor está en la tabla 'creditos' en la columna 'no_cuotas'.
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT no_cuotas FROM creditos WHERE letra = ?", (credito_letra,))
+            result = cursor.fetchone()
+            if result:
+                return result['no_cuotas']
+            return 0 # Retorna 0 si la letra no se encuentra
+        except sqlite3.Error as e:
+            print(f"Error al obtener el total de cuotas para la letra {credito_letra}: {e}")
+            return 0
