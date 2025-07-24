@@ -8,6 +8,7 @@ import os
 
 from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
 from views.widgets.message_boxes import show_success, show_error, show_warning
+from utils.recibo_generator_retiro import generar_recibo_retiro
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -145,34 +146,47 @@ class FormRetiro(QWidget):
 
             # 4. Actualizar saldo caja global
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
-            nuevo_saldo = saldo_caja - monto
-            self.db.set_config_value("saldo_en_caja", str(nuevo_saldo))
+            nuevo_saldo_caja = saldo_caja - monto # Cambié el nombre de la variable para evitar confusión
+            self.db.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
 
             # 5. Guardar en auxiliar
             fecha_actual = date.today().strftime("%Y-%m-%d")
-            nombre = f"{socio['nombres']} {socio['apellidos']}"
+            nombre_completo_socio = f"{socio['nombres']} {socio['apellidos']}" # Usar para auxiliar
+
             self.db.add_to_auxiliar(
                 fecha=fecha_actual,
                 tipo="Retiro",
-                socio=nombre,
+                socio=nombre_completo_socio, # Usar el nombre completo
                 numero=recibo_id,
-                monto=-monto,
-                saldo=nuevo_saldo
+                monto=-monto, # Los retiros son valores negativos en auxiliar
+                saldo=socio['saldo'] - monto # El saldo es el nuevo saldo del socio
             )
 
-            # 6. Agregar visual en AssistantPage
+            # 6. Generar el recibo de retiro en Excel
+            generated_receipt_path = generar_recibo_retiro(
+                recibo_id=recibo_id,
+                socio_data={'nombres': socio['nombres'], 'apellidos': socio['apellidos']},
+                monto_retiro=monto
+            )
+
+            # 7. Agregar visual en AssistantPage
             if self.assistant_page:
                 self.assistant_page.add_operation({
                     "fecha": fecha_actual,
                     "tipo": "Retiro",
-                    "socio": nombre,
+                    "socio": nombre_completo_socio,
                     "numero": recibo_id,
                     "monto": -monto,
-                    "saldo": nuevo_saldo
+                    "saldo": socio['saldo'] - monto
                 })
 
             self.db.conn.commit()
-            show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}.")
+
+            # Mostrar mensaje de éxito y la ruta del archivo generado
+            if generated_receipt_path:
+                show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id} generado en:\n{generated_receipt_path}")
+            else:
+                show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id} (no se pudo generar el archivo).")
 
             self.refresh()
 

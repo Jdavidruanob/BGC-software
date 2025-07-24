@@ -4,15 +4,14 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment 
 from datetime import date
-from config import format_miles_colombian_int, format_full_name_for_excel
+from config import format_miles_colombian_int, format_full_name_for_excel, BASE_APP_DIR
 
 # --- Rutas y Constantes ---
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
 TEMPLATE_COMBINADO_REL_PATH = os.path.join("assets", "templates", "recibo_template_combinado.xlsx")  
-TEMPLATE_COMBINADO_PATH = os.path.join(BASE_DIR, TEMPLATE_COMBINADO_REL_PATH)
+TEMPLATE_COMBINADO_PATH = os.path.join(BASE_APP_DIR, TEMPLATE_COMBINADO_REL_PATH)
 
-OUTPUT_FOLDER_REL_PATH = "recibos_generados"
-OUTPUT_FOLDER_PATH = os.path.join(BASE_DIR, OUTPUT_FOLDER_REL_PATH)
+OUTPUT_FOLDER_REL_PATH = "Recibos"
+OUTPUT_FOLDER_PATH = os.path.join(BASE_APP_DIR, OUTPUT_FOLDER_REL_PATH)
 
 # --- Constantes de Celda Específicas para recibo_template_combinado.xlsx ---
 RECIBO_ID_CELL = 'D4'
