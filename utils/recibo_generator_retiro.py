@@ -9,7 +9,7 @@ from config import BASE_APP_DIR, format_miles_colombian_int, format_full_name_fo
 TEMPLATE_RETIRO_REL_PATH = os.path.join("assets", "templates", "recibo_template_retiro.xlsx")
 TEMPLATE_RETIRO_PATH = os.path.join(BASE_APP_DIR, TEMPLATE_RETIRO_REL_PATH)
 
-OUTPUT_FOLDER_REL_PATH = "devoluciones" # La carpeta para retiros/devoluciones
+OUTPUT_FOLDER_REL_PATH = "Recibos" # La carpeta para retiros/devoluciones
 OUTPUT_FOLDER_PATH = os.path.join(BASE_APP_DIR, OUTPUT_FOLDER_REL_PATH)
 
 # --- Constantes de Celda Específicas para recibo_template_retiro.xlsx ---
@@ -38,7 +38,7 @@ def generar_recibo_retiro(
         # Asegúrate de que la carpeta de salida exista
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
 
-        file_name = f"Recibo_Retiro_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         wb = load_workbook(TEMPLATE_RETIRO_PATH)
