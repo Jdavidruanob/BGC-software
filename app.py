@@ -30,13 +30,7 @@ def main():
         sys.exit(1)
 
     db_manager.create_tables() # Crea las tablas si no existen
-
-
-    """  db_manager.add_member("10101010", "Carlos", "Pérez", "3111234567", None)
-    db_manager.add_member("20202020", "Lucía", "Gómez", "3127654321", None)
-    db_manager.add_member("30303030", "Andrés", "Ruiz", "3139876543", None)
-    db_manager.add_member("40404040", "Nathalia", "Burbano", "3145678910", None)
-    db_manager.add_member("50505050", "Jorge", "Mena", "3155555555", None) """
+    db_manager.add_member("10101010", "Ejemplo", "socio", "3111234567", None)
 
     # Crear ventana principal
     window = MainWindow()
