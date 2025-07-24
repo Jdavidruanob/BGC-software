@@ -513,3 +513,16 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"Error al obtener el total de cuotas para la letra {credito_letra}: {e}")
             return 0
+        
+    def get_member_balance(self, member_id):
+        """
+        Obtiene el saldo actual de un socio por su ID.
+        """
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT saldo FROM socios WHERE id = ?", (member_id,))
+            result = cursor.fetchone()
+            return result['saldo'] if result else 0
+        except sqlite3.Error as e:
+            print(f"❌ Error obteniendo saldo del socio {member_id}: {e}")
+            return 0 # Retorna 0 en caso de error o si el socio no existe
