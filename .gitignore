@@ -3,3 +3,4 @@
 *.db
 __pycache__/
 recibos_generados/
+devoluciones/

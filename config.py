@@ -1,4 +1,19 @@
-# constants
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QScrollArea
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QIcon, QPixmap, QPainter
+from PySide6.QtSvg import QSvgRenderer
+import os
+import sys # <-- Importa sys
+
+
+# --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
+if getattr(sys, 'frozen', False):
+    # Si estamos en un ejecutable de PyInstaller, la base es el directorio donde está el .exe
+    BASE_APP_DIR = os.path.dirname(sys.executable)
+else:
+    # Si estamos en desarrollo (ejecutando con Python), la base es el directorio de 'config.py'
+    # que está en la raíz de tu proyecto (BGC-software/)
+    BASE_APP_DIR = os.path.abspath(os.path.dirname(__file__))
 
 PRIMARY_COLOR = "#1a365d"     # Azul oscuro (fondo navbar)
 SECONDARY_COLOR = "#8C5B2F"   # Marrón (hover y botón activo)
@@ -6,10 +21,7 @@ TEXT_COLOR = "#FFFFFF"        # Texto blanco
 #e3e9f1 bordes
 # functions globlaes
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QScrollArea
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QPixmap, QPainter
-from PySide6.QtSvg import QSvgRenderer
+
 
 def load_styles(self, qss_path):
         try:
