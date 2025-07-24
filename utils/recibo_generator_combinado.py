@@ -70,7 +70,7 @@ def generar_recibo_combinado(
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
-        file_name = f"Recibo_Combinado_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         wb = load_workbook(TEMPLATE_COMBINADO_PATH) 
@@ -106,7 +106,7 @@ def generar_recibo_combinado(
                 formatted_socio_name = format_full_name_for_excel(
                     socio_data['nombres'], 
                     socio_data['apellidos'], 
-                    max_length=40 
+                    max_length=24
                 )
                 ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
                 ws[f'{APORTE_SALDO_APORTES_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_anterior_aporte) 

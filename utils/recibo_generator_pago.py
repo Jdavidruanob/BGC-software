@@ -70,7 +70,7 @@ def generar_recibo_solo_pagos(
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
-        file_name = f"Recibo_Pago_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         wb = load_workbook(TEMPLATE_PAGO_PATH) 
