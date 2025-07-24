@@ -1,0 +1,171 @@
+import os
+from openpyxl import load_workbook
+from openpyxl.styles import Alignment 
+from datetime import date
+from config import format_miles_colombian_int 
+
+# --- Configuración de rutas (Ajusta según tu estructura de proyecto) ---
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
+TEMPLATE_APORTE_REL_PATH = os.path.join("assets", "templates", "recibo_template_aporte.xlsx") 
+TEMPLATE_APORTE_PATH = os.path.join(BASE_DIR, TEMPLATE_APORTE_REL_PATH)
+
+OUTPUT_FOLDER_REL_PATH = "recibos_generados"
+OUTPUT_FOLDER_PATH = os.path.join(BASE_DIR, OUTPUT_FOLDER_REL_PATH)
+
+# --- Constantes de Celda para recibo_template_aporte.xlsx ---
+RECIBO_ID_CELL = 'D4'
+FECHA_CELL = 'I4'
+RECIBI_DE_CELL = 'G6' # Celda para "Recibí de"
+
+# Aportes - Rango de 10 filas (de Fila 9 a Fila 18)
+APORTE_DATA_START_ROW = 9 
+APORTE_DATA_END_ROW = 18 # Fila final para datos de aportes
+MAX_APORTES_ROWS_IN_TEMPLATE = 10 # 18 - 9 + 1 = 10 filas disponibles
+
+APORTE_NOMBRE_COL = 'B'
+APORTE_SALDO_COL = 'F'
+APORTE_MONTO_COL = 'H'
+APORTE_NUEVO_SALDO_COL = 'J'
+
+APORTE_TOTAL_CELL = 'H19' # Celda para el Total de Aportes
+
+# Totales Finales
+GASTOS_ADMIN_CELL = 'K21' # Celda para Gastos de Administración
+TOTAL_GENERAL_CELL = 'K22' # Celda para el Total a Pagar
+
+DEFAULT_GASTOS_ADMIN = 3000 
+
+# Nueva función auxiliar para formatear nombres largos
+def format_full_name_for_excel(nombres, apellidos, max_length=24):
+    """
+    Formatea un nombre completo (nombres + apellidos) para que se ajuste a una longitud máxima,
+    reduciendo el segundo apellido o segundo nombre a una inicial si es necesario.
+    """
+    original_full_name = f"{nombres} {apellidos}"
+    
+    if len(original_full_name) <= max_length:
+        return original_full_name
+
+    parts_nombres = nombres.split()
+    parts_apellidos = apellidos.split()
+
+    # Intentar reducir solo el segundo apellido (si existe)
+    if len(parts_apellidos) > 1:
+        temp_apellidos = f"{parts_apellidos[0]} {parts_apellidos[1][0]}."
+        temp_full_name = f"{nombres} {temp_apellidos}"
+        if len(temp_full_name) <= max_length:
+            return temp_full_name
+    
+    # Intentar reducir solo el segundo nombre (si existe)
+    if len(parts_nombres) > 1:
+        temp_nombres = f"{parts_nombres[0]} {parts_nombres[1][0]}."
+        temp_full_name = f"{temp_nombres} {apellidos}"
+        if len(temp_full_name) <= max_length:
+            return temp_full_name
+
+    # Intentar reducir segundo nombre Y segundo apellido (si ambos existen)
+    if len(parts_nombres) > 1 and len(parts_apellidos) > 1:
+        reduced_nombres = f"{parts_nombres[0]} {parts_nombres[1][0]}."
+        reduced_apellidos = f"{parts_apellidos[0]} {parts_apellidos[1][0]}."
+        final_name = f"{reduced_nombres} {reduced_apellidos}"
+        if len(final_name) <= max_length:
+            return final_name
+            
+    # Último recurso: si nada funcionó, truncar de la manera más sensata
+    # Mantener primer nombre y primer apellido. Si hay espacio, agregar iniciales.
+    final_parts = [parts_nombres[0]] if parts_nombres else []
+    
+    if len(parts_nombres) > 1:
+        initial = f"{parts_nombres[1][0]}."
+        if len(" ".join(final_parts + [initial, parts_apellidos[0] if parts_apellidos else ""])) <= max_length:
+            final_parts.append(initial)
+
+    if parts_apellidos:
+        final_parts.append(parts_apellidos[0])
+
+    if len(parts_apellidos) > 1:
+        initial = f"{parts_apellidos[1][0]}."
+        if len(" ".join(final_parts + [initial])) <= max_length:
+            final_parts.append(initial)
+            
+    return " ".join(final_parts) # Podría ser un poco más sofisticado, pero esto ya cubre la mayoría de los casos.
+
+
+def generar_recibo_solo_aportes(
+    db_manager, 
+    recibo_id: int,
+    recibi_de_data: dict, # Ahora se procesará para mayúsculas y alineación
+    aportes_info: list = None, 
+    gastos_admin: int = DEFAULT_GASTOS_ADMIN 
+):
+    """
+    Genera un recibo de solo aportes utilizando la plantilla recibo_template_aporte.xlsx.
+    Rellena hasta 10 filas de aportes y los totales.
+    Ajusta el formato de los nombres de los socios y del "Recibí de".
+    """
+    if aportes_info is None:
+        aportes_info = []
+
+    try:
+        os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
+        file_name = f"Recibo_Aporte_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
+
+        wb = load_workbook(TEMPLATE_APORTE_PATH)
+        ws = wb.active
+
+        # --- Reemplazar datos de CABECERA ---
+        ws[RECIBO_ID_CELL] = recibo_id
+        ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
+        
+        # AJUSTE 1: Nombre "Recibí de" en MAYÚSCULAS y alineado al centro
+        recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
+        ws[RECIBI_DE_CELL] = recibi_de_full_name
+        ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center') # Alineación al centro
+
+        # --- PROCESAR APORTES ---
+        total_aportes_acumulado = 0
+        num_aportes_actual = len(aportes_info)
+        
+        for i in range(MAX_APORTES_ROWS_IN_TEMPLATE):
+            row_to_fill = APORTE_DATA_START_ROW + i
+            
+            if i < num_aportes_actual:
+                socio_data, monto_aporte, saldo_socio_antes, saldo_socio_despues = aportes_info[i]
+                
+                # AJUSTE 2: Formatear el nombre del socio para los detalles del aporte
+                formatted_socio_name = format_full_name_for_excel(
+                    socio_data['nombres'], 
+                    socio_data['apellidos'], 
+                    max_length=24 # Basado en tu indicación
+                )
+                ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
+                ws[f'{APORTE_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_antes)
+                ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = format_miles_colombian_int(monto_aporte)
+                ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_despues)
+                total_aportes_acumulado += monto_aporte
+            else:
+                # Limpiar las filas no utilizadas
+                ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = "" 
+                ws[f'{APORTE_SALDO_COL}{row_to_fill}'] = "" 
+                ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = "" 
+                ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = "" 
+
+        # Escribir el total de aportes
+        ws[APORTE_TOTAL_CELL] = format_miles_colombian_int(total_aportes_acumulado)
+
+        # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
+        ws[GASTOS_ADMIN_CELL] = format_miles_colombian_int(gastos_admin)
+        
+        total_general = total_aportes_acumulado + gastos_admin
+        ws[TOTAL_GENERAL_CELL] = format_miles_colombian_int(total_general)
+
+        # --- Guardar el recibo ---
+        wb.save(output_path)
+        return output_path
+
+    except Exception as e:
+        print(f"Error al generar recibo solo de aportes: {e}")
+        import traceback
+        traceback.print_exc() 
+        return None
