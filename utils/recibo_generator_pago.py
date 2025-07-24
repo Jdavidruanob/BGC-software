@@ -46,22 +46,23 @@ def generar_recibo_solo_pagos(
     db_manager, 
     recibo_id: int,
     recibi_de_data: dict, 
-    pagos_credito_info: list = None, 
+    pagos_credito_info: list = None, # Ahora esta lista contiene entradas CONSOLIDADAS
     gastos_admin: int = DEFAULT_GASTOS_ADMIN 
 ):
     """
     Genera un recibo de solo pagos de crédito utilizando la plantilla recibo_template_pago.xlsx.
-    Rellena hasta 11 filas de pagos, calcula los totales y formatea nombres.
+    Rellena hasta 11 filas de pagos consolidados, calcula los totales y formatea nombres.
     
-    pagos_credito_info: List[Dict] donde cada dict contiene:
+    pagos_credito_info: List[Dict] donde cada dict contiene detalles CONSOLIDADOS:
     {
       'socio_data': {...},                 # Diccionario completo del socio
       'letra_id': 'ABC-123',               # ID de la letra
-      'nro_cuota': 1,                      # Número de cuota pagada
-      'valor_cuota': 10000,                # Valor de capital de la cuota
-      'interes_mes': 500,                  # Intereses de la cuota
-      'saldo_capital_antes_pago': 50000,   # Saldo antes de este pago de cuota
-      'saldo_capital_despues_pago': 40000  # Saldo después de este pago de cuota
+      'nro_cuotas_pagadas_start': 1,       # Número de la primera cuota pagada
+      'nro_cuotas_pagadas_end': 3,         # Número de la última cuota pagada
+      'valor_capital_consolidado': 30000,  # Suma de los capitales de las cuotas
+      'interes_consolidado': 1500,         # Suma de los intereses de las cuotas
+      'saldo_capital_antes_pago': 50000,   # Saldo antes del primer pago en este grupo
+      'saldo_capital_despues_pago': 40000  # Saldo después del último pago en este grupo
     }
     """
     if pagos_credito_info is None:
@@ -79,37 +80,36 @@ def generar_recibo_solo_pagos(
         ws[RECIBO_ID_CELL] = recibo_id
         ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
         
-        # Nombre "Recibí de" en MAYÚSCULAS y alineado al centro
         recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name
         ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center') 
 
-        # --- PROCESAR PAGOS DE CRÉDITO ---
-        total_creditos_acumulado = 0
-        num_credit_details = len(pagos_credito_info)
+        # --- PROCESAR PAGOS DE CRÉDITO CONSOLIDADOS ---
+        total_acumulado_capital_interes = 0
+        num_credit_details_consolidated = len(pagos_credito_info)
 
         # Si el número de detalles excede el máximo, truncar para evitar errores en la plantilla.
-        if num_credit_details > MAX_CREDITO_ROWS_IN_TEMPLATE:
-            print(f"ADVERTENCIA: Se intentaron procesar {num_credit_details} detalles de crédito, "
+        if num_credit_details_consolidated > MAX_CREDITO_ROWS_IN_TEMPLATE:
+            print(f"ADVERTENCIA: Se intentaron procesar {num_credit_details_consolidated} entradas consolidadas, "
                   f"pero la plantilla solo soporta {MAX_CREDITO_ROWS_IN_TEMPLATE}. Se truncará.")
             pagos_credito_info = pagos_credito_info[:MAX_CREDITO_ROWS_IN_TEMPLATE]
-            num_credit_details = len(pagos_credito_info)
+            num_credit_details_consolidated = len(pagos_credito_info)
         
         # Cache para almacenar el número total de cuotas por letra
         cuotas_info_cache = {}
 
-        # Iterar sobre los detalles de cuotas para llenar las filas
+        # Iterar sobre los detalles consolidados para llenar las filas
         for i in range(MAX_CREDITO_ROWS_IN_TEMPLATE):
             row_to_fill = CREDITO_DATA_START_ROW + i
             
-            if i < num_credit_details:
-                detalle_cuota = pagos_credito_info[i]
+            if i < num_credit_details_consolidated:
+                detalle_consolidado = pagos_credito_info[i]
                 
-                socio_data = detalle_cuota['socio_data'] 
-                letra_id = detalle_cuota['letra_id']
-                nro_cuota = detalle_cuota['nro_cuota']
+                socio_data = detalle_consolidado['socio_data'] 
+                letra_id = detalle_consolidado['letra_id']
+                nro_cuotas_start = detalle_consolidado['nro_cuotas_pagadas_start']
+                nro_cuotas_end = detalle_consolidado['nro_cuotas_pagadas_end']
 
-                # Formatear el nombre del socio
                 formatted_socio_name = format_full_name_for_excel(
                     socio_data['nombres'], 
                     socio_data['apellidos'], 
@@ -118,21 +118,24 @@ def generar_recibo_solo_pagos(
                 ws[f'{CREDITO_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
                 ws[f'{CREDITO_LETRA_COL}{row_to_fill}'] = letra_id
 
-                # Formato de la columna 'cuota' (ej: "1/36")
+                # Formato de la columna 'cuota' (ej: "1-3/36" o "1/36" si es una sola)
                 if letra_id not in cuotas_info_cache:
-                    # Asumiendo que db_manager tiene un método para obtener el total de cuotas
                     total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
                     cuotas_info_cache[letra_id] = total_cuotas_credito
                 
-                cuota_display = f"{nro_cuota} / {cuotas_info_cache[letra_id]}"
+                if nro_cuotas_start == nro_cuotas_end:
+                    cuota_display = f"{nro_cuotas_start} / {cuotas_info_cache[letra_id]}"
+                else:
+                    cuota_display = f"{nro_cuotas_start}-{nro_cuotas_end} / {cuotas_info_cache[letra_id]}"
+                
                 ws[f'{CREDITO_CUOTA_COL}{row_to_fill}'] = cuota_display
                 
-                ws[f'{CREDITO_SDO_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_cuota['saldo_capital_antes_pago']) 
-                ws[f'{CREDITO_AB_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_cuota['valor_cuota'])
-                ws[f'{CREDITO_INTERES_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_cuota['interes_mes'])
-                ws[f'{CREDITO_N_SDOCAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_cuota['saldo_capital_despues_pago'])
+                ws[f'{CREDITO_SDO_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['saldo_capital_antes_pago']) 
+                ws[f'{CREDITO_AB_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['valor_capital_consolidado'])
+                ws[f'{CREDITO_INTERES_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['interes_consolidado'])
+                ws[f'{CREDITO_N_SDOCAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['saldo_capital_despues_pago'])
                 
-                total_creditos_acumulado += (detalle_cuota['valor_cuota'] + detalle_cuota['interes_mes'])
+                total_acumulado_capital_interes += (detalle_consolidado['valor_capital_consolidado'] + detalle_consolidado['interes_consolidado'])
             else:
                 # Limpiar las filas no utilizadas
                 ws[f'{CREDITO_NOMBRE_COL}{row_to_fill}'] = "" 
@@ -143,13 +146,13 @@ def generar_recibo_solo_pagos(
                 ws[f'{CREDITO_INTERES_COL}{row_to_fill}'] = "" 
                 ws[f'{CREDITO_N_SDOCAP_COL}{row_to_fill}'] = "" 
 
-        # Escribir el total de créditos
-        ws[CREDITO_TOTAL_CELL] = format_miles_colombian_int(total_creditos_acumulado)
+        # Escribir el total consolidado
+        ws[CREDITO_TOTAL_CELL] = format_miles_colombian_int(total_acumulado_capital_interes)
 
         # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
         ws[GASTOS_ADMIN_CELL_PAGO] = format_miles_colombian_int(gastos_admin) 
         
-        total_general = total_creditos_acumulado + gastos_admin
+        total_general = total_acumulado_capital_interes + gastos_admin
         ws[TOTAL_GENERAL_CELL_PAGO] = format_miles_colombian_int(total_general) 
 
         # --- Guardar el recibo ---

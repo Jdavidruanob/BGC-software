@@ -203,14 +203,15 @@ class FormPagoCredito(QWidget):
             show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
             return
 
-        pagos_cuotas_para_db = [] # (socio_id, letra_id, n_cuotas_a_pagar)
-        pagos_cuotas_para_recibo = [] # Lista plana de dicts de cuotas pagadas individualmente
+        pagos_cuotas_para_db = [] # (socio_id, letra_id, n_cuotas_a_pagar) - Esto sigue igual para la DB
+        
+        # NUEVA ESTRUCTURA PARA EL RECIBO: Agruparemos por letra
+        # clave: letra_id, valor: diccionario de detalles consolidados para esa letra
+        pagos_consolidados_para_recibo = {} 
 
-        total_cuotas_en_recibo = 0
-
-        # Almacenar el último saldo_capital_despues_pago de cada letra para el cálculo dinámico
-        # clave: letra_id, valor: último saldo capital después del pago
-        last_saldo_capital_despues_pago = {} 
+        # Asegurarse de que total_cuotas_en_recibo refleje las FILAS del recibo, no las cuotas individuales.
+        # total_cuotas_en_recibo ahora cuenta las "entradas agrupadas"
+        num_entradas_en_recibo = 0 
 
         for combo, letras_container, _ in self.pagos_widgets:
             socio_selected = combo.currentData()
@@ -218,7 +219,6 @@ class FormPagoCredito(QWidget):
                 show_error(self, "", "Seleccione un socio para cada pago.")
                 return
 
-            # Obtener datos completos del socio para el recibo
             socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
             if not socio_data_full:
                 show_error(self, "", f"No se encontraron datos completos para el socio ID: {socio_selected['id']}")
@@ -244,7 +244,6 @@ class FormPagoCredito(QWidget):
                     show_error(self, "", "Número de cuotas inválido (debe ser un número entero).")
                     return
                 
-                # --- NUEVA LÓGICA PARA OBTENER LAS CUOTAS Y SUS SALDOS PARA EL RECIBO ---
                 cursor_temp = self.db.conn.cursor()
                 
                 # Obtener las cuotas pendientes que se van a pagar, ordenadas por nro_cuota
@@ -261,66 +260,66 @@ class FormPagoCredito(QWidget):
                                f"Sólo quedan {len(cuotas_a_pagar_detalles)} cuotas pendientes para la letra {letra_selected['letra']}, y se intentó pagar {n_cuotas_input}.")
                     return
                 
-                # Para el cálculo del saldo_capital_antes_pago para cada cuota
-                # Necesitamos el saldo capital de la cuota inmediatamente anterior a la primera de este pago.
-                first_cuota_nro = cuotas_a_pagar_detalles[0]['nro_cuota'] if cuotas_a_pagar_detalles else None
-                
-                saldo_antes_primera_cuota_pago = 0
-                if first_cuota_nro is not None:
-                    if first_cuota_nro == 1:
-                        # Si es la primera cuota del crédito, el saldo antes es el capital inicial del crédito
-                        credito_data = self.db.get_credit_by_letra(letra_selected['letra'])
-                        saldo_antes_primera_cuota_pago = credito_data['capital']
+                if not cuotas_a_pagar_detalles:
+                    continue # No hay cuotas para esta letra en esta selección
+
+                # --- Lógica de consolidación para el recibo ---
+                letra_id = letra_selected['letra']
+
+                # Inicializar la entrada consolidada si es la primera vez que se procesa esta letra
+                if letra_id not in pagos_consolidados_para_recibo:
+                    # Obtener el saldo antes de la primera cuota que se va a pagar de esta letra
+                    first_cuota_nro_to_pay = cuotas_a_pagar_detalles[0]['nro_cuota']
+                    
+                    saldo_antes_pago_consolidado = 0
+                    if first_cuota_nro_to_pay == 1:
+                        credito_data = self.db.get_credit_by_letra(letra_id)
+                        saldo_antes_pago_consolidado = credito_data['capital']
                     else:
-                        # Si no es la primera cuota, buscar el saldo_capital de la cuota anterior
                         cursor_temp.execute(
                             "SELECT saldo_capital FROM liquidaciones "
                             "WHERE credito_letra = ? AND nro_cuota = ?", 
-                            (letra_selected['letra'], first_cuota_nro - 1)
+                            (letra_id, first_cuota_nro_to_pay - 1)
                         )
                         result = cursor_temp.fetchone()
-                        if result:
-                            saldo_antes_primera_cuota_pago = result['saldo_capital']
-                        else:
-                            # Esto no debería pasar si la lógica de liquidaciones es correcta
-                            # Pero como fallback, podríamos usar el capital inicial si hay un hueco.
-                            credito_data = self.db.get_credito_by_letra(letra_selected['letra'])
-                            saldo_antes_primera_cuota_pago = credito_data['capital'] # Fallback
-                            print(f"Advertencia: No se encontró la cuota anterior ({first_cuota_nro - 1}) para letra {letra_selected['letra']}. Usando capital inicial.")
+                        saldo_antes_pago_consolidado = result['saldo_capital'] if result else 0 # Fallback 0 si no encuentra (debería existir)
 
-                current_saldo_before_payment = saldo_antes_primera_cuota_pago
+                    pagos_consolidados_para_recibo[letra_id] = {
+                        'socio_data': socio_data_full,
+                        'letra_id': letra_id,
+                        'nro_cuotas_pagadas_start': first_cuota_nro_to_pay, # Primera cuota de este pago
+                        'nro_cuotas_pagadas_end': first_cuota_nro_to_pay,   # Última cuota de este pago (se actualizará)
+                        'valor_capital_consolidado': 0,
+                        'interes_consolidado': 0,
+                        'saldo_capital_antes_pago': saldo_antes_pago_consolidado,
+                        'saldo_capital_despues_pago': 0 # Se actualizará con el último saldo
+                    }
+                    num_entradas_en_recibo += 1 # Contamos una fila por cada letra única
+
+                # Acumular los valores para las cuotas pagadas de esta letra
+                consolidated_entry = pagos_consolidados_para_recibo[letra_id]
+                
+                total_cuotas_letras = self.db.get_total_cuotas_credito(letra_id)
                 
                 for detalle_cuota_db in cuotas_a_pagar_detalles:
-                    nro = detalle_cuota_db['nro_cuota']
-                    monto_capital_cuota = detalle_cuota_db['valor_cuota'] 
-                    interes_cuota = detalle_cuota_db['interes_mes']
-                    
-                    # saldo_capital de la DB es el saldo DESPUÉS de pagar esta cuota
-                    saldo_capital_despues = detalle_cuota_db['saldo_capital'] 
-                    
-                    detalle_para_recibo = {
-                        'socio_data': socio_data_full,
-                        'letra_id': letra_selected['letra'],
-                        'nro_cuota': nro,
-                        'valor_cuota': monto_capital_cuota,
-                        'interes_mes': interes_cuota,
-                        'saldo_capital_antes_pago': current_saldo_before_payment,
-                        'saldo_capital_despues_pago': saldo_capital_despues 
-                    }
-                    pagos_cuotas_para_recibo.append(detalle_para_recibo)
-                    total_cuotas_en_recibo += 1
-                    
-                    # Actualizar el saldo_antes_pago para la próxima cuota en el recibo
-                    current_saldo_before_payment = saldo_capital_despues # El "después" de esta cuota es el "antes" de la siguiente
+                    consolidated_entry['valor_capital_consolidado'] += detalle_cuota_db['valor_cuota']
+                    consolidated_entry['interes_consolidado'] += detalle_cuota_db['interes_mes']
+                    consolidated_entry['nro_cuotas_pagadas_end'] = detalle_cuota_db['nro_cuota'] # Actualiza el fin del rango
+                    # El saldo final de la última cuota pagada será el saldo_capital_despues_pago
+                    consolidated_entry['saldo_capital_despues_pago'] = detalle_cuota_db['saldo_capital']
 
-                pagos_cuotas_para_db.append((socio_selected['id'], letra_selected['letra'], n_cuotas_input))
+                # Agregar para la transacción de DB (esto sigue siendo por cuota individual)
+                pagos_cuotas_para_db.append((socio_selected['id'], letra_id, n_cuotas_input))
 
-        if not pagos_cuotas_para_db:
+        # Convertir el diccionario de pagos consolidados a una lista para el generador de recibos
+        pagos_consolidados_lista = list(pagos_consolidados_para_recibo.values())
+
+        if not pagos_consolidados_lista: # Si la lista está vacía después de la consolidación
             show_warning(self, "", "Agrega al menos un pago.")
             return
 
-        if total_cuotas_en_recibo > MAX_CREDITO_ROWS_IN_TEMPLATE:
-             show_warning(self, "", f"Se excede el límite de {MAX_CREDITO_ROWS_IN_TEMPLATE} cuotas por recibo de pagos. Por favor, genere un segundo recibo si es necesario.")
+        if num_entradas_en_recibo > MAX_CREDITO_ROWS_IN_TEMPLATE:
+             show_warning(self, "", f"Se excede el límite de {MAX_CREDITO_ROWS_IN_TEMPLATE} entradas por recibo de pagos. Por favor, genere un segundo recibo si es necesario.")
              return
 
         try:
@@ -333,14 +332,15 @@ class FormPagoCredito(QWidget):
 
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
 
+            # --- Procesar los pagos individuales para la DB y Auxiliar ---
+            # Esto debe seguir iterando sobre pagos_cuotas_para_db para marcar cada cuota individualmente
             for socio_id, letra_id, n_cuotas_a_pagar in pagos_cuotas_para_db:
-                # Volver a obtener los detalles de las cuotas para la transacción real (solo para marcarlas como pagadas)
                 cursor.execute(
                     "SELECT nro_cuota, valor_cuota, interes_mes, saldo_capital FROM liquidaciones "
                     "WHERE credito_letra = ? AND fecha_pago IS NULL "
                     "ORDER BY nro_cuota LIMIT ?", (letra_id, n_cuotas_a_pagar)
                 )
-                filas_cuotas_a_pagar_transaccion = cursor.fetchall() # Renombrado para claridad
+                filas_cuotas_a_pagar_transaccion = cursor.fetchall()
                 
                 for fila in filas_cuotas_a_pagar_transaccion:
                     nro = fila['nro_cuota']
@@ -348,7 +348,6 @@ class FormPagoCredito(QWidget):
                     interes_cuota = fila['interes_mes']
                     monto_total_cuota = monto_capital_cuota + interes_cuota
 
-                    # Insertar detalle del recibo
                     cursor.execute(
                         "INSERT INTO detalle_recibo "
                         "(recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) "
@@ -356,23 +355,20 @@ class FormPagoCredito(QWidget):
                         (recibo_id, socio_id, letra_id, nro, monto_total_cuota)
                     )
 
-                    # Marcar cuota como pagada
                     cursor.execute(
                         "UPDATE liquidaciones SET fecha_pago = DATE('now') "
                         "WHERE credito_letra = ? AND nro_cuota = ?",
                         (letra_id, nro)
                     )
 
-                    # Sumar al saldo en caja
                     saldo_caja += monto_total_cuota
                     
-                    # Agregar al libro auxiliar (registro de cada cuota)
                     socio_info_for_log = next((s for s in self.socios_data if s["id"] == socio_id), None)
                     nombre_socio_log = f"{socio_info_for_log['nombres']} {socio_info_for_log['apellidos']}" if socio_info_for_log else "Desconocido"
                     
                     self.db.add_to_auxiliar(
                         fecha=fecha_actual,
-                        tipo=f"Pago Credito", 
+                        tipo=f"Pago Credito - Letra {letra_id} Cuota {nro}", 
                         socio=nombre_socio_log,
                         numero=recibo_id,
                         monto=monto_total_cuota,
@@ -389,20 +385,17 @@ class FormPagoCredito(QWidget):
                             "saldo": saldo_caja
                         })
             
-            # Finalmente, actualizar el saldo en caja en la configuración global
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
-
             self.db.conn.commit()
             
-            # Obtener los gastos de administración (usar la constante)
             gastos_admin_value = DEFAULT_GASTOS_ADMIN 
 
-            # Llamar a la función generar_recibo_solo_pagos para crear el recibo Excel
+            # Llamar a la función generar_recibo_solo_pagos con la lista CONSOLIDADA
             recibo_path = generar_recibo_solo_pagos(
-                db_manager=self.db, # Necesario si necesitas get_total_cuotas_credito
+                db_manager=self.db, 
                 recibo_id=recibo_id,
                 recibi_de_data=recibi, 
-                pagos_credito_info=pagos_cuotas_para_recibo, 
+                pagos_credito_info=pagos_consolidados_lista, # <-- Usamos la lista consolidada
                 gastos_admin=gastos_admin_value
             )
             
@@ -411,7 +404,6 @@ class FormPagoCredito(QWidget):
             else:
                 show_warning(self, "", "Pago registrado, pero hubo un error al generar el archivo Excel.")
             
-            # Limpiar formulario y recargar datos
             for _, _, w in self.pagos_widgets:
                 w.setParent(None)
             self.pagos_widgets.clear()
