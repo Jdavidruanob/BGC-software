@@ -193,8 +193,6 @@ class FormPagoCredito(QWidget):
         # Conecta eliminación
         btn_delete_pago.clicked.connect(lambda: wrapper_widget.setParent(None))
 
-        self.pagos_widgets.append((combo, letras_container, wrapper_widget))
-
 
     def on_register(self):
         """Valida y registra el pago en la BD y genera el recibo de pago."""
@@ -203,17 +201,42 @@ class FormPagoCredito(QWidget):
             show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
             return
 
-        pagos_cuotas_para_db = [] # (socio_id, letra_id, n_cuotas_a_pagar) - Esto sigue igual para la DB
-        
-        # NUEVA ESTRUCTURA PARA EL RECIBO: Agruparemos por letra
-        # clave: letra_id, valor: diccionario de detalles consolidados para esa letra
-        pagos_consolidados_para_recibo = {} 
+        pagos_cuotas_para_db = []
+        pagos_consolidados_para_recibo = {}
+        num_entradas_en_recibo = 0
 
-        # Asegurarse de que total_cuotas_en_recibo refleje las FILAS del recibo, no las cuotas individuales.
-        # total_cuotas_en_recibo ahora cuenta las "entradas agrupadas"
-        num_entradas_en_recibo = 0 
+        # --- NUEVA LÓGICA: Recolectar dinámicamente los widgets de pago activos ---
+        current_pagos_widgets = []
+        for i in range(self.pagos_container.count()):
+            wrapper_widget = self.pagos_container.itemAt(i).widget()
+            if wrapper_widget:
+                # Encuentra el QComboBox y el QVBoxLayout dentro del wrapper_widget
+                combo = wrapper_widget.findChild(NoScrollComboBox, "ComboSocioPago")
+                letras_container = wrapper_widget.findChild(QVBoxLayout) # Esto puede ser tricky si hay múltiples QVBoxLayouts. Asegúrate de que sea el correcto.
+                                                                        # Una mejor opción sería darle un objectName al letras_container también.
+                                                                        # Por ahora, asumiremos que es el primer/único QVBoxLayout anidado.
+                
+                # Una forma más robusta de encontrar 'letras_container':
+                # Si el 'wrapper_layout' es el layout principal del 'wrapper_widget'
+                wrapper_layout = wrapper_widget.layout()
+                if wrapper_layout and wrapper_layout.count() > 1: # Esperamos socio_row y letras_container
+                    # El segundo item en el wrapper_layout es el letras_container (siempre y cuando la estructura no cambie)
+                    letras_container_layout_item = wrapper_layout.itemAt(1) 
+                    if letras_container_layout_item and isinstance(letras_container_layout_item, QVBoxLayout):
+                        letras_container = letras_container_layout_item
+                    else:
+                        letras_container = None # Fallback si no lo encuentra
 
-        for combo, letras_container, _ in self.pagos_widgets:
+                if combo and letras_container:
+                    current_pagos_widgets.append((combo, letras_container, wrapper_widget))
+        # --- FIN NUEVA LÓGICA ---
+
+        # Ahora itera sobre la lista recién construida
+        if not current_pagos_widgets:
+            show_warning(self, "", "Agrega al menos un pago.")
+            return
+
+        for combo, letras_container, _ in current_pagos_widgets:
             socio_selected = combo.currentData()
             if not socio_selected:
                 show_error(self, "", "Seleccione un socio para cada pago.")

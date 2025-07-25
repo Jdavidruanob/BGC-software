@@ -32,7 +32,7 @@ def main():
 
     db_manager.create_tables() # Crea las tablas si no existen
 
-    db_manager.add_member("10101010", "Ejemplo", "socio", "3111234567", None)
+    #db_manager.add_member("10101010", "Ejemplo", "socio", "3111234567", None)
     db_manager.set_sequence_start_value("recibos", 230)
     db_manager.set_sequence_start_value("creditos", 437) 
 
