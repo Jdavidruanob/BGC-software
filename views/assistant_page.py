@@ -1,11 +1,14 @@
 from PySide6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame,
-    QTableWidget, QTableWidgetItem, QHeaderView
+    QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit, QComboBox,
+    QDateEdit
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QDate
 import os
 
 from config import load_styles, format_miles_colombian_int
+# Asumiendo que NoScrollComboBox no es necesario aquí si solo usas QComboBox
+# from common.widgets import NoScrollComboBox 
 
 class AssistantPage(QWidget):
     def __init__(self, db_manager):
@@ -13,6 +16,13 @@ class AssistantPage(QWidget):
         self.db_manager = db_manager
         self.page_size = 10
         self.current_page = 0
+        
+        # --- NUEVOS ATRIBUTOS PARA FILTROS ---
+        self.filter_start_date = None
+        self.filter_end_date = None
+        self.filter_operation_type = None
+        self.filter_socio_name = None
+        # --- FIN NUEVOS ATRIBUTOS ---
 
         self.setObjectName("assistantPage")
         main_layout = QVBoxLayout(self)
@@ -32,6 +42,63 @@ class AssistantPage(QWidget):
         top_bar.setLayout(top_bar_layout)
         main_layout.addWidget(top_bar)
 
+        # --- Zona de Filtros ---
+        filters_frame = QFrame()
+        filters_frame.setObjectName("filtersFrame")
+        filters_layout = QVBoxLayout(filters_frame)
+        filters_layout.setContentsMargins(15, 15, 15, 15)
+        filters_layout.setSpacing(10)
+
+        # Fila 1 de filtros: Fechas y Tipo
+        date_type_layout = QHBoxLayout()
+        
+        date_type_layout.addWidget(QLabel("Fecha Inicio:"))
+        self.date_start_edit = QDateEdit(calendarPopup=True)
+        self.date_start_edit.setDate(QDate.currentDate().addDays(-30)) # Por defecto, los últimos 30 días
+        self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
+        date_type_layout.addWidget(self.date_start_edit)
+
+        date_type_layout.addWidget(QLabel("Fecha Fin:"))
+        self.date_end_edit = QDateEdit(calendarPopup=True)
+        self.date_end_edit.setDate(QDate.currentDate())
+        self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
+        date_type_layout.addWidget(self.date_end_edit)
+        
+        date_type_layout.addStretch() # Espaciador
+
+        date_type_layout.addWidget(QLabel("Tipo de Operación:"))
+        self.type_combo = QComboBox()
+        self.type_combo.addItem("Todos", None)
+        self.type_combo.addItem("Aporte", "Aporte")
+        self.type_combo.addItem("Retiro", "Retiro")
+        self.type_combo.addItem("Nuevo Credito", "Nuevo Credito")
+        self.type_combo.addItem("Pago Credito", "Pago Credito")
+        date_type_layout.addWidget(self.type_combo)
+        
+        filters_layout.addLayout(date_type_layout)
+
+        # Fila 2 de filtros: Socio y Botones
+        socio_buttons_layout = QHBoxLayout()
+        socio_buttons_layout.addWidget(QLabel("Socio:"))
+        self.socio_search_input = QLineEdit()
+        self.socio_search_input.setPlaceholderText("Buscar por nombre o apellido del socio")
+        socio_buttons_layout.addWidget(self.socio_search_input)
+
+        self.apply_filters_btn = QPushButton("Aplicar Filtros")
+        self.apply_filters_btn.setObjectName("applyFiltersButton")
+        self.apply_filters_btn.clicked.connect(self.apply_filters)
+        socio_buttons_layout.addWidget(self.apply_filters_btn)
+
+        self.clear_filters_btn = QPushButton("Limpiar Filtros")
+        self.clear_filters_btn.setObjectName("clearFiltersButton")
+        self.clear_filters_btn.clicked.connect(self.clear_filters)
+        socio_buttons_layout.addWidget(self.clear_filters_btn)
+        
+        filters_layout.addLayout(socio_buttons_layout)
+        
+        main_layout.addWidget(filters_frame)
+        # --- Fin Zona de Filtros ---
+
         # --- QTableWidget ---
         self.table_widget = QTableWidget()
         self.table_widget.setObjectName("operationsTable")
@@ -45,45 +112,7 @@ class AssistantPage(QWidget):
         self.table_widget.setHorizontalHeaderLabels(column_headers)
 
         header = self.table_widget.horizontalHeader()
-        
-        # --- CAMBIO CLAVE: Ajustar el modo de redimensionamiento de nuevo ---
-        # Combinamos ResizeToContents para elementos pequeños y Stretch para los que necesitan espacio.
-        # Damos un factor de estiramiento para Socio si queremos que sea significativamente más grande.
-        
-        # Si tienes PySide6 6.2 o superior, puedes usar setSectionResizeMode con el factor de estiramiento:
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents) # Fecha
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents) # Tipo
-        header.setSectionResizeMode(2, QHeaderView.Stretch)          # Socio (se estira más)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents) # Número
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents) # Cuota
-        header.setSectionResizeMode(5, QHeaderView.Stretch)          # Monto (se estira)
-        header.setSectionResizeMode(6, QHeaderView.Stretch)          # Saldo en Caja (se estira)
-        
-        # Para que "Socio" sea MÁS grande que "Monto" y "Saldo en Caja"
-        # Usamos `setSectionResizeMode(index, QHeaderView.Stretch)` para las columnas que deseamos estirar.
-        # Si queremos control proporcional sobre ellas, necesitamos `QHeaderView.Custom` y calcular nosotros los anchos.
-        # Pero generalmente, con múltiples `Stretch`, el espacio se distribuye equitativamente entre ellas.
-        # Para forzar que Socio sea MÁS GRANDE, podemos darle un ancho mínimo considerable.
-        header.setMinimumSectionSize(0) # Resetear cualquier mínimo previo
-        header.setStretchLastSection(True) # Permitir que la última columna se estire para llenar el espacio restante
-                                          # Esto es importante cuando tienes una mezcla de Stretch y ResizeToContents.
-
-        # Alternativa para un "Socio" mucho más grande:
-        # header.setSectionResizeMode(2, QHeaderView.Custom)
-        # self.table_widget.setColumnWidth(2, 300) # Un ancho inicial grande para Socio
-        # Y las demás Stretch o ResizeToContents.
-        # Pero volvemos a Fixed sizes, lo que quieres evitar.
-
-        # Intentemos con Stretch y ResizeToContents nuevamente, pero asegurando que los `QLabel` tengan espacio
-        # Esto se logrará con padding en QSS y el `ResizeToContents` para el tipo.
-        # Para Monto y Saldo en Caja, si el texto se corta, `Stretch` es la mejor opción.
-        # Y para Socio, si queremos que sea "notablemente más grande", podemos darle un peso de estiramiento.
-
-        # *** NUEVO INTENTO DE REDIMENSIONAMIENTO (más robusto) ***
-        # Daremos "pesos" a las columnas que se estiran. Esto requiere un modo de redimensionamiento
-        # específico para cada columna, y PySide/Qt distribuirá el espacio sobrante.
-        header.setSectionResizeMode(QHeaderView.Interactive) # Permite al usuario redimensionar
-        # Establecemos los anchos iniciales. Si no hay suficiente espacio, las columnas Interactive pueden crecer.
+        header.setSectionResizeMode(QHeaderView.Interactive)
         self.table_widget.setColumnWidth(0, 150) # Fecha
         self.table_widget.setColumnWidth(1, 150) # Tipo (para el badge)
         self.table_widget.setColumnWidth(2, 650) # Socio (más grande)
@@ -91,10 +120,6 @@ class AssistantPage(QWidget):
         self.table_widget.setColumnWidth(4, 80)  # Cuota
         self.table_widget.setColumnWidth(5, 130) # Monto (requiere espacio para números grandes)
         self.table_widget.setColumnWidth(6, 150) # Saldo en Caja (requiere espacio para números grandes)
-
-        # Si aún se cortan, es que los anchos iniciales son muy pequeños.
-        # Con `Interactive` el usuario puede ajustarlos, pero queremos que se vean bien por defecto.
-        # Para asegurarnos que los `QLabel` no se corten, el `padding` en QSS es clave.
 
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.verticalHeader().setDefaultSectionSize(50) # Altura de las filas
@@ -110,13 +135,50 @@ class AssistantPage(QWidget):
         qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "assistant_page.qss")
         load_styles(self, qss_path)
 
+        # Cargar la primera página con los filtros iniciales
+        self.apply_filters() # Llama a apply_filters para cargar con las fechas por defecto
+
+    def apply_filters(self):
+        """
+        Recopila los valores de los filtros y recarga la tabla desde la primera página.
+        """
+        self.filter_start_date = self.date_start_edit.date().toString("yyyy-MM-dd")
+        self.filter_end_date = self.date_end_edit.date().toString("yyyy-MM-dd")
+        self.filter_operation_type = self.type_combo.currentData() # currentData() devuelve el valor asociado al item
+        self.filter_socio_name = self.socio_search_input.text().strip()
+
+        # Reiniciar la tabla y la paginación para aplicar los nuevos filtros
+        self.table_widget.setRowCount(0)
+        self.current_page = 0
+        self.load_more_btn.setEnabled(True)
+        self.load_more_btn.setText("Cargar más operaciones")
         self.load_next_page()
 
+    def clear_filters(self):
+        """
+        Limpia todos los filtros y recarga la tabla.
+        """
+        self.date_start_edit.setDate(QDate.currentDate().addDays(-30)) # Vuelve a 30 días atrás
+        self.date_end_edit.setDate(QDate.currentDate())
+        self.type_combo.setCurrentIndex(0) # Selecciona "Todos"
+        self.socio_search_input.clear()
+        
+        # Aplicar filtros después de limpiar para recargar la tabla
+        self.apply_filters()
+
     def load_next_page(self):
-        # Asegúrate de que tu `db_manager.get_auxiliary_operations` devuelva `cuota`
-        # para los tipos de operación "pago credito". Si no, la columna "Cuota"
-        # siempre estará vacía.
-        ops = self.db_manager.get_auxiliary_operations(limit=self.page_size, offset=self.current_page * self.page_size)
+        """
+        Carga la siguiente página de operaciones aplicando los filtros actuales.
+        """
+        ops = self.db_manager.get_auxiliary_operations(
+            limit=self.page_size, 
+            offset=self.current_page * self.page_size,
+            start_date=self.filter_start_date,
+            end_date=self.filter_end_date,
+            operation_type=self.filter_operation_type,
+            socio_name=self.filter_socio_name
+        )
+
         if not ops:
             self.load_more_btn.setEnabled(False)
             self.load_more_btn.setText("No hay más operaciones")
@@ -132,9 +194,56 @@ class AssistantPage(QWidget):
         self.current_page += 1
 
     def add_operation(self, op):
-        self.table_widget.insertRow(0)
-        self.build_operation_row(op, 0)
+        """
+        Añade una operación a la tabla en la primera fila.
+        Útil para añadir operaciones en tiempo real después de un registro.
+        """
+        # Si hay filtros aplicados, la nueva operación podría no aparecer
+        # o aparecer en una posición incorrecta si no está ordenada.
+        # Para simplificar, la añadimos al principio y la visibilidad
+        # dependerá de si cumple los filtros actuales.
         
+        # Si la nueva operación no cumple los filtros actuales, no la añadimos.
+        # Esto requiere recrear la lógica de filtrado aquí para cada operación.
+        # Una alternativa más robusta es simplemente llamar a refresh_view() después de una nueva operación
+        # si queremos que los filtros se apliquen inmediatamente.
+        
+        # Por ahora, la añadiremos directamente, lo que puede causar que aparezca
+        # si los filtros no se han aplicado al instante.
+        
+        # Verifica si la operación cumple los filtros actuales
+        if self._matches_current_filters(op):
+            self.table_widget.insertRow(0)
+            self.build_operation_row(op, 0)
+        # else: no se añade a la vista actual
+
+    def _matches_current_filters(self, op):
+        """
+        Verifica si una operación dada coincide con los filtros actualmente aplicados.
+        Esta es una comprobación simple en el cliente.
+        """
+        # Convertir fechas a QDate para comparación
+        op_date = QDate.fromString(op["fecha"], "yyyy-MM-dd")
+        filter_start_date_obj = QDate.fromString(self.filter_start_date, "yyyy-MM-dd")
+        filter_end_date_obj = QDate.fromString(self.filter_end_date, "yyyy-MM-dd")
+
+        # Filtrar por fecha
+        if not (filter_start_date_obj <= op_date <= filter_end_date_obj):
+            return False
+
+        # Filtrar por tipo de operación
+        if self.filter_operation_type and op["tipo"] != self.filter_operation_type:
+            return False
+
+        # Filtrar por socio
+        if self.filter_socio_name:
+            socio_lower = op["socio"].lower()
+            search_lower = self.filter_socio_name.lower()
+            if search_lower not in socio_lower:
+                return False
+        
+        return True
+
     def build_operation_row(self, op, row_index):
         # Fecha (QTableWidgetItem) - Centrado
         item_fecha = QTableWidgetItem(op["fecha"])
@@ -149,7 +258,7 @@ class AssistantPage(QWidget):
 
         # Socio (QTableWidgetItem) - Izquierda
         item_socio = QTableWidgetItem(op["socio"])
-        item_socio.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        item_socio.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter) # Alineación a la izquierda
         self.table_widget.setItem(row_index, 2, item_socio)
         
         # Número (QTableWidgetItem) - Centrado
@@ -159,9 +268,10 @@ class AssistantPage(QWidget):
 
         # Cuota (QTableWidgetItem) - Centrado, con lógica
         item_cuota = QTableWidgetItem("")
-        if op["tipo"].lower() == "pago credito" and "cuota" in op and op["cuota"] is not None:
+        # Asegúrate de que 'cuota' esté presente en el diccionario 'op' antes de intentar acceder.
+        # Ya se maneja en la lógica del if, pero es bueno tenerlo en mente.
+        if op.get("tipo", "").lower() == "pago credito" and op.get("cuota") is not None:
             item_cuota.setText(str(op["cuota"]))
-            print(str(op["cuota"]))
         item_cuota.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 4, item_cuota)
 
@@ -179,9 +289,9 @@ class AssistantPage(QWidget):
         self.table_widget.setCellWidget(row_index, 6, lbl_saldo)
 
     def refresh_view(self):
-        print("🔁 Refrescando vista auxiliar")
-        self.table_widget.setRowCount(0)
-        self.current_page = 0
-        self.load_more_btn.setEnabled(True)
-        self.load_more_btn.setText("Cargar más operaciones")
-        self.load_next_page()
+        """
+        Refresca completamente la vista, aplicando los filtros actuales.
+        Esto es útil si se ha añadido/modificado una operación desde otra parte.
+        """
+        print("🔁 Refrescando vista auxiliar con filtros actuales")
+        self.apply_filters() # Llama a apply_filters para reiniciar y recargar
