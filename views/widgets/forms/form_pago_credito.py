@@ -401,7 +401,7 @@ class FormPagoCredito(QWidget):
                     if self.assistant_page:
                         self.assistant_page.add_operation({
                             "fecha": fecha_actual,
-                            "tipo": f"Pago Credito - Letra {letra_id} Cuota {nro}",
+                            "tipo": f"Pago Credito",
                             "socio": nombre_socio_log,
                             "numero": recibo_id,
                             "monto": monto_total_cuota,
