@@ -1,78 +1,113 @@
+/* Archivo: styles/assistant_page.qss */
+
+/* Estilos de la barra superior */
 #assistantTopBar {
     background-color: %(PRIMARY_COLOR)s;
     border-radius: 12px;
 }
 
 #assistantTitle {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: bold;
     color: white;
     background-color: transparent;
 }
 
-#assistantHeader {
-    background-color: #f1f3f5;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-}
-
-#headerLabel {
-    font-weight: 600;
-    color: #444;
-    background-color: transparent;
-}
-
-#operationRow {
+/* Estilos para el QTableWidget */
+QTableWidget#operationsTable {
     background-color: white;
-    border-bottom: 1px solid #e0e0e0;
+    border: 1px solid #DADDE1;
+    border-radius: 8px;
+    gridline-color: #EEEEEE;
+    selection-background-color: #e6f0ff;
+    selection-color: #333333;
 }
 
-#opFecha, #opSocio, #opMonto, #opSaldo, #opNumero {
-    font-size: 14px;
+/* Estilo para CADA SECCIÓN (columna) individual del encabezado */
+QHeaderView::section {
+    background-color: #E9ECEF;
+    font-weight: bold;
+    font-size: 15px; /* <--- CAMBIO: Fuente del encabezado un poco más pequeña */
+    color: #333;
+    border: 1px solid #DADDE1;
+    padding: 10px 10px;
+    text-align: center;
 }
 
-/* Etiquetas tipo operación */
+/* Redondeo de esquinas para la primera y última sección del encabezado */
+QHeaderView::section:first {
+    border-top-left-radius: 8px;
+}
+QHeaderView::section:last {
+    border-top-right-radius: 8px;
+    border-right: 1px solid #DADDE1;
+}
+
+
+/* Estilos para los QTableWidgetItem (texto simple en celdas: Fecha, Socio, Número, Cuota) */
+QTableWidget#operationsTable::item {
+    background-color: white;
+    padding: 10px 10px;
+    font-size: 14px; /* <--- CAMBIO: Fuente de los ítems un poco más pequeña */
+    color: #333333;
+    border-bottom: 1px solid #EEEEEE;
+    border-right: 1px solid #EEEEEE;
+}
+
+/* Quitar el borde derecho de la última columna de la tabla */
+QTableWidget#operationsTable::item:last-child {
+    border-right: none;
+}
+
+
+/* Etiquetas tipo operación (insertadas como widgets) */
 #opTipo_aporte,
 #opTipo_pago_credito,
-#opTipo_retiro,
-#opTipo_nuevo_credito {
-    font-size: 13px;
-    padding: 2px 5px;
-    border-radius: 8px;
+#opTipo_nuevo_credito,
+#opTipo_retiro {
+    font-size: 13px; /* <--- CAMBIO: Fuente del badge un poco más pequeña */
+    padding: 6px 14px;
     font-weight: bold;
+    color: white;
 }
 
 /* Colores específicos por tipo */
-#opTipo_aporte {
-    background-color: #28a745;
-    color: white;
-    margin-right: 160px;
+#opTipo_aporte { background-color: #28a745; border-radius: 10px}
+#opTipo_pago_credito { background-color: #fd7e14; border-radius: 10px }
+#opTipo_nuevo_credito { background-color: #007bff; border-radius: 10px}
+#opTipo_retiro { background-color: #dc3545; border-radius: 10px }
+
+
+/* Estilos para los QLabel de Monto y Saldo (insertados como widgets) */
+QLabel#opMonto, QLabel#opSaldo {
+    font-size: 15px; /* <--- CAMBIO: Fuente de Monto/Saldo un poco más pequeña */
+    font-weight: 600;
 }
 
-#opTipo_pago_credito {
-    background-color: #fd7e14;
-    color: white;
-    margin-right: 120px;
+QLabel#opSaldo {
+    font-weight: bold;
 }
 
-#opTipo_nuevo_credito {
-    background-color: #007bff;
-    color: white;
-    margin-right: 120px;
-}
-
-#opTipo_retiro {
-    background-color: #dc3545;
-    color: white;
-    margin-right: 160px;
-}
-
-
-#opMonto[montoTipo="positivo"] {
+/* Colores específicos para Monto basado en propiedad */
+QLabel#opMonto[montoTipo="positivo"] {
     color: #28a745;
-    font-weight: bold;
 }
-#opMonto[montoTipo="negativo"] {
+QLabel#opMonto[montoTipo="negativo"] {
     color: #dc3545;
-    font-weight: bold;
 }
+
+/* Estilo para el botón "Cargar más operaciones" */
+QPushButton#loadMoreButton {
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 25px;
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 20px;
+}
+
+QPushButton#loadMoreButton:hover { background-color: #2a4a80; }
+QPushButton#loadMoreButton:pressed { background-color: %(PRIMARY_COLOR)s; }
+QPushButton#loadMoreButton:disabled { background-color: #cccccc; color: #666666; }
