@@ -5,6 +5,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from datetime import date, timedelta
 import os
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
 from views.widgets.message_boxes import show_success, show_error, show_warning
@@ -150,7 +152,8 @@ class FormNuevoCredito(QWidget):
             else:
                 cuota_base = capital // cuotas
 
-            fecha_final = date.today() + timedelta(days=30 * cuotas)
+            fecha_inicio = date.today() # O la fecha de inicio real del crédito si es diferente
+            fecha_final = fecha_inicio + relativedelta(months=+cuotas) # <-- Esto es lo que necesitas
 
             self.label_cuota.setText(f"${format_miles_colombian_int(cuota_base)}")
             self.label_fecha_final.setText(fecha_final.strftime("%Y-%m-%d"))
