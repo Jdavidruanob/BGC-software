@@ -107,7 +107,8 @@ class DBManager:
                     numero INTEGER NOT NULL,
                     monto INTEGER NOT NULL,
                     saldo INTEGER NOT NULL,
-                    cuota INTEGER
+                    cuota INTEGER,
+                    id_credito TEXT -- ¡Nueva columna aquí!
                 )
             """)
 
@@ -467,27 +468,26 @@ class DBManager:
             print(f"❌ Error obteniendo letras por socio: {e}")
             return []
         
-    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo, cuota=None):
-        """Agrega una operación al libro auxiliar, incluyendo el número de cuota si aplica."""
+    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo, cuota=None, id_credito=None): # <-- Añade id_credito=None
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo, cuota)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (fecha, tipo, socio, numero, monto, saldo, cuota))
+                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo, cuota, id_credito)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (fecha, tipo, socio, numero, monto, saldo, cuota, id_credito)) # <-- Pásalo aquí
             self.conn.commit()
         except Exception as e:
-            print(f"❌ Error insertando en auxiliar: {e}")
+            print(f"❌ Error al añadir al auxiliar: {e}")
+            self.conn.rollback()
 
     def get_auxiliary_operations(self, limit=10, offset=0, 
-                                 start_date=None, end_date=None, 
-                                 operation_type=None, socio_name=None,
-                                 numero=None): # <-- ¡Añade este parámetro!
-        """
-        Obtiene operaciones del libro auxiliar con filtros y paginación.
-        """
+                                start_date=None, end_date=None, 
+                                operation_type=None, socio_name=None,
+                                numero=None, 
+                                letra_credito=None): # <-- Nuevo parámetro
+
         query = """
-            SELECT fecha, tipo, socio, numero, monto, saldo, cuota
+            SELECT fecha, tipo, socio, numero, monto, saldo, cuota, id_credito -- ¡Asegúrate de seleccionar id_credito!
             FROM auxiliar
             WHERE 1=1
         """
@@ -506,9 +506,15 @@ class DBManager:
             query += " AND LOWER(socio) LIKE ?"
             params.append(f"%{socio_name.lower()}%")
         
-        if numero is not None: # <-- ¡Añade esta condición!
+        if numero is not None:
             query += " AND numero = ?"
             params.append(numero)
+        
+        # --- Filtro por Letra del Crédito ---
+        if letra_credito: # Si hay un valor para letra_credito
+            query += " AND id_credito = ?" 
+            params.append(letra_credito)
+        # --- FIN Filtro ---
 
         query += " ORDER BY fecha DESC, id DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
@@ -516,12 +522,16 @@ class DBManager:
         try:
             cursor = self.conn.cursor()
             cursor.execute(query, tuple(params))
-            operations = cursor.fetchall()
-            return [dict(row) for row in operations]
+            
+            # Convierte los resultados a un formato de diccionario para fácil acceso por nombre de columna
+            column_names = [description[0] for description in cursor.description]
+            operations = [dict(zip(column_names, row)) for row in cursor.fetchall()]
+            
+            return operations
         except Exception as e:
             print(f"❌ Error obteniendo operaciones del auxiliar con filtros: {e}")
             return []
-
+        
     def get_config_value_as_int(self, key):
         cursor = self.conn.cursor()
         cursor.execute("SELECT value FROM config WHERE key = ?", (key,))

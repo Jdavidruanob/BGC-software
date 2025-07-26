@@ -389,15 +389,16 @@ class FormPagoCredito(QWidget):
                     socio_info_for_log = next((s for s in self.socios_data if s["id"] == socio_id), None)
                     nombre_socio_log = f"{socio_info_for_log['nombres']} {socio_info_for_log['apellidos']}" if socio_info_for_log else "Desconocido"
                     
-                    # --- CAMBIO AQUI: Pasar 'cuota' a add_to_auxiliar y add_operation ---
+                    # --- CAMBIO AQUI: Pasar 'cuota' e 'id_credito' a add_to_auxiliar y add_operation ---
                     self.db.add_to_auxiliar(
                         fecha=fecha_actual,
                         tipo=f"Pago Credito",
                         socio=nombre_socio_log,
-                        numero=recibo_id, # Esto es el número de recibo, no el número de operación individual
+                        numero=recibo_id, 
                         monto=monto_total_cuota,
                         saldo=saldo_caja,
-                        cuota=nro
+                        cuota=nro,
+                        id_credito=letra_id # <-- ¡Pasa la letra_id aquí!
                     )
                     
                     if self.assistant_page:
@@ -405,10 +406,11 @@ class FormPagoCredito(QWidget):
                             "fecha": fecha_actual,
                             "tipo": f"Pago Credito",
                             "socio": nombre_socio_log,
-                            "numero": recibo_id, # Esto es el número de recibo
-                            "cuota": nro,         # <--- AGREGADO: Número de cuota
+                            "numero": recibo_id, 
+                            "cuota": nro,       
                             "monto": monto_total_cuota,
-                            "saldo": saldo_caja
+                            "saldo": saldo_caja,
+                            "id_credito": letra_id # <-- ¡Pasa la letra_id aquí!
                         })
             
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
