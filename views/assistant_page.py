@@ -149,7 +149,7 @@ class AssistantPage(QWidget):
 
         # Socio (QTableWidgetItem) - Izquierda
         item_socio = QTableWidgetItem(op["socio"])
-        item_socio.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        item_socio.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 2, item_socio)
         
         # Número (QTableWidgetItem) - Centrado
@@ -161,6 +161,7 @@ class AssistantPage(QWidget):
         item_cuota = QTableWidgetItem("")
         if op["tipo"].lower() == "pago credito" and "cuota" in op and op["cuota"] is not None:
             item_cuota.setText(str(op["cuota"]))
+            print(str(op["cuota"]))
         item_cuota.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 4, item_cuota)
 

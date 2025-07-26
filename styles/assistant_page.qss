@@ -65,7 +65,7 @@ QTableWidget#operationsTable::item:last-child {
 #opTipo_pago_credito,
 #opTipo_nuevo_credito,
 #opTipo_retiro {
-    font-size: 13px; /* <--- CAMBIO: Fuente del badge un poco más pequeña */
+    font-size: 14px; /* <--- CAMBIO: Fuente del badge un poco más pequeña */
     padding: 6px 14px;
     font-weight: bold;
     color: white;
