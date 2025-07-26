@@ -245,70 +245,46 @@ class MemberDetailPage(QWidget):
         """Crea el panel derecho con las tarjetas de créditos activos del socio."""
 
         container = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(20)
+        layout = QVBoxLayout(container) # Asigna el layout directamente al container
+        layout.setSpacing(10)          # Espacio entre cada CreditCardWidget (ajustar si es necesario)
+        layout.setAlignment(Qt.AlignTop) # CLAVE: Alinea los widgets a la parte superior.
 
         credits = self.db_manager.get_active_credits_by_member(self.member_id)
 
         if credits:
             for credit in credits:
-                credit_widget = CreditCardWidget(credit)
-                credit_widget.clicked.connect(lambda _, letra=credit["letra"]: self.on_credit_card_clicked(letra))
+                # Asegúrate de que CreditCardWidget se inicialice correctamente.
+                # Si CreditCardWidget necesita db_manager para algo como el saldo, pásalo aquí.
+                credit_widget = CreditCardWidget(credito=credit) 
+                # Conecta la señal `clicked` de CreditCardWidget que emite la `letra` (int)
+                credit_widget.clicked.connect(lambda l=credit["letra"]: self.on_credit_card_clicked(l))
                 layout.addWidget(credit_widget)
         else:
             no_credit_label = QLabel("Este socio no tiene créditos activos.")
+            no_credit_label.setObjectName("NoCreditLabel") # Para aplicar estilo específico
             no_credit_label.setAlignment(Qt.AlignCenter)
             layout.addWidget(no_credit_label)
 
+        # CLAVE: Añadir un stretch al final para empujar los widgets hacia arriba
+        layout.addStretch() 
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_content.setLayout(layout)
-        scroll.setWidget(scroll_content)
+        scroll.setFrameShape(QFrame.NoFrame) # Estético: Quitar el borde del scroll area
+        
+        # El QScrollArea debe establecer el 'container' como su widget.
+        scroll.setWidget(container) 
 
         return scroll
 
     def on_credit_card_clicked(self, letra):
+        # Esta función permanece igual, asumiendo que recibe la 'letra' (int)
         credit = self.db_manager.get_credit_by_letra(letra)
         view_name = f"liquidation_credit_{letra}"
+        # Asegúrate de que CreditLiquidationPage esté importada y sus parámetros sean correctos
         liquidation_view = CreditLiquidationPage(credit, member_id = self.member_id, main_window=self.main_window, db_manager=self.db_manager)
         self.main_window.add_view(view_name, liquidation_view)
         self.main_window.show_view(view_name)
-        
-
-    def build_credit_card(self, credito):
-        card = QFrame()
-        card.setObjectName("CreditCard")
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignTop)
-        layout.setContentsMargins(15, 15, 15, 15)
-
-        # Acceder usando claves del diccionario sqlite3.Row
-        letra = credito["letra"]
-        capital = credito["capital"]
-        interes = credito["interes"]
-        cuotas = credito["no_cuotas"]
-
-        lbl_letra = QLabel(f"🆔 Crédito #{letra}")
-        lbl_letra.setObjectName("creditCardTitle")
-
-        lbl_capital = QLabel(f"💰 Capital: ${capital:,.0f}")
-        lbl_capital.setObjectName("creditCardLabel")
-
-        lbl_interes = QLabel(f"📈 Interés mensual: {interes * 100:.2f}%")
-        lbl_interes.setObjectName("creditCardLabel")
-
-        lbl_cuotas = QLabel(f"📅 Cuotas totales: {cuotas}")
-        lbl_cuotas.setObjectName("creditCardLabel")
-
-        layout.addWidget(lbl_letra)
-        layout.addSpacing(5)
-        layout.addWidget(lbl_capital)
-        layout.addWidget(lbl_interes)
-        layout.addWidget(lbl_cuotas)
-
-        card.setLayout(layout)
-        return card
     
     def refresh_view(self):
         """Refresca los paneles izquierdo y derecho al mostrarse."""
