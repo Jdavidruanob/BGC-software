@@ -496,22 +496,28 @@ class FormCombinado(QWidget):
                     saldo_caja += monto
                     
                     nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
+                    # --- CAMBIO AQUI: Pasar 'cuota' e 'id_credito' a add_to_auxiliar y add_operation ---
                     self.db.add_to_auxiliar(
                         fecha=fecha_actual,
-                        tipo="Aporte",
-                        socio=nombre,
-                        numero=recibo_id,
-                        monto=monto,
-                        saldo=saldo_caja
+                        tipo=f"Pago Credito",
+                        socio=nombre_socio_log,
+                        numero=recibo_id, 
+                        monto=monto_total_cuota,
+                        saldo=saldo_caja,
+                        cuota=nro,
+                        id_credito=letra_id # <-- ¡Pasa la letra_id aquí!
                     )
+                    
                     if self.assistant_page:
                         self.assistant_page.add_operation({
                             "fecha": fecha_actual,
-                            "tipo": "Aporte",
-                            "socio": nombre,
-                            "numero": recibo_id,
-                            "monto": monto,
-                            "saldo": saldo_caja
+                            "tipo": f"Pago Credito",
+                            "socio": nombre_socio_log,
+                            "numero": recibo_id, 
+                            "cuota": nro,       
+                            "monto": monto_total_cuota,
+                            "saldo": saldo_caja,
+                            "id_credito": letra_id # <-- ¡Pasa la letra_id aquí!
                         })
 
                 # --- Procesar y registrar PAGOS DE CRÉDITO en DB y Auxiliar ---

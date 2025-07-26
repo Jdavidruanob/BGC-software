@@ -247,14 +247,22 @@ class FormNuevoCredito(QWidget):
                 fecha_actual = date.today().strftime("%Y-%m-%d")
                 nombres = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
 
-                # Guardar en auxiliar
                 self.db.add_to_auxiliar(
                     fecha=fecha_actual,
                     tipo="Nuevo Credito",
                     socio=nombres,
-                    numero=letra,
+                    # Si `numero` en auxiliar es el ID del recibo del crédito, y `letra` es tu `id_credito` TEXT,
+                    # deberías tener un `recibo_id_credito_nuevo` o similar para `numero`.
+                    # Por ahora, dado que `numero` es INTEGER NOT NULL y antes pasabas `letra` (que es tu ID de crédito),
+                    # y si `letra` *realmente* puede ser un entero, se mantiene.
+                    # Si `letra` es TEXT (ej. "CR001"), entonces `numero` en auxiliar debería ser NULL o un ID numérico de recibo.
+                    # POR AHORA, ASUMIMOS QUE LA `letra` GENERADA POR `add_credit` ES NUMÉRICA Y PUEDE IR EN `numero` (como antes)
+                    # Y TAMBIÉN SE VA A `id_credito` PARA EL NUEVO FILTRO.
+                    numero=letra, # Si 'letra' es numérica, puede ir aquí. Si es alfanumérica, necesitas un número de recibo aquí.
                     monto=-capital,
-                    saldo=nuevo_saldo
+                    saldo=nuevo_saldo,
+                    cuota=None, # Los nuevos créditos no tienen 'cuota' individual
+                    id_credito=letra # <-- ¡Aquí es donde realmente quieres la letra!
                 )
 
                 # Agregar visual en AssistantPage
@@ -263,9 +271,11 @@ class FormNuevoCredito(QWidget):
                         "fecha": fecha_actual,
                         "tipo": "Nuevo Credito",
                         "socio": nombres,
-                        "numero": letra,
+                        "numero": letra, # Y aquí también para la visualización consistente
+                        "cuota": None,
                         "monto": -capital,
-                        "saldo": nuevo_saldo
+                        "saldo": nuevo_saldo,
+                        "id_credito": letra # <-- ¡Y aquí también para la visualización y filtro en AssistantPage!
                     })
 
                 # --- Generar el archivo de liquidación Excel ---
