@@ -479,19 +479,44 @@ class DBManager:
         except Exception as e:
             print(f"❌ Error insertando en auxiliar: {e}")
 
-
-    # En tu archivo de DbManager (o donde esté esta función)
-
-    def get_auxiliary_operations(self, limit=20, offset=0):
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT fecha, tipo, socio, numero, monto, saldo, cuota -- <-- ¡Añade 'cuota' aquí!
+    def get_auxiliary_operations(self, limit=10, offset=0, 
+                                 start_date=None, end_date=None, 
+                                 operation_type=None, socio_name=None):
+        """
+        Obtiene operaciones del libro auxiliar con filtros y paginación.
+        """
+        query = """
+            SELECT fecha, tipo, socio, numero, monto, saldo, cuota
             FROM auxiliar
-            ORDER BY fecha DESC, id DESC
-            LIMIT ? OFFSET ?
-        """, (limit, offset))
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+            WHERE 1=1 -- Siempre verdadero, facilita añadir más condiciones con AND
+        """
+        params = []
+
+        if start_date:
+            query += " AND fecha >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND fecha <= ?"
+            params.append(end_date)
+        if operation_type:
+            query += " AND tipo = ?"
+            params.append(operation_type)
+        if socio_name:
+            # Usar LIKE para búsqueda parcial e IGNORAR MAYÚSCULAS/MINÚSCULAS
+            query += " AND LOWER(socio) LIKE ?"
+            params.append(f"%{socio_name.lower()}%")
+
+        query += " ORDER BY fecha DESC, id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, tuple(params))
+            operations = cursor.fetchall()
+            return [dict(row) for row in operations]
+        except Exception as e:
+            print(f"❌ Error obteniendo operaciones del auxiliar con filtros: {e}")
+            return []
 
     def get_config_value_as_int(self, key):
         cursor = self.conn.cursor()
