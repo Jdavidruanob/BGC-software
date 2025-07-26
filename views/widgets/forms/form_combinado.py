@@ -496,28 +496,22 @@ class FormCombinado(QWidget):
                     saldo_caja += monto
                     
                     nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
-                    # --- CAMBIO AQUI: Pasar 'cuota' e 'id_credito' a add_to_auxiliar y add_operation ---
                     self.db.add_to_auxiliar(
                         fecha=fecha_actual,
-                        tipo=f"Pago Credito",
-                        socio=nombre_socio_log,
-                        numero=recibo_id, 
-                        monto=monto_total_cuota,
-                        saldo=saldo_caja,
-                        cuota=nro,
-                        id_credito=letra_id # <-- ¡Pasa la letra_id aquí!
+                        tipo="Aporte",
+                        socio=nombre,
+                        numero=recibo_id,
+                        monto=monto,
+                        saldo=saldo_caja
                     )
-                    
                     if self.assistant_page:
                         self.assistant_page.add_operation({
                             "fecha": fecha_actual,
-                            "tipo": f"Pago Credito",
-                            "socio": nombre_socio_log,
-                            "numero": recibo_id, 
-                            "cuota": nro,       
-                            "monto": monto_total_cuota,
-                            "saldo": saldo_caja,
-                            "id_credito": letra_id # <-- ¡Pasa la letra_id aquí!
+                            "tipo": "Aporte",
+                            "socio": nombre,
+                            "numero": recibo_id,
+                            "monto": monto,
+                            "saldo": saldo_caja
                         })
 
                 # --- Procesar y registrar PAGOS DE CRÉDITO en DB y Auxiliar ---
@@ -553,23 +547,29 @@ class FormCombinado(QWidget):
                         socio_info_for_log = next((s for s in self.socios_data if s["id"] == socio_id), None)
                         nombre_socio_log = f"{socio_info_for_log['nombres']} {socio_info_for_log['apellidos']}" if socio_info_for_log else "Desconocido"
                         
+                        # --- MODIFICACIÓN AQUÍ para add_to_auxiliar ---
                         self.db.add_to_auxiliar(
                             fecha=fecha_actual,
-                            tipo=f"Pago Credito", 
+                            tipo="Pago Credito", # Se mantiene "Pago Credito" genérico para el tipo
                             socio=nombre_socio_log,
                             numero=recibo_id,
+                            cuota=nro, # Pasamos la cuota específica
                             monto=monto_total_cuota,
-                            saldo=saldo_caja
+                            saldo=saldo_caja,
+                            id_credito=letra_id # <-- ¡Añadir este parámetro!
                         )
                         
+                        # --- MODIFICACIÓN AQUÍ para assistant_page.add_operation ---
                         if self.assistant_page:
                             self.assistant_page.add_operation({
                                 "fecha": fecha_actual,
-                                "tipo": f"Pago Credito - Letra {letra_id} Cuota {nro}",
+                                "tipo": "Pago Credito", # Se mantiene "Pago Credito"
                                 "socio": nombre_socio_log,
                                 "numero": recibo_id,
+                                "cuota": nro, # Pasamos la cuota específica
                                 "monto": monto_total_cuota,
-                                "saldo": saldo_caja
+                                "saldo": saldo_caja,
+                                "id_credito": letra_id # <-- ¡Añadir este parámetro!
                             })
                 
                 self.db.set_config_value("saldo_en_caja", str(saldo_caja))
