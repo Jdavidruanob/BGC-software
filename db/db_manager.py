@@ -481,14 +481,15 @@ class DBManager:
 
     def get_auxiliary_operations(self, limit=10, offset=0, 
                                  start_date=None, end_date=None, 
-                                 operation_type=None, socio_name=None):
+                                 operation_type=None, socio_name=None,
+                                 numero=None): # <-- ¡Añade este parámetro!
         """
         Obtiene operaciones del libro auxiliar con filtros y paginación.
         """
         query = """
             SELECT fecha, tipo, socio, numero, monto, saldo, cuota
             FROM auxiliar
-            WHERE 1=1 -- Siempre verdadero, facilita añadir más condiciones con AND
+            WHERE 1=1
         """
         params = []
 
@@ -502,9 +503,12 @@ class DBManager:
             query += " AND tipo = ?"
             params.append(operation_type)
         if socio_name:
-            # Usar LIKE para búsqueda parcial e IGNORAR MAYÚSCULAS/MINÚSCULAS
             query += " AND LOWER(socio) LIKE ?"
             params.append(f"%{socio_name.lower()}%")
+        
+        if numero is not None: # <-- ¡Añade esta condición!
+            query += " AND numero = ?"
+            params.append(numero)
 
         query += " ORDER BY fecha DESC, id DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])

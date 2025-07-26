@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QDateEdit
 )
 from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QIntValidator # ¡Importar QIntValidator!
 import os
 
 from config import load_styles, format_miles_colombian_int
@@ -22,6 +23,7 @@ class AssistantPage(QWidget):
         self.filter_end_date = None
         self.filter_operation_type = None
         self.filter_socio_name = None
+        self.filter_numero = None # Nuevo atributo para el filtro por número
         # --- FIN NUEVOS ATRIBUTOS ---
 
         self.setObjectName("assistantPage")
@@ -49,33 +51,42 @@ class AssistantPage(QWidget):
         filters_layout.setContentsMargins(15, 15, 15, 15)
         filters_layout.setSpacing(10)
 
-        # Fila 1 de filtros: Fechas y Tipo
-        date_type_layout = QHBoxLayout()
+        # Fila 1 de filtros: Fechas, Número y Tipo
+        date_numero_type_layout = QHBoxLayout() # Renombrado para incluir numero
         
-        date_type_layout.addWidget(QLabel("Fecha Inicio:"))
+        date_numero_type_layout.addWidget(QLabel("Fecha Inicio:"))
         self.date_start_edit = QDateEdit(calendarPopup=True)
         self.date_start_edit.setDate(QDate.currentDate().addDays(-30)) # Por defecto, los últimos 30 días
         self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
-        date_type_layout.addWidget(self.date_start_edit)
+        date_numero_type_layout.addWidget(self.date_start_edit)
 
-        date_type_layout.addWidget(QLabel("Fecha Fin:"))
+        date_numero_type_layout.addWidget(QLabel("Fecha Fin:"))
         self.date_end_edit = QDateEdit(calendarPopup=True)
         self.date_end_edit.setDate(QDate.currentDate())
         self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
-        date_type_layout.addWidget(self.date_end_edit)
+        date_numero_type_layout.addWidget(self.date_end_edit)
         
-        date_type_layout.addStretch() # Espaciador
+        # --- NUEVO: Filtro por Número entre fechas y tipo ---
+        date_numero_type_layout.addWidget(QLabel("Número:"))
+        self.numero_search_input = QLineEdit()
+        self.numero_search_input.setPlaceholderText("Número")
+        self.numero_search_input.setValidator(QIntValidator()) # Asegura que solo se ingresen números enteros
+        self.numero_search_input.setFixedWidth(80) # Establece un ancho fijo para que sea pequeño
+        date_numero_type_layout.addWidget(self.numero_search_input)
+        # --- FIN NUEVO ---
 
-        date_type_layout.addWidget(QLabel("Tipo de Operación:"))
+        date_numero_type_layout.addStretch() # Espaciador
+
+        date_numero_type_layout.addWidget(QLabel("Tipo de Operación:"))
         self.type_combo = QComboBox()
         self.type_combo.addItem("Todos", None)
         self.type_combo.addItem("Aporte", "Aporte")
         self.type_combo.addItem("Retiro", "Retiro")
         self.type_combo.addItem("Nuevo Credito", "Nuevo Credito")
         self.type_combo.addItem("Pago Credito", "Pago Credito")
-        date_type_layout.addWidget(self.type_combo)
+        date_numero_type_layout.addWidget(self.type_combo)
         
-        filters_layout.addLayout(date_type_layout)
+        filters_layout.addLayout(date_numero_type_layout) # Usar el layout renombrado
 
         # Fila 2 de filtros: Socio y Botones
         socio_buttons_layout = QHBoxLayout()
@@ -146,6 +157,17 @@ class AssistantPage(QWidget):
         self.filter_end_date = self.date_end_edit.date().toString("yyyy-MM-dd")
         self.filter_operation_type = self.type_combo.currentData() # currentData() devuelve el valor asociado al item
         self.filter_socio_name = self.socio_search_input.text().strip()
+        
+        # --- NUEVO: Capturar el filtro de número ---
+        numero_text = self.numero_search_input.text().strip()
+        if numero_text:
+            try:
+                self.filter_numero = int(numero_text)
+            except ValueError:
+                self.filter_numero = None # Si no es un número válido, no aplicar filtro
+        else:
+            self.filter_numero = None
+        # --- FIN NUEVO ---
 
         # Reiniciar la tabla y la paginación para aplicar los nuevos filtros
         self.table_widget.setRowCount(0)
@@ -162,6 +184,7 @@ class AssistantPage(QWidget):
         self.date_end_edit.setDate(QDate.currentDate())
         self.type_combo.setCurrentIndex(0) # Selecciona "Todos"
         self.socio_search_input.clear()
+        self.numero_search_input.clear() # Limpiar el campo del filtro de número
         
         # Aplicar filtros después de limpiar para recargar la tabla
         self.apply_filters()
@@ -176,7 +199,8 @@ class AssistantPage(QWidget):
             start_date=self.filter_start_date,
             end_date=self.filter_end_date,
             operation_type=self.filter_operation_type,
-            socio_name=self.filter_socio_name
+            socio_name=self.filter_socio_name,
+            numero=self.filter_numero # Pasar el nuevo filtro 'numero'
         )
 
         if not ops:
@@ -242,6 +266,12 @@ class AssistantPage(QWidget):
             if search_lower not in socio_lower:
                 return False
         
+        # --- NUEVO: Filtrar por número en el cliente ---
+        if self.filter_numero is not None:
+            if op.get("numero") != self.filter_numero:
+                return False
+        # --- FIN NUEVO ---
+        
         return True
 
     def build_operation_row(self, op, row_index):
@@ -262,7 +292,9 @@ class AssistantPage(QWidget):
         self.table_widget.setItem(row_index, 2, item_socio)
         
         # Número (QTableWidgetItem) - Centrado
-        item_numero = QTableWidgetItem(str(op["numero"]))
+        # Asegúrate de que 'numero' exista y sea un número.
+        numero_display = str(op.get("numero", "")) if op.get("numero") is not None else ""
+        item_numero = QTableWidgetItem(numero_display)
         item_numero.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 3, item_numero)
 

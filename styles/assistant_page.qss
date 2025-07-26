@@ -111,3 +111,27 @@ QPushButton#loadMoreButton {
 QPushButton#loadMoreButton:hover { background-color: #2a4a80; }
 QPushButton#loadMoreButton:pressed { background-color: %(PRIMARY_COLOR)s; }
 QPushButton#loadMoreButton:disabled { background-color: #cccccc; color: #666666; }
+
+/* Ejemplo de reglas que podrían causar el problema */
+
+/* Revisa si el color del texto es igual al fondo */
+QDateEdit {
+    color: #333; /* Asegúrate de que no sea igual al background */
+    background-color: white;
+}
+
+/* O si el calendario tiene un estilo que oculta los números */
+QCalendarWidget QAbstractItemView {
+    color: #333; /* Color de los días del calendario */
+    selection-background-color: #aaddff;
+}
+
+QCalendarWidget QSpinBox { /* Los selectores de mes/año */
+    color: #333; /* Asegúrate de que el texto del spinbox sea visible */
+    background-color: transparent; /* O un color claro */
+}
+
+QCalendarWidget QToolButton { /* Botones de navegación (flechas, mes/año) */
+    color: #333; /* El color del texto del mes/año suele estar aquí */
+    background-color: transparent;
+}
