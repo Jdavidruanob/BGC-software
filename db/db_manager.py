@@ -106,7 +106,8 @@ class DBManager:
                     socio TEXT NOT NULL,
                     numero INTEGER NOT NULL,
                     monto INTEGER NOT NULL,
-                    saldo INTEGER NOT NULL
+                    saldo INTEGER NOT NULL,
+                    cuota INTEGER
                 )
             """)
 
@@ -466,23 +467,25 @@ class DBManager:
             print(f"❌ Error obteniendo letras por socio: {e}")
             return []
         
-    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo):
-        """Agrega una operación al libro auxiliar."""
+    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo, cuota=None):
+        """Agrega una operación al libro auxiliar, incluyendo el número de cuota si aplica."""
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (fecha, tipo, socio, numero, monto, saldo))
+                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo, cuota)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (fecha, tipo, socio, numero, monto, saldo, cuota))
             self.conn.commit()
         except Exception as e:
             print(f"❌ Error insertando en auxiliar: {e}")
 
 
+    # En tu archivo de DbManager (o donde esté esta función)
+
     def get_auxiliary_operations(self, limit=20, offset=0):
         cursor = self.conn.cursor()
         cursor.execute("""
-            SELECT fecha, tipo, socio, numero, monto, saldo
+            SELECT fecha, tipo, socio, numero, monto, saldo, cuota -- <-- ¡Añade 'cuota' aquí!
             FROM auxiliar
             ORDER BY fecha DESC, id DESC
             LIMIT ? OFFSET ?
