@@ -10,7 +10,7 @@ from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
-from views.widgets.message_boxes import show_error, show_success
+from utils.message_boxes import show_error, show_success
 
 
 class HomePage(QWidget):

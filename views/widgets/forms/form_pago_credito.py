@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
-from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
+from utils.message_boxes import show_success, show_error, show_warning, show_info
 import os
 from datetime import date
 from collections import defaultdict 
@@ -428,7 +428,7 @@ class FormPagoCredito(QWidget):
             )
             
             if recibo_path:
-                show_success(self, "", f"Pago registrado en recibo #{recibo_id}. Archivo: {recibo_path}")
+                show_success(self, "", f"Pago registrado en recibo #{recibo_id}.", file_path=recibo_path)
             else:
                 show_warning(self, "", "Pago registrado, pero hubo un error al generar el archivo Excel.")
             

@@ -9,7 +9,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
-from views.widgets.message_boxes import show_success, show_error, show_warning
+from utils.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
 from utils.credit_liquidation_generator import generar_liquidacion_credito
 

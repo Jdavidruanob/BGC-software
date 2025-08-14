@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
-from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
+from utils.message_boxes import show_warning, show_success, show_error, show_info
 
 DEFAULT_PHOTO = "assets/images/default_user.png"
 

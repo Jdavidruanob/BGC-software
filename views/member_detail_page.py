@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt, QSize
 import os
 
 from config import load_svg_icon, load_styles, format_miles_colombian_int
-from views.widgets.message_boxes import show_warning, show_success, show_error, show_info
+from utils.message_boxes import show_warning, show_success, show_error, show_info
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.widgets.credit_card_widget import CreditCardWidget

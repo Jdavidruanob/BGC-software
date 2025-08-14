@@ -11,7 +11,7 @@ from .widgets.member_card import MemberCard
 from config import load_styles, load_svg_icon
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.member_detail_page import MemberDetailPage
-from views.widgets.message_boxes import show_success, show_error, show_warning, show_info
+from utils.message_boxes import show_success, show_error, show_warning, show_info
 
 
 class MembersPage(QWidget):
