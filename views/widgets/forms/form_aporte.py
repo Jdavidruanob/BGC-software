@@ -11,9 +11,9 @@ from config import load_styles, load_svg_icon, format_miles_colombian_int, parse
 from views.widgets.message_boxes import show_success, show_error, show_warning
 
 # Importar la función generar_recibo_general
-from utils.recibo_generator_aporte import generar_recibo_solo_aportes, DEFAULT_GASTOS_ADMIN # Importamos también la constante si la usamos
+from utils.recibo_generator_aporte import generar_recibo_solo_aportes # Importamos también la constante si la usamos
 
-class NoScrollComboBox(QComboBox):
+class NoScrollComboBox(QComboBox): 
     def wheelEvent(self, event):
         event.ignore()
 
@@ -245,7 +245,6 @@ class FormAporte(QWidget):
             self.db.conn.commit()
 
             # Obtener los gastos de administración.
-            gastos_admin_value = DEFAULT_GASTOS_ADMIN # Usamos la constante importada
 
             # Llamar a la función generar_recibo_solo_aportes para crear el recibo Excel
             # YA NO SE PASA pagos_credito_info
@@ -254,7 +253,6 @@ class FormAporte(QWidget):
                 recibo_id=recibo_id,
                 recibi_de_data=recibi, # Dict completo del socio que recibe
                 aportes_info=aportes_for_recibo, # La lista ya preparada
-                gastos_admin=gastos_admin_value # Pasa el valor de gastos de administración
             )
             
             if recibo_path:

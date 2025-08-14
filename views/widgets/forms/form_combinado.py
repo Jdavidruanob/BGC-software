@@ -9,7 +9,7 @@ from views.widgets.message_boxes import show_success, show_error, show_warning, 
 import os
 from datetime import date
 # IMPORTAR AHORA DESDE EL NUEVO ARCHIVO ESPECÍFICO DE RECIBO COMBINADO
-from utils.recibo_generator_combinado import generar_recibo_combinado, DEFAULT_GASTOS_ADMIN, MAX_APORTE_ROWS_IN_TEMPLATE, MAX_CREDITO_ROWS_IN_TEMPLATE
+from utils.recibo_generator_combinado import generar_recibo_combinado, MAX_APORTE_ROWS_IN_TEMPLATE, MAX_CREDITO_ROWS_IN_TEMPLATE
 import traceback # Para ver errores completos en la consola
 
 class NoScrollComboBox(QComboBox):
@@ -575,15 +575,13 @@ class FormCombinado(QWidget):
                 self.db.set_config_value("saldo_en_caja", str(saldo_caja))
                 self.db.conn.commit()
                 
-                gastos_admin_value = DEFAULT_GASTOS_ADMIN 
-
                 recibo_path = generar_recibo_combinado(
                     db_manager=self.db, 
                     recibo_id=recibo_id,
                     recibi_de_data=recibi, 
                     aportes_info=aportes_para_db_y_recibo, 
                     pagos_credito_info=pagos_consolidados_lista, 
-                    gastos_admin=gastos_admin_value
+                
                 )
                 
                 if recibo_path:
