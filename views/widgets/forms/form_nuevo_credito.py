@@ -168,10 +168,6 @@ class FormNuevoCredito(QWidget):
             self.combo_socios.blockSignals(True)
             self.combo_socios.clear()
             self.combo_socios.addItem("-- Selecciona un socio --", userData=None)  # 👈 opción vacía
-            if not self.socios_data:
-                show_warning(self, "", "No hay socios registrados.")
-                self.combo_socios.blockSignals(False)
-                return
             for socio in self.socios_data:
                 nombre = f"{socio['nombres']} {socio['apellidos']}"
                 self.combo_socios.addItem(nombre, userData=socio)
