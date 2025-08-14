@@ -76,9 +76,6 @@ class FormAporte(QWidget):
             # Asegúrate de que get_all_members_full() retorne el 'saldo' actual de cada socio
             self.socios_data = self.db.get_all_members_full() 
             self.combo_recibi_de.clear()
-            if not self.socios_data:
-                show_warning(self, "", "No hay socios registrados.")
-                return
             for socio in self.socios_data:
                 nombre = f"{socio['nombres']} {socio['apellidos']}"
                 self.combo_recibi_de.addItem(nombre, userData=socio)
