@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from datetime import date
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
-from views.widgets.message_boxes import show_success, show_error, show_warning
+from utils.message_boxes import show_success, show_error, show_warning
 
 # Importar la función generar_recibo_general
 from utils.recibo_generator_aporte import generar_recibo_solo_aportes # Importamos también la constante si la usamos
@@ -256,7 +256,7 @@ class FormAporte(QWidget):
             )
             
             if recibo_path:
-                show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados. Archivo: {recibo_path}")
+                show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.", file_path=recibo_path)
             else:
                 show_warning(self, "", "Recibo creado y saldos actualizados, pero hubo un error al generar el archivo Excel.")
             
