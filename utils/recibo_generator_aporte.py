@@ -33,19 +33,20 @@ APORTE_TOTAL_CELL = 'H19' # Celda para el Total de Aportes
 GASTOS_ADMIN_CELL = 'K21' # Celda para Gastos de Administración
 TOTAL_GENERAL_CELL = 'K22' # Celda para el Total a Pagar
 
-DEFAULT_GASTOS_ADMIN = 3000 
+GASTO_POR_APORTE = 3000 # Nueva constante para el valor de cada aporte
 
 def generar_recibo_solo_aportes(
     db_manager, 
     recibo_id: int,
     recibi_de_data: dict, # Ahora se procesará para mayúsculas y alineación
-    aportes_info: list = None, 
-    gastos_admin: int = DEFAULT_GASTOS_ADMIN 
+    aportes_info: list = None
 ):
     """
     Genera un recibo de solo aportes utilizando la plantilla recibo_template_aporte.xlsx.
     Rellena hasta 10 filas de aportes y los totales.
     Ajusta el formato de los nombres de los socios y del "Recibí de".
+    
+    El gasto administrativo se calcula como GASTO_POR_APORTE * número de aportes.
     """
     if aportes_info is None:
         aportes_info = []
@@ -99,6 +100,8 @@ def generar_recibo_solo_aportes(
         ws[APORTE_TOTAL_CELL] = format_miles_colombian_int(total_aportes_acumulado)
 
         # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
+        # *** ESTE ES EL CAMBIO CLAVE ***
+        gastos_admin = GASTO_POR_APORTE * num_aportes_actual
         ws[GASTOS_ADMIN_CELL] = format_miles_colombian_int(gastos_admin)
         
         total_general = total_aportes_acumulado + gastos_admin

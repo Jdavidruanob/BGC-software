@@ -1,5 +1,3 @@
-# utils/recibo_generator_combinado.py
-
 import os
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment 
@@ -7,7 +5,7 @@ from datetime import date
 from config import format_miles_colombian_int, format_full_name_for_excel, BASE_APP_DIR
 
 # --- Rutas y Constantes ---
-TEMPLATE_COMBINADO_REL_PATH = os.path.join("assets", "templates", "recibo_template_combinado.xlsx")  
+TEMPLATE_COMBINADO_REL_PATH = os.path.join("assets", "templates", "recibo_template_combinado.xlsx") 
 TEMPLATE_COMBINADO_PATH = os.path.join(BASE_APP_DIR, TEMPLATE_COMBINADO_REL_PATH)
 
 OUTPUT_FOLDER_REL_PATH = "Recibos"
@@ -24,31 +22,31 @@ APORTE_DATA_END_ROW = 18 # 9 a 18 son 10 filas
 MAX_APORTE_ROWS_IN_TEMPLATE = 10 
 
 APORTE_NOMBRE_COL = 'B'
-APORTE_SALDO_APORTES_COL = 'F' # Nueva columna para Saldo Aportes
-APORTE_MONTO_COL = 'H'         # Ahora H para Aporte mes
-APORTE_NUEVO_SALDO_COL = 'J'   # Ahora J para Nuevo saldo
-TOTAL_APORTES_CELL = 'H19' # <-- ¡NUEVA CONSTANTE A AGREGAR!
+APORTE_SALDO_APORTES_COL = 'F' 
+APORTE_MONTO_COL = 'H' 
+APORTE_NUEVO_SALDO_COL = 'J' 
+TOTAL_APORTES_CELL = 'H19' 
 
 # Secciones de Pagos de Crédito
 CREDITO_DATA_START_ROW = 22
 CREDITO_DATA_END_ROW = 32 # 22 a 32 son 11 filas
 MAX_CREDITO_ROWS_IN_TEMPLATE = 11 
 
-CREDITO_NOMBRE_COL = 'B' # B22
-CREDITO_LETRA_COL = 'F'  # F22
-CREDITO_CUOTA_COL = 'G'  # G22
-CREDITO_SDO_CAP_COL = 'H' # H22
-CREDITO_AB_CAP_COL = 'I'  # I22
-CREDITO_INTERES_COL = 'J' # J22
-CREDITO_N_SDOCAP_COL = 'K' # K22
+CREDITO_NOMBRE_COL = 'B' 
+CREDITO_LETRA_COL = 'F'
+CREDITO_CUOTA_COL = 'G'
+CREDITO_SDO_CAP_COL = 'H'
+CREDITO_AB_CAP_COL = 'I'
+CREDITO_INTERES_COL = 'J' 
+CREDITO_N_SDOCAP_COL = 'K' 
 
 # Totales
-TOTAL_CREDITOS_CELL = 'H33' # Nuevo total de creditos
+TOTAL_CREDITOS_CELL = 'H33' 
 GASTOS_ADMIN_CELL_COMBINADO = 'K35'
 TOTAL_GENERAL_CELL_COMBINADO = 'K36'
 
-# Valor por defecto
-DEFAULT_GASTOS_ADMIN = 3000
+# Valor por cada aporte
+GASTO_POR_APORTE = 3000
 
 # --- Funciones auxiliares ---
 #
@@ -57,11 +55,13 @@ def generar_recibo_combinado(
     db_manager, 
     recibo_id: int,
     recibi_de_data: dict, 
-    aportes_info: list = None, # Lista de diccionarios de aportes
-    pagos_credito_info: list = None, # Esta lista debe venir CONSOLIDADA
-    gastos_admin: int = DEFAULT_GASTOS_ADMIN 
+    aportes_info: list = None, 
+    pagos_credito_info: list = None
 ):
-    # ... (tu código existente hasta el bloque de APORTES) ...
+    """
+    Genera un recibo combinado de aportes y pagos de crédito.
+    El gasto administrativo se calcula como GASTO_POR_APORTE * número de aportes.
+    """
     if aportes_info is None:
         aportes_info = []
     if pagos_credito_info is None:
@@ -79,13 +79,13 @@ def generar_recibo_combinado(
         ws[RECIBO_ID_CELL] = recibo_id
         ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
         
-        recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper() # Este sí va en mayúsculas
+        recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name
         ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center') 
 
         # --- PROCESAR APORTES ---
         num_aportes_to_display = len(aportes_info)
-        total_aportes_monto = 0 # <-- Inicializar el total de aportes
+        total_aportes_monto = 0 
 
         if num_aportes_to_display > MAX_APORTE_ROWS_IN_TEMPLATE:
             print(f"ADVERTENCIA: Se intentaron procesar {num_aportes_to_display} aportes, "
@@ -112,7 +112,7 @@ def generar_recibo_combinado(
                 ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = format_miles_colombian_int(monto_aporte)
                 ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(nuevo_saldo_aporte) 
                 
-                total_aportes_monto += monto_aporte # <-- SUMAR AL TOTAL DE APORTES
+                total_aportes_monto += monto_aporte 
             else:
                 # Limpiar filas no utilizadas
                 ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = ""
@@ -120,7 +120,6 @@ def generar_recibo_combinado(
                 ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = ""
                 ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = ""
         
-        # <-- AGREGAR EL TOTAL DE APORTES AQUÍ
         ws[TOTAL_APORTES_CELL] = format_miles_colombian_int(total_aportes_monto)
 
         # --- PROCESAR PAGOS DE CRÉDITO CONSOLIDADOS ---
@@ -182,16 +181,17 @@ def generar_recibo_combinado(
                 ws[f'{CREDITO_INTERES_COL}{row_to_fill}'] = "" 
                 ws[f'{CREDITO_N_SDOCAP_COL}{row_to_fill}'] = "" 
         
-        # Total de pagos de crédito
         ws[TOTAL_CREDITOS_CELL] = format_miles_colombian_int(total_pagos_credito_monto_total)
 
         # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
+        # *** ESTE ES EL CAMBIO CLAVE ***
+        # El gasto administrativo ahora se calcula internamente
+        gastos_admin = GASTO_POR_APORTE * num_aportes_to_display
         ws[GASTOS_ADMIN_CELL_COMBINADO] = format_miles_colombian_int(gastos_admin) 
         
-        # El total general ahora suma total_aportes_monto, total_pagos_credito_monto_total y gastos de administración
         total_general = total_aportes_monto + total_pagos_credito_monto_total + gastos_admin
         ws[TOTAL_GENERAL_CELL_COMBINADO] = format_miles_colombian_int(total_general) 
-
+    
         # --- Guardar el recibo ---
         wb.save(output_path)
         return output_path
