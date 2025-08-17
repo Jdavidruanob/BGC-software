@@ -291,7 +291,7 @@ class FormNuevoCredito(QWidget):
                     view_name = f"liquidation_credit_{letra}_{id_socio}" # Un nombre único por socio si lo necesitas
                     self.main_window.add_view(view_name, liquidation_view)
 
-                show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}. Liquidación generada en:\n{generated_liq_path}")
+                show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}.", file_path= generated_liq_path)
 
                 # Limpiar el formulario
                 self.capital_input.clear()
