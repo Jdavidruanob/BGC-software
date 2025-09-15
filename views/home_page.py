@@ -159,6 +159,11 @@ class HomePage(QWidget):
         ).fetchone()
         saldo_caja = int(row["value"]) if row else 0
 
+        row2 = self.db_manager.conn.execute(
+            "SELECT value FROM config WHERE key = ?", ("total_admin",)
+        ).fetchone()
+        admin = int(row2["value"]) if row2 else 0
+
         # Créditos activos (total)
         # Asumimos que get_active_credits_by_member solo trae por socio;
         # si quieres global, tendrías que un método new:
@@ -207,6 +212,7 @@ class HomePage(QWidget):
             bl.addLayout(row)
 
         add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
+        add_row("Administración:", f"$ {format_miles_colombian_int(admin)}", bold=True)
         add_row("Créditos Activos:", str(total_creditos), bold=True)
         add_row("Total Socios:", str(total_socios), bold=True)
 

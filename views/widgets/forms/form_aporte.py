@@ -203,6 +203,7 @@ class FormAporte(QWidget):
             fecha_actual_db_format = date.today().strftime("%Y-%m-%d")
 
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
+            saldo_admin = self.db.get_config_value_as_int("total_admin") # Si se necesita para algo
             
             # Recorrer los aportes para actualizar la DB y el log
             for socio_id, monto_aporte_db in aportes_for_db:
@@ -238,6 +239,8 @@ class FormAporte(QWidget):
             
             # Finalmente, actualizar el saldo en caja en la configuración global
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
+            gastos_admin = 3000 * len(aportes_for_recibo)
+            self.db.set_config_value("total_admin", str(saldo_admin + gastos_admin))
 
             self.db.conn.commit()
 

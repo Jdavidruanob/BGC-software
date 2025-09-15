@@ -45,7 +45,7 @@ def generar_recibo_solo_pagos(
     recibo_id: int,
     recibi_de_data: dict, 
     pagos_credito_info: list = None, # Ahora esta lista contiene entradas CONSOLIDADAS
-    gastos_admin: int = DEFAULT_GASTOS_ADMIN 
+    #gastos_admin: int = DEFAULT_GASTOS_ADMIN 
 ):
     """
     Genera un recibo de solo pagos de crédito utilizando la plantilla recibo_template_pago.xlsx.
@@ -148,9 +148,9 @@ def generar_recibo_solo_pagos(
         ws[CREDITO_TOTAL_CELL] = format_miles_colombian_int(total_acumulado_capital_interes)
 
         # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
-        ws[GASTOS_ADMIN_CELL_PAGO] = format_miles_colombian_int(gastos_admin) 
+        #ws[GASTOS_ADMIN_CELL_PAGO] = format_miles_colombian_int(gastos_admin) 
         
-        total_general = total_acumulado_capital_interes + gastos_admin
+        total_general = total_acumulado_capital_interes  # + gastos_admin
         ws[TOTAL_GENERAL_CELL_PAGO] = format_miles_colombian_int(total_general) 
 
         # --- Guardar el recibo ---

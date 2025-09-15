@@ -159,7 +159,7 @@ class FormRetiro(QWidget):
                 socio=nombre_completo_socio, # Usar el nombre completo
                 numero=recibo_id,
                 monto=-monto, # Los retiros son valores negativos en auxiliar
-                saldo=socio['saldo'] - monto # El saldo es el nuevo saldo del socio
+                saldo=nuevo_saldo_caja # El saldo es el nuevo saldo del socio
             )
 
             # 6. Generar el recibo de retiro en Excel
@@ -177,7 +177,7 @@ class FormRetiro(QWidget):
                     "socio": nombre_completo_socio,
                     "numero": recibo_id,
                     "monto": -monto,
-                    "saldo": socio['saldo'] - monto
+                    "saldo": nuevo_saldo_caja
                 })
 
             self.db.conn.commit()
