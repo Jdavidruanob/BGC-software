@@ -475,7 +475,7 @@ class FormCombinado(QWidget):
                 fecha_actual = date.today().strftime("%Y-%m-%d")
 
                 saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
-
+                saldo_admin = self.db.get_config_value_as_int("total_admin")
                 # --- Procesar y registrar APORTES en DB y Auxiliar ---
                 for aporte_detail in aportes_para_db_y_recibo:
                     socio_id = aporte_detail['socio_id']
@@ -570,6 +570,8 @@ class FormCombinado(QWidget):
                             })
                 
                 self.db.set_config_value("saldo_en_caja", str(saldo_caja))
+                gastos_admin = 3000 * len(aportes_para_db_y_recibo)
+                self.db.set_config_value("total_admin", str(saldo_admin + gastos_admin))
                 self.db.conn.commit()
                 
                 recibo_path = generar_recibo_combinado(

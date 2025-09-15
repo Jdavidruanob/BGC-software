@@ -413,7 +413,6 @@ class FormPagoCredito(QWidget):
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
             self.db.conn.commit()
             
-            gastos_admin_value = DEFAULT_GASTOS_ADMIN 
 
             # Llamar a la función generar_recibo_solo_pagos con la lista CONSOLIDADA
             recibo_path = generar_recibo_solo_pagos(
@@ -421,7 +420,7 @@ class FormPagoCredito(QWidget):
                 recibo_id=recibo_id,
                 recibi_de_data=recibi, 
                 pagos_credito_info=pagos_consolidados_lista, # <-- Usamos la lista consolidada
-                gastos_admin=gastos_admin_value
+    
             )
             
             if recibo_path:
