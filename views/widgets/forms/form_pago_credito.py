@@ -420,7 +420,7 @@ class FormPagoCredito(QWidget):
                 recibo_id=recibo_id,
                 recibi_de_data=recibi, 
                 pagos_credito_info=pagos_consolidados_lista, # <-- Usamos la lista consolidada
-    
+                #gastos_admin=gastos_admin_value
             )
             
             if recibo_path:
