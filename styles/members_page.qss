@@ -26,11 +26,12 @@ QLabel#title-members {
     background-color: %(PRIMARY_COLOR)s;
     color: white;
     border: none;
-    padding: 10px 20px;/* top right bottom left  */
+    padding: 5px 20px;/* top right bottom left  */
     font-weight: bold;
     font-size: 15px;
     border-radius: 8px;
-    /* margin-right: 80px; */
+    height: 40px;
+    margin-right: 900px;
 }
 #newMemberButton:hover {
     background-color: #2a4a80;

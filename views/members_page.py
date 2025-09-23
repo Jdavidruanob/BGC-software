@@ -31,20 +31,22 @@ class MembersPage(QWidget):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        new_btn = QPushButton("  Nuevo Socio")
-        new_btn.setObjectName("newMemberButton")
-        new_btn.setFixedHeight(45)
-        new_btn.setIconSize(QSize(18, 18))
-        new_btn.setIcon(load_svg_icon("assets/icons/users-plus.svg"))
-        new_btn.clicked.connect(self.open_new_member_dialog)
-        header_layout.addWidget(new_btn)
+        
 
         main_layout.addLayout(header_layout)
 
         # --- Barra de búsqueda
         search_layout = QHBoxLayout()
         search_layout.setContentsMargins(80, 0, 80, 30)
-
+        # -- Boton nuevo socio
+        new_btn = QPushButton("  Nuevo Socio")
+        new_btn.setObjectName("newMemberButton")
+        new_btn.setFixedHeight(45)
+        new_btn.setIconSize(QSize(18, 18))
+        new_btn.setIcon(load_svg_icon("assets/icons/users-plus.svg"))
+        new_btn.clicked.connect(self.open_new_member_dialog)
+        search_layout.addWidget(new_btn)
+        # -- Caja de búsqueda
         self.search_box = QLineEdit()
         self.search_box.setObjectName("searchBox-members")
         self.search_box.setPlaceholderText(" Buscar socio por nombre")
