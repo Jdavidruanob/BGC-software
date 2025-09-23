@@ -13,7 +13,7 @@
 }
 
 #InputField {
-    height: 60px;
+    height: 35px;
     font-size: 18px;
     border: 2px solid #e4eaf1;
     border-radius: 8px;

@@ -84,9 +84,9 @@ class MembersPage(QWidget):
         """ Abre el diálogo para crear un nuevo socio """
         dialog = NewMemberDialog(self)
         if dialog.exec():
-            cc, nombres, apellidos, phone, photo, saldo = dialog.get_data()
+            nombres, apellidos, phone, photo, saldo = dialog.get_data()
             if nombres and apellidos:
-                self.db_manager.add_member(cc, nombres, apellidos, phone, photo, saldo)
+                self.db_manager.add_member(nombres, apellidos, phone, photo, saldo)
                 show_success(self, " ", "Socio creado exitosamente.")
                 self.refresh_members()
 

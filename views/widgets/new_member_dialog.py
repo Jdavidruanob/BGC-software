@@ -25,9 +25,6 @@ class NewMemberDialog(QDialog):
         self.last_name_input = QLineEdit()
         self.last_name_input.setObjectName("InputField")
 
-        self.cc_input = QLineEdit()
-        self.cc_input.setObjectName("InputField")
-
         self.phone_input = QLineEdit()
         self.phone_input.setObjectName("InputField")
 
@@ -49,7 +46,6 @@ class NewMemberDialog(QDialog):
         for label_text, widget in [
             ("Nombres:", self.first_name_input),
             ("Apellidos:", self.last_name_input),
-            ("Cédula:", self.cc_input),
             ("Celular:", self.phone_input),
             ("Saldo:", self.salde_input),
             ("Foto (opcional):", None)
@@ -89,14 +85,12 @@ class NewMemberDialog(QDialog):
     def get_data(self):
         nombres = self.first_name_input.text().strip()
         apellidos = self.last_name_input.text().strip()
-        cc        = self.cc_input.text().strip()
         phone     = self.phone_input.text().strip()
-        # Desformateamos aquí:
         saldo_txt = self.salde_input.text().strip() or "0"
         saldo     = parse_miles_colombian(saldo_txt)
         photo     = self.photo_input.text().strip() or DEFAULT_PHOTO
         
-        return (cc, nombres, apellidos, phone, photo, saldo)
+        return (nombres, apellidos, phone, photo, saldo)
 
     
 
