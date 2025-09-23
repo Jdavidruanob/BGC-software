@@ -264,13 +264,13 @@ class DBManager:
     
 # socios operacones
 
-    def add_member(self, cc, nombres, apellidos, phone, photo_path, saldo=0):
+    def add_member(self, nombres, apellidos, phone, photo_path, saldo=0):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO socios (cc, nombres, apellidos, celular, photo_path, saldo)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (cc, nombres, apellidos, phone, photo_path, saldo))
+                INSERT INTO socios (nombres, apellidos, celular, photo_path, saldo)
+                VALUES (?, ?, ?, ?, ?)
+            """, (nombres, apellidos, phone, photo_path, saldo))
 
             # Actualizar saldo_en_caja en config
             saldo_actual = self.get_config_value_as_int("saldo_en_caja")
@@ -345,7 +345,7 @@ class DBManager:
 
 
         
-    def update_member(self, socio_id, cc, nombres, apellidos, phone, photo_path, nuevo_saldo):
+    def update_member(self, socio_id, nombres, apellidos, phone, photo_path, nuevo_saldo):
         try:
             cursor = self.conn.cursor()
 
@@ -360,9 +360,9 @@ class DBManager:
             # Actualizar datos
             cursor.execute("""
                 UPDATE socios
-                SET cc = ?, nombres = ?, apellidos = ?, celular = ?, photo_path = ?, saldo = ?
+                SET nombres = ?, apellidos = ?, celular = ?, photo_path = ?, saldo = ?
                 WHERE id = ?
-            """, (cc, nombres, apellidos, phone, photo_path, nuevo_saldo, socio_id))
+            """, (nombres, apellidos, phone, photo_path, nuevo_saldo, socio_id))
 
             # Ajustar saldo_en_caja
             diferencia = nuevo_saldo - saldo_anterior
