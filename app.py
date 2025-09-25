@@ -23,7 +23,7 @@ def main():
         print("❌ No se pudo cargar la fuente Inter Variable.")
 
     # Inicializar y conectar la base de datos
-    db_path = "BGC-software.db"
+    db_path = "BGC-software.db"#TODO: ruta absoluta
     db_manager = DBManager(db_path)
 
     if not db_manager.connect():

@@ -6,10 +6,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 
-DEFAULT_PHOTO = "assets/images/default_user.png"
+DEFAULT_PHOTO = "assets/images/default_user.png" # TODO: revisar ruta relativa
 
 class NewMemberDialog(QDialog):
     def __init__(self, parent=None):
@@ -67,13 +67,13 @@ class NewMemberDialog(QDialog):
         layout.addWidget(create_btn, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
-        qss_path = os.path.join(os.path.dirname(__file__), ".." , "..", "styles", "new_member_dialog.qss")
+        qss_path = os.path.join(BASE_APP_DIR, "styles", "new_member_dialog.qss")
         load_styles(self, qss_path)
 
     def select_photo(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.jpeg)")
         if file_path:
-            self.photo_input.setText(file_path)
+            self.photo_input.setText(file_path) # TODO: revissar lo de las imagenes de los socios
 
     def on_submit(self):
         if not self.first_name_input.text().strip() or not self.last_name_input.text().strip():

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
 from utils.message_boxes import show_success, show_error, show_warning, show_info
 import os
 from datetime import date
@@ -58,7 +58,7 @@ class FormCombinado(QWidget):
         # Botón agregar nueva fila
         self.btn_agregar_aporte = QPushButton(" Agregar aporte")
         self.btn_agregar_aporte.setObjectName("AddAporteButton")
-        self.btn_agregar_aporte.setIcon(load_svg_icon("assets/icons/plus.svg"))
+        self.btn_agregar_aporte.setIcon(load_svg_icon("icons/plus.svg"))
         self.btn_agregar_aporte.setIconSize(QSize(20, 20))
         self.btn_agregar_aporte.clicked.connect(self.agregar_aporte)
         main_layout.addWidget(self.btn_agregar_aporte, alignment=Qt.AlignLeft)
@@ -76,7 +76,7 @@ class FormCombinado(QWidget):
         # Botón para agregar socio que pagará
         self.btn_agregar_pago = QPushButton(" Agregar pago de socio")
         self.btn_agregar_pago.setObjectName("AddPagoButton")
-        self.btn_agregar_pago.setIcon(load_svg_icon("assets/icons/plus.svg"))
+        self.btn_agregar_pago.setIcon(load_svg_icon("icons/plus.svg"))
         self.btn_agregar_pago.setIconSize(QSize(20, 20))
         self.btn_agregar_pago.setMinimumHeight(36)
         self.btn_agregar_pago.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -96,8 +96,7 @@ class FormCombinado(QWidget):
         self.load_socios()
         # Estilos
         qss_path = os.path.join(
-            os.path.dirname(__file__),
-            "..", "..", "..", "styles", "forms", "form_combinado.qss"
+            BASE_APP_DIR, "styles", "forms", "form_combinado.qss"
         )
         load_styles(self, qss_path)
 
@@ -142,7 +141,7 @@ class FormCombinado(QWidget):
 
         btn_eliminar = QPushButton("")
         btn_eliminar.setObjectName("DeleteButton")
-        btn_eliminar.setIcon(load_svg_icon("assets/icons/x.svg"))
+        btn_eliminar.setIcon(load_svg_icon("icons/x.svg"))
         btn_eliminar.setIconSize(QSize(20, 20))
         btn_eliminar.setToolTip("Eliminar aporte")
         btn_eliminar.setFixedSize(30, 30)
@@ -187,7 +186,7 @@ class FormCombinado(QWidget):
         # Botón agregar letra
         btn_add_letra = QPushButton(" Agregar letra a pagar")
         btn_add_letra.setObjectName("AddLetraButton")
-        btn_add_letra.setIcon(load_svg_icon("assets/icons/plus.svg"))
+        btn_add_letra.setIcon(load_svg_icon("icons/plus.svg"))
         btn_add_letra.setIconSize(QSize(16, 16))
         btn_add_letra.setMinimumHeight(36)
         btn_add_letra.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -228,7 +227,7 @@ class FormCombinado(QWidget):
 
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")
-            btn_delete_letra.setIcon(load_svg_icon("assets/icons/x.svg"))
+            btn_delete_letra.setIcon(load_svg_icon("icons/x.svg"))
             btn_delete_letra.setIconSize(QSize(16,16))
             btn_delete_letra.setFixedSize(28,28)
             btn_delete_letra.setToolTip("Eliminar esta letra")
@@ -247,7 +246,7 @@ class FormCombinado(QWidget):
         # Botón eliminar todo el pago
         btn_delete_pago = QPushButton("")
         btn_delete_pago.setObjectName("DeletePagoButton")
-        btn_delete_pago.setIcon(load_svg_icon("assets/icons/x.svg"))
+        btn_delete_pago.setIcon(load_svg_icon("icons/x.svg"))
         btn_delete_pago.setIconSize(QSize(20,20))
         btn_delete_pago.setFixedSize(30,30)
         btn_delete_pago.setToolTip("Eliminar este pago")

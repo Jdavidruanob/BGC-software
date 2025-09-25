@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from datetime import date
 import os
 
-from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
+from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int, BASE_APP_DIR
 from utils.message_boxes import show_success, show_error, show_warning
 from utils.recibo_generator_retiro import generar_recibo_retiro
 
@@ -78,7 +78,7 @@ class FormRetiro(QWidget):
         self.load_socios()
 
         qss_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "styles", "forms", "form_retiro.qss"
+            BASE_APP_DIR, "styles", "forms", "form_retiro.qss"
         )
         load_styles(self, qss_path)
 
@@ -183,7 +183,7 @@ class FormRetiro(QWidget):
             self.db.conn.commit()
 
             # Mostrar mensaje de éxito y la ruta del archivo generado
-            if generated_receipt_path:
+            if generated_receipt_path: #TODO: Revisar ruta relativa
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}", file_path=generated_receipt_path)
             else:
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id} (no se pudo generar el archivo).")

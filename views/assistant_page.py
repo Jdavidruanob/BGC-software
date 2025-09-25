@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QIntValidator # ¡Asegúrate de que QIntValidator esté importado!
 import os
 
-from config import load_styles, format_miles_colombian_int
+from config import load_styles, format_miles_colombian_int, BASE_APP_DIR
 
 class AssistantPage(QWidget):
     def __init__(self, db_manager):
@@ -152,7 +152,7 @@ class AssistantPage(QWidget):
         self.load_more_btn.clicked.connect(self.load_next_page)
         main_layout.addWidget(self.load_more_btn, alignment=Qt.AlignCenter)
 
-        qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "assistant_page.qss")
+        qss_path = os.path.join(BASE_APP_DIR, "styles", "assistant_page.qss")
         load_styles(self, qss_path)
 
         # Cargar la primera página con los filtros iniciales
