@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
 
 from .widgets.member_card import MemberCard
-from config import load_styles, load_svg_icon
+from config import load_styles, load_svg_icon, BASE_APP_DIR
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.member_detail_page import MemberDetailPage
 from utils.message_boxes import show_success, show_error, show_warning, show_info
@@ -43,7 +43,7 @@ class MembersPage(QWidget):
         new_btn.setObjectName("newMemberButton")
         new_btn.setFixedHeight(45)
         new_btn.setIconSize(QSize(18, 18))
-        new_btn.setIcon(load_svg_icon("assets/icons/users-plus.svg"))
+        new_btn.setIcon(load_svg_icon("icons/users-plus.svg"))
         new_btn.clicked.connect(self.open_new_member_dialog)
         search_layout.addWidget(new_btn)
         # -- Caja de búsqueda
@@ -52,7 +52,7 @@ class MembersPage(QWidget):
         self.search_box.setPlaceholderText(" Buscar socio por nombre")
         self.search_box.textChanged.connect(self.filter_members)
 
-        search_icon = load_svg_icon("assets/icons/search.svg")
+        search_icon = load_svg_icon("icons/search.svg")
         search_action = QAction(search_icon, "", self.search_box)
         self.search_box.addAction(search_action, QLineEdit.LeadingPosition)
 
@@ -75,7 +75,7 @@ class MembersPage(QWidget):
         self.setLayout(main_layout) 
 
         # cargar estilos
-        qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "members_page.qss")
+        qss_path = os.path.join(BASE_APP_DIR, "styles", "members_page.qss")
         load_styles(self, qss_path)
 
         self.refresh_members()  # Cargar al iniciar

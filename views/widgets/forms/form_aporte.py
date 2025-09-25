@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 from datetime import date
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
 from utils.message_boxes import show_success, show_error, show_warning
 
 # Importar la función generar_recibo_general
@@ -50,7 +50,7 @@ class FormAporte(QWidget):
 
         self.btn_agregar_aporte = QPushButton(" Agregar aporte")
         self.btn_agregar_aporte.setObjectName("AddAporteButton")
-        self.btn_agregar_aporte.setIcon(load_svg_icon("assets/icons/plus.svg"))
+        self.btn_agregar_aporte.setIcon(load_svg_icon("icons/plus.svg"))
         self.btn_agregar_aporte.setIconSize(QSize(20, 20))
         self.btn_agregar_aporte.clicked.connect(self.agregar_aporte)
         main_layout.addWidget(self.btn_agregar_aporte, alignment=Qt.AlignLeft)
@@ -66,8 +66,7 @@ class FormAporte(QWidget):
         self.load_socios()
 
         qss_path = os.path.join(
-            os.path.dirname(__file__),
-            "..", "..", "..", "styles", "forms", "form_aporte.qss"
+            BASE_APP_DIR, "styles", "forms", "form_aporte.qss"
         )
         load_styles(self, qss_path)
 
@@ -118,7 +117,7 @@ class FormAporte(QWidget):
 
         btn_eliminar = QPushButton("")
         btn_eliminar.setObjectName("DeleteButton")
-        btn_eliminar.setIcon(load_svg_icon("assets/icons/x.svg"))
+        btn_eliminar.setIcon(load_svg_icon("icons/x.svg"))
         btn_eliminar.setIconSize(QSize(20, 20))
         btn_eliminar.setToolTip("Eliminar aporte")
         btn_eliminar.setFixedSize(30, 30)

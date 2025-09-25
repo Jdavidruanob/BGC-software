@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QStackedWidget, QSizePolicy, QInputDialog
 )
 from PySide6.QtCore import Qt, QSize
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
 from views.widgets.forms.form_aporte import FormAporte
 from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
@@ -59,28 +59,28 @@ class HomePage(QWidget):
 
         self.btn_aporte = QPushButton(" Aporte")
         self.btn_aporte.setIconSize(QSize(24, 24))
-        self.btn_aporte.setIcon(load_svg_icon("assets/icons/pig-money.svg"))
+        self.btn_aporte.setIcon(load_svg_icon("icons/pig-money.svg"))
         self.btn_aporte.setCheckable(True)
         self.btn_aporte.setProperty("btnType", "operacion")
         self.btn_aporte.clicked.connect(self.toggle_aporte)
 
         self.btn_pago_credito = QPushButton(" Pago Crédito")
         self.btn_pago_credito.setIconSize(QSize(24, 24))
-        self.btn_pago_credito.setIcon(load_svg_icon("assets/icons/cash.svg"))
+        self.btn_pago_credito.setIcon(load_svg_icon("icons/cash.svg"))
         self.btn_pago_credito.setCheckable(True)
         self.btn_pago_credito.setProperty("btnType", "operacion")
         self.btn_pago_credito.clicked.connect(self.toggle_pago_credito)
 
         self.btn_nuevo_credito = QPushButton(" Nuevo Crédito")
         self.btn_nuevo_credito.setIconSize(QSize(24, 24))
-        self.btn_nuevo_credito.setIcon(load_svg_icon("assets/icons/circle-plus.svg"))
+        self.btn_nuevo_credito.setIcon(load_svg_icon("icons/circle-plus.svg"))
         self.btn_nuevo_credito.setCheckable(True)
         self.btn_nuevo_credito.setProperty("btnType", "operacion")
         self.btn_nuevo_credito.clicked.connect(self.toggle_nuevo_credito)
 
         self.btn_retiro = QPushButton(" Retiro")
         self.btn_retiro.setIconSize(QSize(26, 26))
-        self.btn_retiro.setIcon(load_svg_icon("assets/icons/cash-move.svg"))
+        self.btn_retiro.setIcon(load_svg_icon("icons/cash-move.svg")) 
         self.btn_retiro.setCheckable(True)
         self.btn_retiro.setProperty("btnType", "operacion")
         self.btn_retiro.clicked.connect(self.toggle_retiro)
@@ -147,7 +147,7 @@ class HomePage(QWidget):
         main_layout.addWidget(self.right_panel, 1.5)
         self.setLayout(main_layout)
 
-        qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "home_page.qss")
+        qss_path = os.path.join(BASE_APP_DIR, "styles" , "home_page.qss")
         load_styles(self, qss_path)
 
     def create_resumen_widget(self):

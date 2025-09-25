@@ -7,6 +7,7 @@ import sys # <-- Importa sys
 
 
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
+
 if getattr(sys, 'frozen', False):
     # Si estamos en un ejecutable de PyInstaller, la base es el directorio donde está el .exe
     BASE_APP_DIR = os.path.dirname(sys.executable)
@@ -15,6 +16,8 @@ else:
     # que está en la raíz de tu proyecto (BGC-software/)
     BASE_APP_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# -- Colores globales --
+
 PRIMARY_COLOR = "#1a365d"     # Azul oscuro (fondo navbar)
 SECONDARY_COLOR = "#8C5B2F"   # Marrón (hover y botón activo)
 TEXT_COLOR = "#FFFFFF"        # Texto blanco
@@ -22,6 +25,7 @@ TEXT_COLOR = "#FFFFFF"        # Texto blanco
 # functions globlaes
 
 
+# -- Metodos Globlales --
 
 def load_styles(self, qss_path):
         try:
@@ -36,13 +40,29 @@ def load_styles(self, qss_path):
             print(f"❌ Error cargando estilos de {qss_path}: {e}")
 
 
-def load_svg_icon(path: str, size: QSize = QSize(24, 24)) -> QIcon:
-    renderer = QSvgRenderer(path)
+def load_svg_icon(relative_path: str, size: QSize = QSize(24, 24)) -> QIcon:
+    """
+    Carga un archivo SVG combinando la ruta base de assets con la ruta relativa.
+    
+    :param relative_path: La ruta del ícono *dentro* de la carpeta 'assets'. 
+                          Ej: "icons/pig-money.svg"
+    """
+    # Combina la ruta absoluta donde PyInstaller colocó 'assets' con la ruta del ícono.
+    absolute_path = os.path.join(BASE_APP_DIR, "assets", relative_path) 
+    
+    # Carga y Renderizado
+    renderer = QSvgRenderer(absolute_path)
+    if not renderer.isValid():
+        # Manejo de error si el ícono no se encuentra
+        print(f"Error: No se pudo cargar el ícono SVG en la ruta: {absolute_path}")
+        return QIcon() # Retorna un ícono vacío para evitar fallos
+        
     pixmap = QPixmap(size)
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     renderer.render(painter)
     painter.end()
+    
     return QIcon(pixmap)
 
 def format_miles_colombian_int(value: int) -> str:

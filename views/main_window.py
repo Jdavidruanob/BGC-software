@@ -10,7 +10,7 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
-from config import load_styles, load_svg_icon
+from config import load_styles, load_svg_icon, BASE_APP_DIR
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -38,13 +38,13 @@ class MainWindow(QMainWindow):
         top_layout.addStretch()
 
         # Botones con íconos PNG
-        icons_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "icons")
+        icons_dir = os.path.join(BASE_APP_DIR, "assets", "icons")
         # Inicio
         self.btn_home = QPushButton(" Inicio")
-        self.btn_home.setIcon(load_svg_icon("assets/icons/home.svg")) # Usa la función load_svg_icon para cargar el ícono SVG
+        self.btn_home.setIcon(load_svg_icon("icons/home.svg")) 
         # Auxiliar
         self.btn_assistant = QPushButton(" Auxiliar")
-        self.btn_assistant.setIcon(QIcon(os.path.join(icons_dir, "library.svg")))
+        self.btn_assistant.setIcon(QIcon(os.path.join(icons_dir, "library.svg"))) 
         # Socios
         self.btn_members = QPushButton(" Socios")
         self.btn_members.setIcon(QIcon(os.path.join(icons_dir, "users-group.svg")))
@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # Cargar estilos
-        qss_path = os.path.join(os.path.dirname(__file__), "..",  "styles", "main.qss")
+        qss_path = os.path.join(BASE_APP_DIR,  "styles", "main.qss") 
         load_styles(self, qss_path)
 
         # Configuración de botones 

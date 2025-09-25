@@ -5,7 +5,7 @@ from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QPen
 from PySide6.QtCore import Qt, QSize
 import os
 
-from config import load_svg_icon, load_styles, format_miles_colombian_int
+from config import load_svg_icon, load_styles, format_miles_colombian_int, BASE_APP_DIR
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
@@ -56,7 +56,7 @@ class MemberDetailPage(QWidget):
         self.setLayout(main_layout)
 
         # Cargar estilos
-        qss_path = os.path.join(os.path.dirname(__file__), "..", "styles", "member_detail_page.qss")
+        qss_path = os.path.join(BASE_APP_DIR, "styles", "member_detail_page.qss")
         load_styles(self, qss_path)
 
     def create_left_panel(self):
@@ -86,9 +86,9 @@ class MemberDetailPage(QWidget):
         photo_label.setAlignment(Qt.AlignCenter)
         photo_label.setScaledContents(True)
 
-        photo_path = member["photo_path"] or "assets/images/default_user.png"
+        photo_path = member["photo_path"] or "images/default_user.png" #TODO: Revisar rutas relativas y que cuando se agrege una nueva imagen se agrege a la carptea de bgc
         if not os.path.exists(photo_path):
-            photo_path = "assets/images/default_user.png"
+            photo_path = "images/default_user.png"
 
         avatar_pixmap = self.create_rounded_avatar(photo_path, size=175, border=3, border_color=PRIMARY_COLOR)
         photo_label.setPixmap(avatar_pixmap)
@@ -140,12 +140,12 @@ class MemberDetailPage(QWidget):
         button_row.setContentsMargins(0, 20, 0, 0)  # Márgenes para los botones
         edit_btn = QPushButton("  Editar")
         edit_btn.setObjectName("editMemberButton")
-        edit_btn.setIcon(load_svg_icon("assets/icons/edit.svg"))
+        edit_btn.setIcon(load_svg_icon("icons/edit.svg"))
         edit_btn.clicked.connect(self.on_edit_member)
 
         delete_btn = QPushButton("  Eliminar")
         delete_btn.setObjectName("deleteMemberButton")
-        delete_btn.setIcon(load_svg_icon("assets/icons/trash.svg"))
+        delete_btn.setIcon(load_svg_icon("icons/trash.svg"))
         delete_btn.clicked.connect(self.on_delete_member)              
         button_row.addWidget(edit_btn)
         button_row.addWidget(delete_btn)

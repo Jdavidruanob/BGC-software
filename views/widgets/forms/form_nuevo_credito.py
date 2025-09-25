@@ -8,7 +8,7 @@ import os
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
-from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int
+from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int, BASE_APP_DIR
 from utils.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
 from utils.credit_liquidation_generator import generar_liquidacion_credito
@@ -123,7 +123,7 @@ class FormNuevoCredito(QWidget):
 
         # Estilos
         qss_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "styles", "forms", "form_nuevo_credito.qss"
+            BASE_APP_DIR, "styles", "forms", "form_nuevo_credito.qss"
         )
         load_styles(self, qss_path)
 
@@ -196,7 +196,7 @@ class FormNuevoCredito(QWidget):
 
         btn = QPushButton("")
         btn.setFixedSize(22, 22)
-        btn.setIcon(load_svg_icon("assets/icons/x.svg"))
+        btn.setIcon(load_svg_icon("icons/x.svg"))
         btn.setStyleSheet("border: none; background: transparent;")
 
         def eliminar():
