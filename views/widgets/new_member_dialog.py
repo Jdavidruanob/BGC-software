@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 
-DEFAULT_PHOTO = "assets/images/default_user.png" # TODO: revisar ruta relativa
+DEFAULT_PHOTO = os.path.join(BASE_APP_DIR, "assets/images/default_user.png")
 
 class NewMemberDialog(QDialog):
     def __init__(self, parent=None):
@@ -73,7 +73,7 @@ class NewMemberDialog(QDialog):
     def select_photo(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.jpeg)")
         if file_path:
-            self.photo_input.setText(file_path) # TODO: revissar lo de las imagenes de los socios
+            self.photo_input.setText(file_path) 
 
     def on_submit(self):
         if not self.first_name_input.text().strip() or not self.last_name_input.text().strip():
