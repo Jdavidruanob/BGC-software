@@ -183,7 +183,7 @@ class FormRetiro(QWidget):
             self.db.conn.commit()
 
             # Mostrar mensaje de éxito y la ruta del archivo generado
-            if generated_receipt_path: #TODO: Revisar ruta relativa
+            if generated_receipt_path: 
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}", file_path=generated_receipt_path)
             else:
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id} (no se pudo generar el archivo).")

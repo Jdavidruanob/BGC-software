@@ -86,7 +86,7 @@ class MemberDetailPage(QWidget):
         photo_label.setAlignment(Qt.AlignCenter)
         photo_label.setScaledContents(True)
 
-        photo_path = member["photo_path"] or "images/default_user.png" #TODO: Revisar rutas relativas y que cuando se agrege una nueva imagen se agrege a la carptea de bgc
+        photo_path = member["photo_path"] or "images/default_user.png"
         if not os.path.exists(photo_path):
             photo_path = "images/default_user.png"
 

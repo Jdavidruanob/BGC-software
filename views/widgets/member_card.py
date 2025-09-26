@@ -29,9 +29,6 @@ class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
         self.photo_label.setAlignment(Qt.AlignCenter)
         self.photo_label.setScaledContents(True)
 
-        if not os.path.exists(photo_path) or not photo_path:
-            photo_path = "assets/images/default_user.png" #TODO: revisar ruta relativa
-
         avatar_pixmap = self.create_rounded_avatar(photo_path, size=135, border=3, border_color=PRIMARY_COLOR)
         self.photo_label.setPixmap(avatar_pixmap)
 
