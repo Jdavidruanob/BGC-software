@@ -7,15 +7,15 @@ from openpyxl.utils import get_column_letter
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
-from config import BASE_APP_DIR, format_miles_colombian_int
+from config import  format_miles_colombian_int, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 
 # --- Rutas y Constantes ---
-TEMPLATE_LIQUIDACION_REL_PATH = os.path.join("assets", "templates", "recibo_template_liquidacion.xlsx")
-TEMPLATE_LIQUIDACION_PATH = os.path.join(BASE_APP_DIR, TEMPLATE_LIQUIDACION_REL_PATH)
+TEMPLATE_LIQUIDACION_REL_PATH = os.path.join("templates", "recibo_template_liquidacion.xlsx")
+TEMPLATE_LIQUIDACION_PATH = os.path.join(ASSETS_DIR, TEMPLATE_LIQUIDACION_REL_PATH)
 
 # La carpeta de salida para las liquidaciones
 LIQUIDACIONES_OUTPUT_DIR_REL_PATH = "Liquidaciones"
-LIQUIDACIONES_OUTPUT_DIR = os.path.join(BASE_APP_DIR, LIQUIDACIONES_OUTPUT_DIR_REL_PATH)
+LIQUIDACIONES_OUTPUT_DIR = os.path.join(DYNAMIC_DATA_BASE_DIR, LIQUIDACIONES_OUTPUT_DIR_REL_PATH)
 
 # Constantes de Celda para el Encabezado (según tu descripción)
 LETRA_CREDITO_CELL = 'B7'

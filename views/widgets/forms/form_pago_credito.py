@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize
 
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_success, show_error, show_warning, show_info
 import os
 from datetime import date
@@ -78,7 +78,7 @@ class FormPagoCredito(QWidget):
 
         # Aplica estilos
         qss_path = os.path.join(
-            BASE_APP_DIR, "styles", "forms", "form_pago_credito.qss"
+            STYLES_DIR, "forms", "form_pago_credito.qss"
         )
         load_styles(self, qss_path)
 

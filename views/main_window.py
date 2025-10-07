@@ -10,7 +10,7 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
-from config import load_styles, load_svg_icon, BASE_APP_DIR
+from config import load_styles, load_svg_icon, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -38,10 +38,10 @@ class MainWindow(QMainWindow):
         top_layout.addStretch()
 
         # Botones con íconos PNG
-        icons_dir = os.path.join(BASE_APP_DIR, "assets", "icons")
+        icons_dir = os.path.join(ASSETS_DIR, "icons")
         # Inicio
         self.btn_home = QPushButton(" Inicio")
-        self.btn_home.setIcon(load_svg_icon("icons/home.svg")) 
+        self.btn_home.setIcon(load_svg_icon("icons/home.svg")) #TODO: Revisar despues de ejecutar el exe aver si funciona bien 
         # Auxiliar
         self.btn_assistant = QPushButton(" Auxiliar")
         self.btn_assistant.setIcon(QIcon(os.path.join(icons_dir, "library.svg"))) 
@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # Cargar estilos
-        qss_path = os.path.join(BASE_APP_DIR,  "styles", "main.qss") 
+        qss_path = os.path.join(STYLES_DIR, "main.qss") 
         load_styles(self, qss_path)
 
         # Configuración de botones 
@@ -123,4 +123,4 @@ class MainWindow(QMainWindow):
 
             button.style().unpolish(button)
             button.style().polish(button)
-            button.update()
+            button.update

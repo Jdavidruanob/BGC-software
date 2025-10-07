@@ -1,8 +1,7 @@
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout # Importa QVBoxLayout
 from PySide6.QtCore import Qt, Signal
 import os
-from config import load_styles, format_miles_colombian_int, BASE_APP_DIR # Asegúrate de importar format_miles_colombian_int
-
+from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 class CreditCardWidget(QFrame):
     clicked = Signal(int)  # Emitimos la letra del crédito al hacer clic
 
@@ -54,7 +53,7 @@ class CreditCardWidget(QFrame):
         main_v_layout.addLayout(content_h_layout)
 
         # Cargar estilos QSS
-        qss_path = os.path.join(BASE_APP_DIR, "styles", "credit_card_widget.qss")
+        qss_path = os.path.join(STYLES_DIR, "credit_card_widget.qss")
         load_styles(self, qss_path)
 
     def mousePressEvent(self, event):
