@@ -6,10 +6,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 
-DEFAULT_PHOTO = os.path.join(BASE_APP_DIR, "assets/images/default_user.png")
+DEFAULT_PHOTO = os.path.join(ASSETS_DIR, "/images/default_user.png")
 
 class NewMemberDialog(QDialog):
     def __init__(self, parent=None):
@@ -67,7 +67,7 @@ class NewMemberDialog(QDialog):
         layout.addWidget(create_btn, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
-        qss_path = os.path.join(BASE_APP_DIR, "styles", "new_member_dialog.qss")
+        qss_path = os.path.join(STYLES_DIR, "new_member_dialog.qss")
         load_styles(self, qss_path)
 
     def select_photo(self):

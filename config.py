@@ -8,13 +8,40 @@ import sys # <-- Importa sys
 
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
 
+# 1. Base para archivos empaquetados (Assets, Styles)
 if getattr(sys, 'frozen', False):
-    # Si estamos en un ejecutable de PyInstaller, la base es el directorio donde está el .exe
-    BASE_APP_DIR = os.path.dirname(sys.executable)
+    STATIC_BASE_DIR = sys._MEIPASS
 else:
-    # Si estamos en desarrollo (ejecutando con Python), la base es el directorio de 'config.py'
-    # que está en la raíz de tu proyecto (BGC-software/)
-    BASE_APP_DIR = os.path.abspath(os.path.dirname(__file__))
+    STATIC_BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# 2. Base para archivos de usuario (DB, Recibos, Liquidaciones)
+if getattr(sys, 'frozen', False):
+    DYNAMIC_DATA_BASE_DIR = os.path.dirname(sys.executable)
+else:
+    DYNAMIC_DATA_BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# ------------------------------------------------------------------
+# 🔑 Define las rutas UNA VEZ usando la base correcta
+# ------------------------------------------------------------------
+
+# Rutas que necesitan sys._MEIPASS para funcionar
+ASSETS_DIR = os.path.join(STATIC_BASE_DIR, "assets")
+STYLES_DIR = os.path.join(STATIC_BASE_DIR, "styles")
+
+# Rutas que necesitan la carpeta del .exe para persistir
+DB_PATH = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
+RECIBOS_OUTPUT_DIR = os.path.join(DYNAMIC_DATA_BASE_DIR, "Recibos")
+# ... otras rutas dinámicas
+
+# ------------------------------------------------------------------
+# 🔑 USO EN TU CÓDIGO (¡MÁS LIMPIO!)
+# ------------------------------------------------------------------
+
+# Para cargar un estilo:
+# qss_path = os.path.join(STYLES_DIR, "home_page.qss") # Usando la ruta pre-construida
+
+# Para cargar un asset (icono/fuente):
+# font_path = os.path.join(ASSETS_DIR, "fonts", "InterVariable.ttf"
 
 # -- Colores globales --
 
@@ -48,7 +75,7 @@ def load_svg_icon(relative_path: str, size: QSize = QSize(24, 24)) -> QIcon:
                           Ej: "icons/pig-money.svg"
     """
     # Combina la ruta absoluta donde PyInstaller colocó 'assets' con la ruta del ícono.
-    absolute_path = os.path.join(BASE_APP_DIR, "assets", relative_path) 
+    absolute_path = os.path.join(ASSETS_DIR, relative_path) #TODO: cambiar todas las rutas
     
     # Carga y Renderizado
     renderer = QSvgRenderer(absolute_path)

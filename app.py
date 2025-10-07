@@ -10,11 +10,12 @@ from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
 from db.db_manager import DBManager 
-
+from config import DYNAMIC_DATA_BASE_DIR, ASSETS_DIR
 def main():
     app = QApplication(sys.argv)
     # Cargar fuente Inter Variable
-    font_id = QFontDatabase.addApplicationFont("assets/fonts/InterVariable.ttf")
+    font_path = os.path.join(ASSETS_DIR, "fonts", "InterVariable.ttf") 
+    font_id = QFontDatabase.addApplicationFont(font_path)
     if font_id != -1:
         family = QFontDatabase.applicationFontFamilies(font_id)[0]
         app.setFont(QFont(family))
@@ -23,7 +24,7 @@ def main():
         print("❌ No se pudo cargar la fuente Inter Variable.")
 
     # Inicializar y conectar la base de datos
-    db_path = "BGC-software.db"#TODO: ruta absoluta
+    db_path = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
     db_manager = DBManager(db_path)
 
     if not db_manager.connect():
