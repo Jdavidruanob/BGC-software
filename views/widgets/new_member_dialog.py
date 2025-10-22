@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 
-DEFAULT_PHOTO = os.path.join(ASSETS_DIR, "/images/default_user.png")
+DEFAULT_PHOTO = os.path.join(ASSETS_DIR, "images", "default_user.png")
 
 class NewMemberDialog(QDialog):
     def __init__(self, parent=None):

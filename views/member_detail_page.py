@@ -86,9 +86,10 @@ class MemberDetailPage(QWidget):
         photo_label.setAlignment(Qt.AlignCenter)
         photo_label.setScaledContents(True)
 
-        photo_path = member["photo_path"] or "images/default_user.png"
+        DEFAULT_PHOTO = os.path.join(ASSETS_DIR, "images", "default_user.png")
+        photo_path = member["photo_path"] or DEFAULT_PHOTO
         if not os.path.exists(photo_path):
-            photo_path = "images/default_user.png"
+            photo_path = DEFAULT_PHOTO
 
         avatar_pixmap = self.create_rounded_avatar(photo_path, size=175, border=3, border_color=PRIMARY_COLOR)
         photo_label.setPixmap(avatar_pixmap)
