@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from config import load_styles, format_miles_colombian_int, BASE_APP_DIR
+from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 
 class CreditLiquidationPage(QWidget):
     def __init__(self, credit, member_id, main_window, db_manager):
@@ -112,7 +112,7 @@ class CreditLiquidationPage(QWidget):
         self.setLayout(main_layout)
 
         # Estilos adicionales
-        qss_path = os.path.join(BASE_APP_DIR, "styles", "liquidation_page.qss")
+        qss_path = os.path.join(STYLES_DIR, "liquidation_page.qss")
         load_styles(self, qss_path)
 
         # Generar cuotas

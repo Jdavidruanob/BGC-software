@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 from datetime import date
 import os
 
-from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int, BASE_APP_DIR
+from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_success, show_error, show_warning
 from utils.recibo_generator_retiro import generar_recibo_retiro
 
@@ -78,7 +78,7 @@ class FormRetiro(QWidget):
         self.load_socios()
 
         qss_path = os.path.join(
-            BASE_APP_DIR, "styles", "forms", "form_retiro.qss"
+            STYLES_DIR, "forms", "form_retiro.qss"
         )
         load_styles(self, qss_path)
 
