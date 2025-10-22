@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QStackedWidget, QSizePolicy, QInputDialog
 )
 from PySide6.QtCore import Qt, QSize
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, BASE_APP_DIR
+from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from views.widgets.forms.form_aporte import FormAporte
 from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
@@ -147,7 +147,7 @@ class HomePage(QWidget):
         main_layout.addWidget(self.right_panel, 1.5)
         self.setLayout(main_layout)
 
-        qss_path = os.path.join(BASE_APP_DIR, "styles" , "home_page.qss")
+        qss_path = os.path.join(STYLES_DIR , "home_page.qss")
         load_styles(self, qss_path)
 
     def create_resumen_widget(self):

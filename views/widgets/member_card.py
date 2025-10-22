@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QPainter, QBrush, QColor, QPen, QPainterPath
 
 from config import PRIMARY_COLOR, SECONDARY_COLOR, TEXT_COLOR
-from config import load_styles, BASE_APP_DIR
+from config import load_styles, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 
 class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
     def __init__(self, member_id, name, photo_path, credit_info):
@@ -54,7 +54,7 @@ class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
         self.setLayout(layout) # Añadir el layout al botón
         self.setFixedSize(325, 225)  # Tamaño de la card
 
-        qss_path = os.path.join(BASE_APP_DIR, "styles", "member_card.qss")
+        qss_path = os.path.join(STYLES_DIR, "member_card.qss")
         load_styles(self, qss_path) # Cargar estilos desde el archivo QSS
 
 

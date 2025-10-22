@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QAction
 
 from .widgets.member_card import MemberCard
-from config import load_styles, load_svg_icon, BASE_APP_DIR
+from config import load_styles, load_svg_icon, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.member_detail_page import MemberDetailPage
 from utils.message_boxes import show_success, show_error, show_warning, show_info
@@ -75,7 +75,7 @@ class MembersPage(QWidget):
         self.setLayout(main_layout) 
 
         # cargar estilos
-        qss_path = os.path.join(BASE_APP_DIR, "styles", "members_page.qss")
+        qss_path = os.path.join(STYLES_DIR, "members_page.qss")
         load_styles(self, qss_path)
 
         self.refresh_members()  # Cargar al iniciar

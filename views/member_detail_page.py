@@ -5,7 +5,7 @@ from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QPen
 from PySide6.QtCore import Qt, QSize
 import os
 
-from config import load_svg_icon, load_styles, format_miles_colombian_int, BASE_APP_DIR
+from config import load_svg_icon, load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
@@ -56,7 +56,7 @@ class MemberDetailPage(QWidget):
         self.setLayout(main_layout)
 
         # Cargar estilos
-        qss_path = os.path.join(BASE_APP_DIR, "styles", "member_detail_page.qss")
+        qss_path = os.path.join(STYLES_DIR, "member_detail_page.qss")
         load_styles(self, qss_path)
 
     def create_left_panel(self):
@@ -86,9 +86,10 @@ class MemberDetailPage(QWidget):
         photo_label.setAlignment(Qt.AlignCenter)
         photo_label.setScaledContents(True)
 
-        photo_path = member["photo_path"] or "images/default_user.png"
+        DEFAULT_PHOTO = os.path.join(ASSETS_DIR, "images", "default_user.png")
+        photo_path = member["photo_path"] or DEFAULT_PHOTO
         if not os.path.exists(photo_path):
-            photo_path = "images/default_user.png"
+            photo_path = DEFAULT_PHOTO
 
         avatar_pixmap = self.create_rounded_avatar(photo_path, size=175, border=3, border_color=PRIMARY_COLOR)
         photo_label.setPixmap(avatar_pixmap)
