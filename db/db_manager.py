@@ -273,9 +273,9 @@ class DBManager:
             """, (nombres, apellidos, phone, photo_path, saldo))
 
             # Actualizar saldo_en_caja en config
-            saldo_actual = self.get_config_value_as_int("saldo_en_caja")
+            """ saldo_actual = self.get_config_value_as_int("saldo_en_caja")#FIXME: sumar saldo
             nuevo_saldo = saldo_actual + saldo
-            self.set_config_value("saldo_en_caja", str(nuevo_saldo))
+            self.set_config_value("saldo_en_caja", str(nuevo_saldo)) """
 
             self.conn.commit()
             print(f"✅ Socio '{nombres} {apellidos}' agregado correctamente.")
@@ -330,10 +330,10 @@ class DBManager:
             cursor.execute("DELETE FROM socios WHERE id = ?", (socio_id,))
 
             # 9. Actualizar saldo en caja
-            saldo_caja = self.get_config_value_as_int("saldo_en_caja")
+            """ saldo_caja = self.get_config_value_as_int("saldo_en_caja")
             nuevo_saldo = saldo_caja - saldo_socio
             self.set_config_value("saldo_en_caja", str(nuevo_saldo))
-
+            """
             self.conn.commit()
             print(f"🗑️ Socio con ID {socio_id} eliminado junto con datos relacionados.")
             return True
@@ -365,10 +365,10 @@ class DBManager:
             """, (nombres, apellidos, phone, photo_path, nuevo_saldo, socio_id))
 
             # Ajustar saldo_en_caja
-            diferencia = nuevo_saldo - saldo_anterior
+            """ diferencia = nuevo_saldo - saldo_anterior
             saldo_caja = self.get_config_value_as_int("saldo_en_caja")
             nuevo_saldo_caja = saldo_caja + diferencia
-            self.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
+            self.set_config_value("saldo_en_caja", str(nuevo_saldo_caja)) """
 
             self.conn.commit()
             print(f"✏️ Socio '{nombres} {apellidos}' actualizado correctamente.")
