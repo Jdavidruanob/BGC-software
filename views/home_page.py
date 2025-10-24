@@ -142,6 +142,14 @@ class HomePage(QWidget):
         resumen = self.create_resumen_widget()
         right_layout.addWidget(resumen)
 
+        # Botón para editar saldo en caja
+        #FIXME: Cambiar estilo boton y input.
+        btn_editar_saldo = QPushButton("Editar Saldo en Caja")
+        btn_editar_saldo.setObjectName("btnEditarSaldo")
+        btn_editar_saldo.setStyleSheet("margin-left: 10px; margin-bottom: 10px; background-color: #4A90E2; color: white; padding: 8px; border-radius: 5px;")
+        btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
+        right_layout.addWidget(btn_editar_saldo)
+
         self.right_panel.setLayout(right_layout)
         main_layout.addWidget(self.left_panel, 2.5)
         main_layout.addWidget(self.right_panel, 1.5)
@@ -221,6 +229,19 @@ class HomePage(QWidget):
 
         
         return frame
+    
+
+    def editar_saldo_en_caja(self):
+        saldo_actual = self.db_manager.get_config_value_as_int("saldo_en_caja")
+        nuevo, ok = QInputDialog.getInt(
+            self, "Editar Saldo en Caja",
+            "Nuevo saldo en caja:",
+            value=saldo_actual, minValue=0
+        )
+        if ok:
+            self.db_manager.set_config_value("saldo_en_caja", str(nuevo))
+            show_success(self, "Saldo actualizado", f"El saldo en caja ahora es: $ {format_miles_colombian_int(nuevo)}")
+            self.refresh_view()
 
     def update_form(self):
         if self.btn_nuevo_credito.isChecked():
@@ -313,3 +334,9 @@ class HomePage(QWidget):
         resumen_widget = self.create_resumen_widget()
         self.right_panel.layout().addWidget(resumen_widget)
 
+        # Vuelve a agregar el botón de editar saldo
+        btn_editar_saldo = QPushButton("Editar Saldo en Caja")
+        btn_editar_saldo.setObjectName("btnEditarSaldo")
+        btn_editar_saldo.setStyleSheet("margin-left: 10px; margin-bottom: 10px; background-color: #4A90E2; color: white; padding: 8px; border-radius: 5px;")
+        btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
+        self.right_panel.layout().addWidget(btn_editar_saldo)
