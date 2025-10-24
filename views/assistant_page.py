@@ -139,7 +139,7 @@ class AssistantPage(QWidget):
         self.table_widget.setColumnWidth(3, 80)  # Número
         self.table_widget.setColumnWidth(4, 80)  # Cuota
         self.table_widget.setColumnWidth(5, 130) # Monto
-        self.table_widget.setColumnWidth(6, 150) # Saldo en Caja
+        self.table_widget.setColumnWidth(6, 185) # Saldo en Caja
 
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.verticalHeader().setDefaultSectionSize(50) 
@@ -147,10 +147,10 @@ class AssistantPage(QWidget):
         main_layout.addWidget(self.table_widget)
         # --- FIN QTableWidget ---
 
-        self.load_more_btn = QPushButton("Cargar más operaciones")
-        self.load_more_btn.setObjectName("loadMoreButton")
-        self.load_more_btn.clicked.connect(self.load_next_page)
-        main_layout.addWidget(self.load_more_btn, alignment=Qt.AlignCenter)
+        #self.load_more_btn = QPushButton("Cargar más operaciones")
+        #self.load_more_btn.setObjectName("loadMoreButton")
+        #self.load_more_btn.clicked.connect(self.load_next_page)
+        #main_layout.addWidget(self.load_more_btn, alignment=Qt.AlignCenter)
 
         qss_path = os.path.join(STYLES_DIR, "assistant_page.qss")
         load_styles(self, qss_path)
@@ -188,8 +188,8 @@ class AssistantPage(QWidget):
         # Reiniciar la tabla y la paginación para aplicar los nuevos filtros
         self.table_widget.setRowCount(0)
         self.current_page = 0
-        self.load_more_btn.setEnabled(True)
-        self.load_more_btn.setText("Cargar más operaciones")
+        #self.load_more_btn.setEnabled(True)
+        #self.load_more_btn.setText("Cargar más operaciones")
         self.load_next_page()
 
     def clear_filters(self):
@@ -206,9 +206,9 @@ class AssistantPage(QWidget):
         self.apply_filters()
 
     def load_next_page(self):
-        """
-        Carga la siguiente página de operaciones aplicando los filtros actuales.
-        """
+        
+        #Carga la siguiente página de operaciones aplicando los filtros actuales.
+        
         ops = self.db_manager.get_auxiliary_operations(
             limit=self.page_size, 
             offset=self.current_page * self.page_size,
@@ -232,7 +232,7 @@ class AssistantPage(QWidget):
             row_index = current_row_count + i
             self.build_operation_row(op, row_index)
             
-        self.current_page += 1
+        self.current_page += 1 
 
     def add_operation(self, op):
         """
