@@ -55,13 +55,13 @@ class AssistantPage(QWidget):
         
         date_number_cuota_layout.addWidget(QLabel("Fecha Inicio:"))
         self.date_start_edit = QDateEdit(calendarPopup=True)
-        self.date_start_edit.setDate(QDate.currentDate().addDays(-30)) # Por defecto, los últimos 30 días
+        self.date_start_edit.setDate(QDate(QDate.currentDate().year() - 1, 11, 30)) # 30 noviembre del año pasado
         self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_start_edit)
 
         date_number_cuota_layout.addWidget(QLabel("Fecha Fin:"))
         self.date_end_edit = QDateEdit(calendarPopup=True)
-        self.date_end_edit.setDate(QDate.currentDate())
+        self.date_end_edit.setDate(QDate(QDate.currentDate().year(), 11, 30)) # 30 noviembre del año pasado
         self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_end_edit)
         
@@ -139,7 +139,7 @@ class AssistantPage(QWidget):
         self.table_widget.setColumnWidth(3, 80)  # Número
         self.table_widget.setColumnWidth(4, 80)  # Cuota
         self.table_widget.setColumnWidth(5, 130) # Monto
-        self.table_widget.setColumnWidth(6, 185) # Saldo en Caja
+        self.table_widget.setColumnWidth(6, 183.5) # Saldo en Caja
 
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.verticalHeader().setDefaultSectionSize(50) 
@@ -196,8 +196,8 @@ class AssistantPage(QWidget):
         """
         Limpia todos los filtros y recarga la tabla.
         """
-        self.date_start_edit.setDate(QDate.currentDate().addDays(-30)) 
-        self.date_end_edit.setDate(QDate.currentDate())
+        self.date_start_edit.setDate(QDate(QDate.currentDate().year() - 1, 11, 30)) 
+        self.date_end_edit.setDate(QDate(QDate.currentDate().year(), 11, 30))
         self.type_combo.setCurrentIndex(0) 
         self.socio_search_input.clear()
         self.numero_search_input.clear() 
@@ -221,8 +221,6 @@ class AssistantPage(QWidget):
         )
 
         if not ops:
-            self.load_more_btn.setEnabled(False)
-            self.load_more_btn.setText("No hay más operaciones")
             return
 
         current_row_count = self.table_widget.rowCount()
