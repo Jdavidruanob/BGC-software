@@ -2,15 +2,18 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment # Importa Alignment para centrar texto
 from datetime import date
-from config import format_miles_colombian_int, format_full_name_for_excel, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import (
+    format_miles_colombian_int, 
+    format_full_name_for_excel, 
+    ASSETS_DIR, RECIBOS_OUTPUT_DIR
+)
 
 # --- Rutas y Constantes ---
 # Construir rutas relativas a BASE_APP_DIR
 TEMPLATE_RETIRO_REL_PATH = os.path.join("templates", "recibo_template_retiro.xlsx")
 TEMPLATE_RETIRO_PATH = os.path.join(ASSETS_DIR, TEMPLATE_RETIRO_REL_PATH)
 
-OUTPUT_FOLDER_REL_PATH = "Recibos" # La carpeta para retiros/devoluciones
-OUTPUT_FOLDER_PATH = os.path.join(DYNAMIC_DATA_BASE_DIR, OUTPUT_FOLDER_REL_PATH)
+OUTPUT_FOLDER_PATH = RECIBOS_OUTPUT_DIR
 
 # --- Constantes de Celda Específicas para recibo_template_retiro.xlsx ---
 RECIBO_ID_CELL = 'B6'       # Numero de recibo

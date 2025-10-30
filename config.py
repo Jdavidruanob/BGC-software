@@ -6,6 +6,9 @@ import os
 import sys # <-- Importa sys
 
 
+
+
+
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
 
 # 1. Base para archivos empaquetados (Assets, Styles)
@@ -29,9 +32,47 @@ ASSETS_DIR = os.path.join(STATIC_BASE_DIR, "assets")
 STYLES_DIR = os.path.join(STATIC_BASE_DIR, "styles")
 
 # Rutas que necesitan la carpeta del .exe para persistir
-DB_PATH = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
-RECIBOS_OUTPUT_DIR = os.path.join(DYNAMIC_DATA_BASE_DIR, "Recibos")
+#DB_PATH = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
+#RECIBOS_OUTPUT_DIR = os.path.join(DYNAMIC_DATA_BASE_DIR, "Recibos")
 # ... otras rutas dinámicas
+ 
+
+# 🔑 LÓGICA CLAVE: Definir el Año Fiscal
+from datetime import date
+today = date.today()
+if today.month == 12:
+    # Si estamos en Diciembre, el año fiscal es el siguiente año calendario.
+    FISCAL_YEAR = str(today.year + 1)
+else:
+    # Si estamos de Enero a Noviembre, es el año calendario actual.
+    FISCAL_YEAR = str(today.year)
+
+
+# Define la carpeta que contiene los datos de todos los años
+# Ejemplo: C:\App\Archivos_BGC\
+DATA_ROOT_FOLDER = os.path.join(DYNAMIC_DATA_BASE_DIR, "Archivos_BGC")
+
+# Define la carpeta de trabajo para el año fiscal actual
+# Ejemplo: C:\App\Archivos_BGC\2026\
+YEAR_DATA_DIR = os.path.join(DATA_ROOT_FOLDER, FISCAL_YEAR)
+
+# DB y Archivos de salida deben usar la carpeta del año fiscal
+DB_PATH = os.path.join(YEAR_DATA_DIR, "BGC-software.db")
+RECIBOS_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Recibos")
+LIQUIDACIONES_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Liquidaciones")
+
+# Asegura que la carpeta del año fiscal exista (la primera vez que se ejecuta)
+if not os.path.exists(YEAR_DATA_DIR):
+    os.makedirs(YEAR_DATA_DIR)
+
+
+DB_FILE_NAME = "BGC-software.db"
+# ✅ RUTA FINAL: Apunta a la carpeta del año fiscal
+DB_PATH_FINAL = os.path.join(YEAR_DATA_DIR, DB_FILE_NAME) 
+
+# También necesitas el path de la base de datos 'plantilla'
+# Esta es la DB que está empaquetada dentro del .exe y se usa para el primer inicio de cada año.
+DB_TEMPLATE_PATH = os.path.join(STATIC_BASE_DIR, "BGC-software.db")
 
 # ------------------------------------------------------------------
 # 🔑 USO EN TU CÓDIGO (¡MÁS LIMPIO!)
@@ -65,7 +106,6 @@ def load_styles(self, qss_path):
                 self.setStyleSheet(qss)
         except Exception as e:
             print(f"❌ Error cargando estilos de {qss_path}: {e}")
-
 
 def load_svg_icon(relative_path: str, size: QSize = QSize(24, 24)) -> QIcon:
     """

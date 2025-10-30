@@ -2,15 +2,17 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment 
 from datetime import date
-from config import format_miles_colombian_int, format_full_name_for_excel, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
-
+from config import (
+    format_miles_colombian_int, 
+    format_full_name_for_excel, 
+    ASSETS_DIR, RECIBOS_OUTPUT_DIR
+)
 # --- Configuración de rutas (Ajusta según tu estructura de proyecto) ---
 TEMPLATE_APORTE_REL_PATH = os.path.join("templates", "recibo_template_aporte.xlsx") 
 TEMPLATE_APORTE_PATH = os.path.join(ASSETS_DIR, TEMPLATE_APORTE_REL_PATH) 
 
 # Renombrado y ajustado para tu estructura deseada
-OUTPUT_FOLDER_REL_PATH = "Recibos"
-OUTPUT_FOLDER_PATH = os.path.join(DYNAMIC_DATA_BASE_DIR, OUTPUT_FOLDER_REL_PATH) 
+OUTPUT_FOLDER_PATH = RECIBOS_OUTPUT_DIR 
 
 # --- Constantes de Celda para recibo_template_aporte.xlsx ---
 RECIBO_ID_CELL = 'D4'
