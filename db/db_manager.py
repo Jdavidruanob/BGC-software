@@ -124,6 +124,72 @@ class DBManager:
         except sqlite3.Error as e:
             print(f"❌ Error creando tablas: {e}")
 
+    def run_annual_migration(self, prev_db_path):
+        """
+        Ejecuta la migración de saldos y créditos activos del año anterior al actual.
+        :param prev_db_path: Ruta al archivo DB del año fiscal anterior.
+        """
+        print(f"\n⏳ Iniciando migración de datos desde: {prev_db_path}")
+
+        # 1. Conexión a la base de datos anterior (SOLO LECTURA)
+        try:
+            prev_conn = sqlite3.connect(prev_db_path)
+            prev_cursor = prev_conn.cursor()
+        except sqlite3.Error as e:
+            print(f"❌ ERROR: No se pudo conectar a la DB anterior ({prev_db_path}). {e}")
+            return
+
+        current_cursor = self.conn.cursor() # Cursor de la DB actual (DB_PATH_FINAL)
+
+        try:
+            # A) Migrar Socios y Saldos Finales
+            # Se traen todos los socios con su saldo actual (final del año anterior).
+            current_cursor.execute("INSERT INTO socios (id, cc, nombres, apellidos, saldo, celular, photo_path) SELECT id, cc, nombres, apellidos, saldo, celular, photo_path FROM socios", prev_conn)
+            print("   ✅ Socios y saldos migrados.")
+
+            # B) Identificar y Migrar Créditos Activos (Cuotas pendientes en 'liquidaciones')
+            # Buscamos créditos que tengan al menos UNA cuota con fecha_pago NULL.
+            active_credits_query = """
+                SELECT DISTINCT credito_letra
+                FROM liquidaciones
+                WHERE fecha_pago IS NULL;
+            """
+            active_credits = prev_cursor.execute(active_credits_query).fetchall()
+            active_credit_ids = [c[0] for c in active_credits]
+            
+            if active_credit_ids:
+                # 1. Migrar la tabla 'creditos' para los activos
+                credits_sql = f"INSERT INTO creditos SELECT * FROM creditos WHERE letra IN ({','.join(map(str, active_credit_ids))})"
+                current_cursor.execute(credits_sql, prev_conn)
+                print(f"   ✅ {len(active_credit_ids)} créditos activos migrados.")
+
+                # 2. Migrar la tabla 'socio_credito' (Relación)
+                relation_sql = f"INSERT INTO socio_credito SELECT * FROM socio_credito WHERE credito_letra IN ({','.join(map(str, active_credit_ids))})"
+                current_cursor.execute(relation_sql, prev_conn)
+
+                # 3. Migrar las cuotas futuras de 'liquidaciones'
+                # (Migrar TODAS las cuotas, ya que las pagadas son historial del crédito)
+                liquidations_sql = f"INSERT INTO liquidaciones (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago) SELECT credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago FROM liquidaciones WHERE credito_letra IN ({','.join(map(str, active_credit_ids))})"
+                current_cursor.execute(liquidations_sql, prev_conn)
+                print("   ✅ Cuotas de créditos activos (liquidaciones) migrados.")
+
+            # C) Resetear Secuencias (Contadores Anuales)
+            self.set_sequence_start_value("recibos", 1) 
+            print("   ✅ Secuencias de recibos y créditos reseteadas a 1.")
+
+            self.conn.commit()
+            print("🎉 Migración de año fiscal completada.")
+
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            print(f"❌ ERROR durante la migración. Se revertieron los cambios: {e}")
+        finally:
+            prev_conn.close()
+
+    # NOTA: Para que esto funcione, en tu add_member debes usar INSERT OR IGNORE 
+    # si la tabla socios ya tiene miembros (de migración).
+    # Como en SQLite el id es PRIMARY KEY, no debería haber duplicados si la migración es limpia.
+
     def get_all_members(self):
         try:
             cursor = self.conn.cursor()

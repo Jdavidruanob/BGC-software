@@ -10,7 +10,16 @@ from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
 from db.db_manager import DBManager 
-from config import DYNAMIC_DATA_BASE_DIR, ASSETS_DIR
+from config import (
+    DYNAMIC_DATA_BASE_DIR, 
+    ASSETS_DIR, 
+    DB_PATH_FINAL,
+    DB_TEMPLATE_PATH, 
+    FISCAL_YEAR, 
+    DB_FILE_NAME
+)
+import shutil
+
 def main():
     app = QApplication(sys.argv)
     # Cargar fuente Inter Variable
@@ -27,11 +36,46 @@ def main():
     db_path = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
     db_manager = DBManager(db_path)
 
+    db_needs_migration = False
+    
+    # 1. Verificar si la base de datos del año fiscal actual ya existe
+    if not os.path.exists(DB_PATH_FINAL):
+        print(f"⚠️ Base de datos no encontrada para el año fiscal {FISCAL_YEAR}. Creando nueva DB.")
+        
+        # 2. Determinar si existe un año anterior para migrar
+        prev_fiscal_year = str(int(FISCAL_YEAR) - 1)
+        prev_year_db_folder = os.path.join(os.path.dirname(os.path.dirname(DB_PATH_FINAL)), prev_fiscal_year)
+        
+        # Si la carpeta del año anterior existe, entonces SÍ es un RESET de año.
+        if os.path.exists(prev_year_db_folder):
+            db_needs_migration = True
+            print(f"✅ Se detectó la carpeta del año anterior ({prev_fiscal_year}). Se necesita migración de saldos.")
+            
+        # 3. Copia la plantilla vacía a la nueva ruta
+        try:
+            shutil.copy(DB_TEMPLATE_PATH, DB_PATH_FINAL)
+            print("✅ Plantilla de base de datos copiada con éxito.")
+        except Exception as e:
+            print(f"❌ Error al copiar la plantilla de DB: {e}")
+            sys.exit(1)
+
+    # 4. Inicializar y conectar la base de datos (usando la ruta nueva/existente)
+    db_manager = DBManager(DB_PATH_FINAL)
+
     if not db_manager.connect():
         print("❌ No se pudo conectar a la base de datos.")
         sys.exit(1)
+    
+    db_manager.create_tables() # Crea la estructura si se acaba de copiar la plantilla
+    
+    # 5. Ejecutar Migración SI y SOLO SI es un reset de año
+    if db_needs_migration:
+        # Construir la ruta al archivo DB del año anterior
+        prev_db_path = os.path.join(
+            os.path.dirname(os.path.dirname(DB_PATH_FINAL)), prev_fiscal_year, DB_FILE_NAME
+        )
+        db_manager.run_annual_migration(prev_db_path) # Ejecutar la migración
 
-    db_manager.create_tables() # Crea las tablas si no existen
     # Example members
     """ db_manager.add_member("10101010", "Jose David", " Ruano Burbano", "3111234567", None)
     db_manager.add_member("10101010", "Nathalia Soledad", "Burbano Padilla", "3111234567", None)
@@ -60,6 +104,6 @@ def main():
 
     print("✅ Aplicación iniciada correctamente.")
     sys.exit(app.exec())
-    
+
 if __name__ == "__main__":
     main()
