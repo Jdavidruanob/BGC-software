@@ -37,12 +37,14 @@ def main():
     db_manager = DBManager(db_path)
 
     db_needs_migration = False
+    db_created_now = False # Nuevo flag para saber si la creamos en este instante
     
     # 1. Verificar si la base de datos del año fiscal actual ya existe
     if not os.path.exists(DB_PATH_FINAL):
         print(f"⚠️ Base de datos no encontrada para el año fiscal {FISCAL_YEAR}. Creando nueva DB.")
-        
-        # 2. Determinar si existe un año anterior para migrar
+        db_created_now = True
+
+        # 2. Determinar si existe un año anterior para migrardb_created_now = False # Nuevo flag para saber si la creamos en este instante
         prev_fiscal_year = str(int(FISCAL_YEAR) - 1)
         prev_year_db_folder = os.path.join(os.path.dirname(os.path.dirname(DB_PATH_FINAL)), prev_fiscal_year)
         
@@ -51,31 +53,34 @@ def main():
             db_needs_migration = True
             print(f"✅ Se detectó la carpeta del año anterior ({prev_fiscal_year}). Se necesita migración de saldos.")
             
-        # 3. Copia la plantilla vacía a la nueva ruta
-        try:
-            shutil.copy(DB_TEMPLATE_PATH, DB_PATH_FINAL)
-            print("✅ Plantilla de base de datos copiada con éxito.")
-        except Exception as e:
-            print(f"❌ Error al copiar la plantilla de DB: {e}")
-            sys.exit(1)
 
-    # 4. Inicializar y conectar la base de datos (usando la ruta nueva/existente)
+    # 4. Inicializar y conectar la base de datos
     db_manager = DBManager(DB_PATH_FINAL)
 
+    # El db_manager.connect() creará el archivo DB_PATH_FINAL si no existía.
     if not db_manager.connect():
         print("❌ No se pudo conectar a la base de datos.")
         sys.exit(1)
+        
+    # 5. Crear la estructura de tablas. Es crucial si el archivo se acaba de crear.
+    db_manager.create_tables()  # No sujeta a condicion IF porque dentro de ella ya tiene "if not exists"
     
-    db_manager.create_tables() # Crea la estructura si se acaba de copiar la plantilla
-    
-    # 5. Ejecutar Migración SI y SOLO SI es un reset de año
-    if db_needs_migration:
+    # 6. Ejecutar Migración SI y SOLO SI es un reset de año
+    # También añadimos una condición para que solo migre si la DB fue creada ahora.
+    if db_needs_migration and db_created_now:
         # Construir la ruta al archivo DB del año anterior
         prev_db_path = os.path.join(
             os.path.dirname(os.path.dirname(DB_PATH_FINAL)), prev_fiscal_year, DB_FILE_NAME
         )
-        db_manager.run_annual_migration(prev_db_path) # Ejecutar la migración
+        db_manager.run_annual_migration(prev_db_path)
 
+    # 7. Reseteo de secuencias
+    # Esto solo debe correr en la DB nueva. Lo envolvemos en la lógica de creación.
+    if db_created_now and not db_needs_migration:
+        db_manager.set_sequence_start_value("recibos", 230) 
+        db_manager.set_sequence_start_value("creditos", 437)
+    
+            
     # Example members
     """ db_manager.add_member("10101010", "Jose David", " Ruano Burbano", "3111234567", None)
     db_manager.add_member("10101010", "Nathalia Soledad", "Burbano Padilla", "3111234567", None)
@@ -83,10 +88,6 @@ def main():
     db_manager.add_member("10101010", "Julieta", "Hoyos Burbano", "3111234567", None)
     db_manager.add_member("10101010", "David Leonardo", "Montilla ibarra", "3111234567", None)
     db_manager.add_member("10101010", "Renata", "Jimenez Burbano", "3111234567", None) """
-
-    # Put the member when the rebibos and creditos are started
-    db_manager.set_sequence_start_value("recibos", 230)
-    db_manager.set_sequence_start_value("creditos", 437) 
 
     # Create main window
     window = MainWindow()

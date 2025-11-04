@@ -12,6 +12,8 @@ class MemberCard(QPushButton):  # Clickeable para futuras vistas de detalle
         super().__init__()
         self.member_id = member_id
         self.setObjectName("MemberCard")
+        if photo_path is None or not os.path.exists(photo_path):
+            photo_path = os.path.join(ASSETS_DIR, "images", "default_user.png")
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignCenter)
