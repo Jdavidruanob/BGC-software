@@ -1,4 +1,5 @@
 import sqlite3
+import os
 
 class DBManager:
     def __init__(self, db_path):
@@ -143,39 +144,74 @@ class DBManager:
 
         try:
             # A) Migrar Socios y Saldos Finales
-            # Se traen todos los socios con su saldo actual (final del año anterior).
-            current_cursor.execute("INSERT INTO socios (id, cc, nombres, apellidos, saldo, celular, photo_path) SELECT id, cc, nombres, apellidos, saldo, celular, photo_path FROM socios", prev_conn)
-            print("   ✅ Socios y saldos migrados.")
+            # Se leen todos los socios y sus datos (saldos) del año anterior.
+            socios_to_migrate = prev_cursor.execute("""
+                SELECT id, cc, nombres, apellidos, saldo, celular, photo_path, created_at
+                FROM socios
+            """).fetchall()
+
+            if socios_to_migrate:
+                insert_sql = """
+                    INSERT INTO socios (id, cc, nombres, apellidos, saldo, celular, photo_path, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                current_cursor.executemany(insert_sql, socios_to_migrate)
+                print(f"   ✅ {len(socios_to_migrate)} socios y saldos migrados.")
+
+            saldo_caja_to_migrate = prev_cursor.execute("""
+                SELECT key, value
+                FROM config
+                WHERE key = 'saldo_en_caja'
+            """).fetchone() # Usamos fetchone() porque solo esperamos una fila
+
+            if saldo_caja_to_migrate:
+                insert_config_sql = "INSERT INTO config (key, value) VALUES (?, ?)"
+                # Insertamos solo el saldo_en_caja en la nueva tabla config
+                current_cursor.execute(insert_config_sql, (saldo_caja_to_migrate['key'], saldo_caja_to_migrate['value']))
+                print("   ✅ Saldo de caja migrado de la tabla 'config'.")
+            
+            # Opcional: Asegurar que otros contadores de config se reseteen (si los tienes)
+            # Por ejemplo, si total_admin debe empezar en 0:
+            current_cursor.execute("INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)", ('total_admin', '0'))
 
             # B) Identificar y Migrar Créditos Activos (Cuotas pendientes en 'liquidaciones')
             # Buscamos créditos que tengan al menos UNA cuota con fecha_pago NULL.
             active_credits_query = """
-                SELECT DISTINCT credito_letra
-                FROM liquidaciones
-                WHERE fecha_pago IS NULL;
+                SELECT DISTINCT credito_letra FROM liquidaciones WHERE fecha_pago IS NULL;
             """
             active_credits = prev_cursor.execute(active_credits_query).fetchall()
             active_credit_ids = [c[0] for c in active_credits]
             
             if active_credit_ids:
                 # 1. Migrar la tabla 'creditos' para los activos
-                credits_sql = f"INSERT INTO creditos SELECT * FROM creditos WHERE letra IN ({','.join(map(str, active_credit_ids))})"
-                current_cursor.execute(credits_sql, prev_conn)
+                credits_to_migrate = prev_cursor.execute(f"SELECT letra, capital, interes, no_cuotas, fecha_inicio FROM creditos WHERE letra IN ({','.join(map(str, active_credit_ids))})").fetchall()
+                insert_credits_sql = "INSERT INTO creditos (letra, capital, interes, no_cuotas, fecha_inicio) VALUES (?, ?, ?, ?, ?)"
+                current_cursor.executemany(insert_credits_sql, credits_to_migrate)
                 print(f"   ✅ {len(active_credit_ids)} créditos activos migrados.")
 
                 # 2. Migrar la tabla 'socio_credito' (Relación)
-                relation_sql = f"INSERT INTO socio_credito SELECT * FROM socio_credito WHERE credito_letra IN ({','.join(map(str, active_credit_ids))})"
-                current_cursor.execute(relation_sql, prev_conn)
+                relations_to_migrate = prev_cursor.execute(f"SELECT socio_id, credito_letra FROM socio_credito WHERE credito_letra IN ({','.join(map(str, active_credit_ids))})").fetchall()
+                insert_relations_sql = "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (?, ?)"
+                current_cursor.executemany(insert_relations_sql, relations_to_migrate)
 
-                # 3. Migrar las cuotas futuras de 'liquidaciones'
-                # (Migrar TODAS las cuotas, ya que las pagadas son historial del crédito)
-                liquidations_sql = f"INSERT INTO liquidaciones (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago) SELECT credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago FROM liquidaciones WHERE credito_letra IN ({','.join(map(str, active_credit_ids))})"
-                current_cursor.execute(liquidations_sql, prev_conn)
-                print("   ✅ Cuotas de créditos activos (liquidaciones) migrados.")
+                # 3. Migrar TODAS las cuotas (pagadas y pendientes) de liquidaciones
+                liquidations_to_migrate = prev_cursor.execute(f"""
+                    SELECT credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago 
+                    FROM liquidaciones 
+                    WHERE credito_letra IN ({','.join(map(str, active_credit_ids))})
+                """).fetchall()
+                
+                insert_liquidations_sql = """
+                    INSERT INTO liquidaciones (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                current_cursor.executemany(insert_liquidations_sql, liquidations_to_migrate)
+                print("   ✅ Liquidaciones completas (cuotas pagadas y pendientes) de créditos activos migrados.")
 
             # C) Resetear Secuencias (Contadores Anuales)
-            self.set_sequence_start_value("recibos", 1) 
-            print("   ✅ Secuencias de recibos y créditos reseteadas a 1.")
+            self.set_sequence_start_value("recibos", 230) 
+            self.set_sequence_start_value("creditos", 437) 
+            
 
             self.conn.commit()
             print("🎉 Migración de año fiscal completada.")

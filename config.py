@@ -38,14 +38,15 @@ STYLES_DIR = os.path.join(STATIC_BASE_DIR, "styles")
  
 
 # 🔑 LÓGICA CLAVE: Definir el Año Fiscal
-from datetime import date
+""" from datetime import date
 today = date.today()
 if today.month == 12:
     # Si estamos en Diciembre, el año fiscal es el siguiente año calendario.
     FISCAL_YEAR = str(today.year + 1)
 else:
     # Si estamos de Enero a Noviembre, es el año calendario actual.
-    FISCAL_YEAR = str(today.year)
+    FISCAL_YEAR = str(today.year) """
+FISCAL_YEAR = "2026" # Para pruebas migracion final de anio
 
 
 # Define la carpeta que contiene los datos de todos los años
@@ -115,7 +116,7 @@ def load_svg_icon(relative_path: str, size: QSize = QSize(24, 24)) -> QIcon:
                           Ej: "icons/pig-money.svg"
     """
     # Combina la ruta absoluta donde PyInstaller colocó 'assets' con la ruta del ícono.
-    absolute_path = os.path.join(ASSETS_DIR, relative_path) #TODO: cambiar todas las rutas
+    absolute_path = os.path.join(ASSETS_DIR, relative_path)
     
     # Carga y Renderizado
     renderer = QSvgRenderer(absolute_path)
