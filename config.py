@@ -6,9 +6,6 @@ import os
 import sys # <-- Importa sys
 
 
-
-
-
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
 
 # 1. Base para archivos empaquetados (Assets, Styles)
@@ -23,38 +20,24 @@ if getattr(sys, 'frozen', False):
 else:
     DYNAMIC_DATA_BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-# ------------------------------------------------------------------
-# 🔑 Define las rutas UNA VEZ usando la base correcta
-# ------------------------------------------------------------------
-
-# Rutas que necesitan sys._MEIPASS para funcionar
-ASSETS_DIR = os.path.join(STATIC_BASE_DIR, "assets")
-STYLES_DIR = os.path.join(STATIC_BASE_DIR, "styles")
-
-# Rutas que necesitan la carpeta del .exe para persistir
-#DB_PATH = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
-#RECIBOS_OUTPUT_DIR = os.path.join(DYNAMIC_DATA_BASE_DIR, "Recibos")
-# ... otras rutas dinámicas
- 
-
-# 🔑 LÓGICA CLAVE: Definir el Año Fiscal
-""" from datetime import date
+# --- Definir el Año Fiscal ---
+from datetime import date
 today = date.today()
 if today.month == 12:
     # Si estamos en Diciembre, el año fiscal es el siguiente año calendario.
     FISCAL_YEAR = str(today.year + 1)
 else:
     # Si estamos de Enero a Noviembre, es el año calendario actual.
-    FISCAL_YEAR = str(today.year) """
-FISCAL_YEAR = "2026" # Para pruebas migracion final de anio
+    FISCAL_YEAR = str(today.year)
 
+#FISCAL_YEAR = "2026" # Para pruebas migracion final de anio
 
-# Define la carpeta que contiene los datos de todos los años
-# Ejemplo: C:\App\Archivos_BGC\
+# Rutas que necesitan sys._MEIPASS para funcionar
+ASSETS_DIR = os.path.join(STATIC_BASE_DIR, "assets")
+STYLES_DIR = os.path.join(STATIC_BASE_DIR, "styles")
+#  C:\App\Archivos_BGC\
 DATA_ROOT_FOLDER = os.path.join(DYNAMIC_DATA_BASE_DIR, "Archivos_BGC")
-
-# Define la carpeta de trabajo para el año fiscal actual
-# Ejemplo: C:\App\Archivos_BGC\2026\
+#  C:\App\Archivos_BGC\2026\
 YEAR_DATA_DIR = os.path.join(DATA_ROOT_FOLDER, FISCAL_YEAR)
 
 # DB y Archivos de salida deben usar la carpeta del año fiscal
@@ -66,47 +49,33 @@ LIQUIDACIONES_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Liquidaciones")
 if not os.path.exists(YEAR_DATA_DIR):
     os.makedirs(YEAR_DATA_DIR)
 
-
 DB_FILE_NAME = "BGC-software.db"
-# ✅ RUTA FINAL: Apunta a la carpeta del año fiscal
-DB_PATH_FINAL = os.path.join(YEAR_DATA_DIR, DB_FILE_NAME) 
 
-# También necesitas el path de la base de datos 'plantilla'
-# Esta es la DB que está empaquetada dentro del .exe y se usa para el primer inicio de cada año.
-DB_TEMPLATE_PATH = os.path.join(STATIC_BASE_DIR, "BGC-software.db")
+DB_PATH_FINAL = os.path.join(YEAR_DATA_DIR, DB_FILE_NAME)  # RUTA FINAL: Apunta a la carpeta del año fiscal
 
-# ------------------------------------------------------------------
-# 🔑 USO EN TU CÓDIGO (¡MÁS LIMPIO!)
-# ------------------------------------------------------------------
 
-# Para cargar un estilo:
-# qss_path = os.path.join(STYLES_DIR, "home_page.qss") # Usando la ruta pre-construida
-
-# Para cargar un asset (icono/fuente):
-# font_path = os.path.join(ASSETS_DIR, "fonts", "InterVariable.ttf"
-
-# -- Colores globales --
+# --- Colores globales ---
 
 PRIMARY_COLOR = "#1a365d"     # Azul oscuro (fondo navbar)
 SECONDARY_COLOR = "#8C5B2F"   # Marrón (hover y botón activo)
 TEXT_COLOR = "#FFFFFF"        # Texto blanco
 #e3e9f1 bordes
-# functions globlaes
 
 
-# -- Metodos Globlales --
+# --- Metodos Globlales ---
 
 def load_styles(self, qss_path):
-        try:
-            with open(qss_path, "r") as f:
-                qss = f.read() % {
-                    "PRIMARY_COLOR": PRIMARY_COLOR,
-                    "SECONDARY_COLOR": SECONDARY_COLOR,
-                    "TEXT_COLOR": TEXT_COLOR
-                }
-                self.setStyleSheet(qss)
-        except Exception as e:
-            print(f"❌ Error cargando estilos de {qss_path}: {e}")
+    """ Carga un archivo QSS y aplica los colores globales definidos."""
+    try:
+        with open(qss_path, "r") as f:
+            qss = f.read() % {
+                "PRIMARY_COLOR": PRIMARY_COLOR,
+                "SECONDARY_COLOR": SECONDARY_COLOR,
+                "TEXT_COLOR": TEXT_COLOR
+            }
+            self.setStyleSheet(qss)
+    except Exception as e:
+        print(f"❌ Error cargando estilos de {qss_path}: {e}")
 
 def load_svg_icon(relative_path: str, size: QSize = QSize(24, 24)) -> QIcon:
     """
@@ -148,7 +117,6 @@ def parse_miles_colombian(text: str) -> int:
     clean = "".join(ch for ch in text if ch.isdigit())
     return int(clean) if clean else 0
 
-# Nueva función auxiliar para formatear nombres largos
 def format_full_name_for_excel(nombres, apellidos, max_length=24):
     """
     Formatea un nombre completo (nombres + apellidos) para que se ajuste a una longitud máxima,

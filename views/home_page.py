@@ -10,7 +10,7 @@ from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
-from utils.message_boxes import show_error, show_success
+from utils.message_boxes import show_error, show_success, show_warning, show_info
 
 
 class HomePage(QWidget):
@@ -158,6 +158,11 @@ class HomePage(QWidget):
         qss_path = os.path.join(STYLES_DIR , "home_page.qss")
         load_styles(self, qss_path)
 
+        show_error(self, "puerba error", "mensaje de error de prueba")
+        show_success(self, "prueba éxito", "mensaje de éxito de prueba")
+        show_warning(self, "prueba advertencia", "mensaje de advertencia de prueba")
+        show_info(self, "prueba info", "mensaje de info de prueba")
+
     def create_resumen_widget(self):
         """Construye el widget 'Resumen de Caja'."""
         # --- Recuperar datos ---
@@ -219,10 +224,10 @@ class HomePage(QWidget):
             row.addWidget(val_lbl, alignment=Qt.AlignRight)
             bl.addLayout(row)
 
-        add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
+        """ add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
         add_row("Administración:", f"$ {format_miles_colombian_int(admin)}", bold=True)
         add_row("Créditos Activos:", str(total_creditos), bold=True)
-        add_row("Total Socios:", str(total_socios), bold=True)
+        add_row("Total Socios:", str(total_socios), bold=True) """
 
         v.addWidget(header)
         v.addWidget(body)

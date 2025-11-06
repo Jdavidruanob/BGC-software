@@ -1,8 +1,9 @@
+# importar librerías necesarias
 import sys
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFontDatabase, QFont
-import sqlite3 
-import os # Necesitas os para la ruta
+import os 
+
 # Importar vistas y el gestor de base de datos
 from views.main_window import MainWindow
 from views.home_page import HomePage
@@ -10,15 +11,14 @@ from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
 from db.db_manager import DBManager 
+# Importar configuraciones
 from config import (
     DYNAMIC_DATA_BASE_DIR, 
     ASSETS_DIR, 
     DB_PATH_FINAL,
-    DB_TEMPLATE_PATH, 
     FISCAL_YEAR, 
     DB_FILE_NAME
 )
-import shutil
 
 def main():
     app = QApplication(sys.argv)
@@ -36,15 +36,15 @@ def main():
     db_path = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
     db_manager = DBManager(db_path)
 
-    db_needs_migration = False
-    db_created_now = False # Nuevo flag para saber si la creamos en este instante
+    db_needs_migration = False  # Flag para saber si se necesita migración anual
+    db_created_now = False      # Flag para saber si la creamos en este instante
     
-    # 1. Verificar si la base de datos del año fiscal actual ya existe
+    # Verificar si la base de datos del año fiscal actual ya existe
     if not os.path.exists(DB_PATH_FINAL):
         print(f"⚠️ Base de datos no encontrada para el año fiscal {FISCAL_YEAR}. Creando nueva DB.")
         db_created_now = True
 
-        # 2. Determinar si existe un año anterior para migrardb_created_now = False # Nuevo flag para saber si la creamos en este instante
+        # Determinar si existe un año anterior para migrardb_created_now = False # Nuevo flag para saber si la creamos en este instante
         prev_fiscal_year = str(int(FISCAL_YEAR) - 1)
         prev_year_db_folder = os.path.join(os.path.dirname(os.path.dirname(DB_PATH_FINAL)), prev_fiscal_year)
         
@@ -54,7 +54,7 @@ def main():
             print(f"✅ Se detectó la carpeta del año anterior ({prev_fiscal_year}). Se necesita migración de saldos.")
             
 
-    # 4. Inicializar y conectar la base de datos
+    # Inicializar y conectar la base de datos
     db_manager = DBManager(DB_PATH_FINAL)
 
     # El db_manager.connect() creará el archivo DB_PATH_FINAL si no existía.

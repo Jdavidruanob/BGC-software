@@ -7,6 +7,7 @@ class DBManager:
         self.conn = None
 
     def connect(self):
+        """ Conecta a la base de datos SQLite. """
         try:
             self.conn = sqlite3.connect(self.db_path)
             self.conn.row_factory = sqlite3.Row  # Para acceder como diccionario
@@ -16,6 +17,7 @@ class DBManager:
             return False
 
     def create_tables(self):
+        """ Crea las tablas necesarias si no existen. """
         try:
             cursor = self.conn.cursor()
 
@@ -113,6 +115,7 @@ class DBManager:
                 )
             """)
 
+            # Tabla de configuración (clave-valor)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS config (
                     key TEXT PRIMARY KEY,
@@ -128,7 +131,7 @@ class DBManager:
     def run_annual_migration(self, prev_db_path):
         """
         Ejecuta la migración de saldos y créditos activos del año anterior al actual.
-        :param prev_db_path: Ruta al archivo DB del año fiscal anterior.
+        
         """
         print(f"\n⏳ Iniciando migración de datos desde: {prev_db_path}")
 
@@ -222,40 +225,41 @@ class DBManager:
         finally:
             prev_conn.close()
 
-    # NOTA: Para que esto funcione, en tu add_member debes usar INSERT OR IGNORE 
-    # si la tabla socios ya tiene miembros (de migración).
-    # Como en SQLite el id es PRIMARY KEY, no debería haber duplicados si la migración es limpia.
-
     def get_all_members(self):
+        """ Devuelve una lista de todos los socios con ID, nombre corto, foto y créditos activos. """
         try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
+            cursor = self.conn.cursor() # Cursor de la DB actual
+            # Consulta para obtener socios y contar créditos activos
+            cursor.execute("""         
                 SELECT s.id,
                        s.nombres,
                        s.apellidos,
                        COALESCE(s.photo_path, '') as photo_path,
                        COUNT(sc.credito_letra) as creditos
                 FROM socios s
-                LEFT JOIN socio_credito sc ON s.id = sc.socio_id
+                LEFT JOIN socio_credito sc ON s.id = sc.socio_id --
                 GROUP BY s.id
-                ORDER BY s.nombres
+                ORDER BY s.nombres  
             """)
+
             results = []
-            for row in cursor.fetchall():
+            for row in cursor.fetchall(): # fetchall devuelve una lista de filas
+                # Procesar cada fila para obtener los datos requeridos
                 member_id = row["id"]
                 primer_nombre = row["nombres"].split()[0]
                 primer_apellido = row["apellidos"].split()[0]
                 nombre_corto = f"{primer_nombre} {primer_apellido}"
                 foto = row["photo_path"] or "assets/photos/default_user.png"
                 creditos = row["creditos"]
-                label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)"
-                results.append((member_id, nombre_corto, foto, label))
+                label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)" # Etiqueta según créditos
+                results.append((member_id, nombre_corto, foto, label)) 
             return results
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
         
     def get_all_members_full(self):
+        """ Devuelve una lista de todos los socios con todos sus datos. """
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -266,12 +270,13 @@ class DBManager:
                 GROUP BY s.id
                 ORDER BY s.nombres
             """)
-            return [dict(row) for row in cursor.fetchall()]
+            return [dict(row) for row in cursor.fetchall()] # Convertir cada fila a diccionario 
         except sqlite3.Error as e:
             print(f"❌ Error obteniendo socios completos: {e}")
             return []
 
     def search_members_by_name(self, search_term):
+        """ Busca socios cuyo nombre o apellido contenga el término dado. """
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -303,6 +308,7 @@ class DBManager:
             return []
 
     def get_member_by_id(self, member_id):
+        """ Devuelve todos los datos de un socio dado su ID. """
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -316,6 +322,7 @@ class DBManager:
             return None
 
     def get_active_credits_by_member(self, member_id):
+        """ Devuelve los créditos activos (con cuotas pendientes) de un socio. """
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
@@ -330,6 +337,7 @@ class DBManager:
             return []
 
     def add_credit(self, socio_ids, capital, interes, no_cuotas):
+            """ Agrega un nuevo crédito y lo asocia a los socios dados. """
             try:
                 cursor = self.conn.cursor()
 
