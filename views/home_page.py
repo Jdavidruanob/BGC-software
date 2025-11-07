@@ -158,10 +158,10 @@ class HomePage(QWidget):
         qss_path = os.path.join(STYLES_DIR , "home_page.qss")
         load_styles(self, qss_path)
 
-        show_error(self, "puerba error", "mensaje de error de prueba")
+        """ show_error(self, "puerba error", "mensaje de error de prueba")
         show_success(self, "prueba éxito", "mensaje de éxito de prueba")
         show_warning(self, "prueba advertencia", "mensaje de advertencia de prueba")
-        show_info(self, "prueba info", "mensaje de info de prueba")
+        show_info(self, "prueba info", "mensaje de info de prueba") """
 
     def create_resumen_widget(self):
         """Construye el widget 'Resumen de Caja'."""
@@ -224,10 +224,10 @@ class HomePage(QWidget):
             row.addWidget(val_lbl, alignment=Qt.AlignRight)
             bl.addLayout(row)
 
-        """ add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
+        add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
         add_row("Administración:", f"$ {format_miles_colombian_int(admin)}", bold=True)
         add_row("Créditos Activos:", str(total_creditos), bold=True)
-        add_row("Total Socios:", str(total_socios), bold=True) """
+        add_row("Total Socios:", str(total_socios), bold=True)
 
         v.addWidget(header)
         v.addWidget(body)
