@@ -13,8 +13,10 @@ class AssistantPage(QWidget):
     def __init__(self, db_manager):
         super().__init__()
         self.db_manager = db_manager
-        self.page_size = 10
+        self.page_size = 100        # ajuste razonable
         self.current_page = 0
+        self.no_more_pages = False
+        self.loading = False
         
         # --- ATRIBUTOS PARA FILTROS ---
         self.filter_start_date = None
@@ -143,8 +145,24 @@ class AssistantPage(QWidget):
 
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.verticalHeader().setDefaultSectionSize(50) 
+        
+        # Conectar scroll para auto-load (carga más cuando esté cerca del final)
+        self.table_widget.verticalScrollBar().valueChanged.connect(self.on_table_scroll) 
+        # ValueChanged emite el valor actual del scrollbar
+        # Así podemos detectar cuando está cerca del final
+        # .conect() conecta la señal al slot on_table_scroll
+        # recibiendo self.on_table_scroll() que devuelve None y no interfiere con la señal. pero si recibe el valor del scrollbar.
+        # no es necesario pasar value porque QT lo hace automáticamente con connect().
+        
+        """ # Botón opcional "Cargar más" (fallback)
+        self.load_more_btn = QPushButton("Cargar más operaciones")
+        self.load_more_btn.setObjectName("loadMoreButton")
+        self.load_more_btn.clicked.connect(self.load_next_page)
+        self.load_more_btn.setVisible(False)  # visible solo si hay más
+        main_layout.addWidget(self.load_more_btn, alignment=Qt.AlignCenter) """
 
         main_layout.addWidget(self.table_widget)
+
         # --- FIN QTableWidget ---
 
         #self.load_more_btn = QPushButton("Cargar más operaciones")
@@ -157,6 +175,63 @@ class AssistantPage(QWidget):
 
         # Cargar la primera página con los filtros iniciales
         self.apply_filters() 
+
+
+    def load_next_page(self):
+        # Evita llamadas concurrentes
+        #print("➡️ load_next_page called")  # FIXME
+        #print(f"no_more_pages: {self.no_more_pages}, loading: {self.loading}")  # FIXME
+        if self.no_more_pages or self.loading:
+            return
+        self.loading = True
+        #self.load_more_btn.setEnabled(False)
+
+        try:
+            ops = self.db_manager.get_auxiliary_operations(
+                limit=self.page_size,
+                offset=self.current_page * self.page_size,
+                start_date=self.filter_start_date,
+                end_date=self.filter_end_date,
+                operation_type=self.filter_operation_type,
+                socio_name=self.filter_socio_name,
+                numero=self.filter_numero,
+                letra_credito=self.filter_id_credito
+            )
+
+            if not ops:
+                self.no_more_pages = True
+                return
+
+            current_row_count = self.table_widget.rowCount()
+            self.table_widget.setRowCount(current_row_count + len(ops))
+
+            for i, op in enumerate(ops):
+                row_index = current_row_count + i
+                self.build_operation_row(op, row_index)
+
+            self.current_page += 1
+            #print(f"len(ops) < page_size: {len(ops)} < {self.page_size}") # FIXME
+            if len(ops) < self.page_size:
+                
+                self.no_more_pages = True
+                
+        finally:
+            self.loading = False
+
+    def on_table_scroll(self, value):
+        """
+        Detecta cuando el scrollbar está cerca del final y pide la siguiente página.
+        """
+        #print("🔽 Scroll value:", value)  # FIXME
+        if self.no_more_pages or self.loading:
+            return
+        sb = self.table_widget.verticalScrollBar()
+        threshold = 100  # Ajusta este valor si es necesario
+        
+        #print(f"sb.maximum(): {sb.maximum()}, threshold: {threshold}")  # FIXME
+        
+        if value >= sb.maximum() - threshold:
+            self.load_next_page()
 
     def apply_filters(self):
         """
@@ -188,8 +263,8 @@ class AssistantPage(QWidget):
         # Reiniciar la tabla y la paginación para aplicar los nuevos filtros
         self.table_widget.setRowCount(0)
         self.current_page = 0
-        #self.load_more_btn.setEnabled(True)
-        #self.load_more_btn.setText("Cargar más operaciones")
+        self.no_more_pages = False             # <-- reiniciar paginación
+        #self.load_more_btn.setVisible(False)
         self.load_next_page()
 
     def clear_filters(self):
@@ -204,33 +279,6 @@ class AssistantPage(QWidget):
         self.cuota_letra_search_input.clear() # Limpiar el campo del filtro de cuota/letra (id_credito)
         
         self.apply_filters()
-
-    def load_next_page(self):
-        
-        #Carga la siguiente página de operaciones aplicando los filtros actuales.
-        
-        ops = self.db_manager.get_auxiliary_operations(
-            limit=self.page_size, 
-            offset=self.current_page * self.page_size,
-            start_date=self.filter_start_date,
-            end_date=self.filter_end_date,
-            operation_type=self.filter_operation_type,
-            socio_name=self.filter_socio_name,
-            numero=self.filter_numero,
-            letra_credito=self.filter_id_credito # ¡Pasamos filter_id_credito aquí!
-        )
-
-        if not ops:
-            return
-
-        current_row_count = self.table_widget.rowCount()
-        self.table_widget.setRowCount(current_row_count + len(ops))
-
-        for i, op in enumerate(ops):
-            row_index = current_row_count + i
-            self.build_operation_row(op, row_index)
-            
-        self.current_page += 1 
 
     def add_operation(self, op):
         """
