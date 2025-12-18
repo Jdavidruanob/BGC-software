@@ -60,7 +60,7 @@
 }
 
 #editMemberButton:hover {
-    background-color: #f1f5f9; /* Secondary color */
+    background-color: #f0f8ff; /* Secondary color */
 }
 
 #deleteMemberButton {
@@ -83,8 +83,8 @@
 }
 
 #creditCard:hover {
-    background-color: #f3f4f6;
-    border-color: #cbd5e1;
+    background-color: #f0f8ff;
+    border-color: %(PRIMARY_COLOR)s;
 }
 
 #creditTitle {

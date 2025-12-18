@@ -30,7 +30,7 @@ class FormPagoCredito(QWidget):
         # --- Layout principal ---
         main_layout = QVBoxLayout()
         main_layout.setAlignment(Qt.AlignTop)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setContentsMargins(20, 0, 20, 30)
         main_layout.setSpacing(16)
         self.setLayout(main_layout)
 
@@ -40,7 +40,8 @@ class FormPagoCredito(QWidget):
         lbl_recibi.setObjectName("FormLabel")
         self.combo_recibi_de = NoScrollComboBox()
         self.combo_recibi_de.setObjectName("ComboRecibiDe")
-        self.combo_recibi_de.setMinimumHeight(40)
+        self.combo_recibi_de.setMinimumHeight(50)
+        self.combo_recibi_de.setMaximumHeight(50)
         self.combo_recibi_de.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         main_layout.addWidget(lbl_recibi)
         main_layout.addWidget(self.combo_recibi_de)
@@ -143,7 +144,7 @@ class FormPagoCredito(QWidget):
             cuotas_input.setPlaceholderText("# Cuotas")
             cuotas_input.setAlignment(Qt.AlignRight)
             cuotas_input.setFixedHeight(34)
-            cuotas_input.setFixedWidth(80)
+            cuotas_input.setFixedWidth(90)
 
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")

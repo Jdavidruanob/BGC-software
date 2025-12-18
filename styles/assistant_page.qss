@@ -25,7 +25,7 @@ QTableWidget#operationsTable {
 
 /* Estilo para CADA SECCIÓN (columna) individual del encabezado */
 QHeaderView::section {
-    background-color: #E9ECEF;
+    background-color: #f1f5f9;
     font-weight: bold;
     font-size: 15px; /* <--- CAMBIO: Fuente del encabezado un poco más pequeña */
     color: #333;
