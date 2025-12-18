@@ -28,13 +28,14 @@ class FormNuevoCredito(QWidget):
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignTop)
-        layout.setContentsMargins(20, 30, 20, 30)
+        layout.setContentsMargins(20, 0, 20, 30)
         layout.setSpacing(24)
 
         # Combo de socios
         self.combo_socios = NoScrollComboBox()
         self.combo_socios.setObjectName("ComboSocio")
-        self.combo_socios.setMinimumHeight(36)
+        self.combo_socios.setMinimumHeight(50)
+        self.combo_socios.setMaximumHeight(50)
         self.combo_socios.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.combo_socios.currentIndexChanged.connect(self.agregar_socio_seleccionado)
 
@@ -47,6 +48,8 @@ class FormNuevoCredito(QWidget):
         self.selected_container = QHBoxLayout()
         self.selected_container.setSpacing(8)
         layout.addLayout(self.selected_container)
+        self.selected_container.setAlignment(Qt.AlignLeft)
+        self.selected_container.addStretch()  # <-- Espaciador que empuja los tags a la izquierda
 
         # Sección horizontal para capital, cuotas e interés
         fields_row = QHBoxLayout()
@@ -91,24 +94,41 @@ class FormNuevoCredito(QWidget):
 
         layout.addLayout(fields_row)
 
-        # Resumen dinámico
-        resumen_row = QHBoxLayout()
-        resumen_row.setSpacing(24)
+        # Tarjeta de Cuota Mensual Estimada
+        self.card_cuota = QFrame()
+        self.card_cuota.setObjectName("CardCuotaMensual")
+        card_layout = QVBoxLayout()
+        card_layout.setContentsMargins(20, 5, 20, 5)
+        card_layout.setSpacing(12)
 
-        self.label_cuota = QLabel()
-        self.label_cuota.setStyleSheet("font-size: 15px;")
+        # Título
+        titulo_cuota = QLabel("CUOTA MENSUAL ESTIMADA")
+        titulo_cuota.setObjectName("TituloCuotaMensual")
 
-        self.label_fecha_final = QLabel()
-        self.label_fecha_final.setStyleSheet("font-size: 15px;")
+        # Monto grande
+        self.label_monto_cuota = QLabel("$0")
+        self.label_monto_cuota.setObjectName("MontoCuotaMensual")
 
-        resumen_row.addWidget(self._etiqueta("Cuota estimada:"))
-        resumen_row.addWidget(self.label_cuota)
-        resumen_row.addSpacing(40)
-        resumen_row.addWidget(self._etiqueta("Último pago:"))
-        resumen_row.addWidget(self.label_fecha_final)
+        # Fila de fecha
+        fecha_row = QHBoxLayout()
+        fecha_row.setSpacing(12)
+        
+        label_fecha_texto = QLabel("Fecha Finalización")
+        label_fecha_texto.setObjectName("LabelFechaFinalizacion")
+        
+        self.label_fecha_finalizacion = QLabel("---")
+        self.label_fecha_finalizacion.setObjectName("FechaFinalizacionValor")
 
-        layout.addLayout(resumen_row)
-        layout.addSpacerItem(QSpacerItem(0, 20))
+        fecha_row.addWidget(label_fecha_texto)
+        fecha_row.addWidget(self.label_fecha_finalizacion)
+        fecha_row.addStretch()
+
+        card_layout.addWidget(titulo_cuota)
+        card_layout.addWidget(self.label_monto_cuota)
+        card_layout.addLayout(fecha_row)
+        self.card_cuota.setLayout(card_layout)
+
+        layout.addWidget(self.card_cuota)
 
         # Botón registrar
         self.btn_registrar = QPushButton("Crear Crédito")
@@ -137,8 +157,8 @@ class FormNuevoCredito(QWidget):
             capital = parse_miles_colombian(self.capital_input.text())
             cuotas = int(self.cuotas_input.text())
             if capital <= 0 or cuotas <= 0:
-                self.label_cuota.setText("")
-                self.label_fecha_final.setText("")
+                self.label_monto_cuota.setText("$0")
+                self.label_fecha_finalizacion.setText("---")
                 return
 
             # Calcular cuota base tentativa
@@ -155,12 +175,12 @@ class FormNuevoCredito(QWidget):
             fecha_inicio = date.today() # O la fecha de inicio real del crédito si es diferente
             fecha_final = fecha_inicio + relativedelta(months=+cuotas) # <-- Esto es lo que necesitas
 
-            self.label_cuota.setText(f"${format_miles_colombian_int(cuota_base)}")
-            self.label_fecha_final.setText(fecha_final.strftime("%Y-%m-%d"))
+            self.label_monto_cuota.setText(f"${format_miles_colombian_int(cuota_base)}")
+            self.label_fecha_finalizacion.setText(fecha_final.strftime("%Y-%m-%d"))
 
         except:
-            self.label_cuota.setText("")
-            self.label_fecha_final.setText("")
+            self.label_monto_cuota.setText("$0")
+            self.label_fecha_finalizacion.setText("---")
 
     def load_socios(self):
         try:
@@ -185,31 +205,39 @@ class FormNuevoCredito(QWidget):
         self.mostrar_socio_tag(socio)
 
     def mostrar_socio_tag(self, socio):
-        wrapper = QFrame()
+        wrapper = QFrame() 
         layout = QHBoxLayout()
-        layout.setContentsMargins(6, 2, 6, 2)
-        layout.setSpacing(6)
-        wrapper.setStyleSheet("background-color: #f1f5f9; border-radius: 12px;")
+
+        layout.setContentsMargins(8, 2, 8, 2)
+        layout.setSpacing(10)
+        wrapper.setObjectName("tag-socio")
+        wrapper.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+        # Icono del usuario
+        icon_btn = QPushButton("")
+        icon_btn.setFixedSize(21, 21)  
+        icon_btn.setIcon(load_svg_icon("icons/xs.svg"))
+        icon_btn.setObjectName("user-btn")
 
         label = QLabel(f"{socio['nombres']} {socio['apellidos']}")
-        label.setStyleSheet("font-size: 14px;")
+        label.setObjectName("tag-label-socio")
 
         btn = QPushButton("")
         btn.setFixedSize(22, 22)
         btn.setIcon(load_svg_icon("icons/x.svg"))
-        btn.setStyleSheet("border: none; background: transparent;")
+        btn.setObjectName("DeleteButton")
 
         def eliminar():
             wrapper.setParent(None)
             self.socios_seleccionados.remove(socio)
-            self.combo_socios.setCurrentIndex(0)  # 👈 Permite volver a seleccionarlo
+            self.combo_socios.setCurrentIndex(0)
 
         btn.clicked.connect(eliminar)
-
+        layout.addWidget(icon_btn)  # <-- Icono a la izquierda
         layout.addWidget(label)
         layout.addWidget(btn)
         wrapper.setLayout(layout)
-        self.selected_container.addWidget(wrapper)
+        self.selected_container.insertWidget(self.selected_container.count() - 1, wrapper)  # <-- Inserta antes del stretch
 
 
     def on_register_credito(self):

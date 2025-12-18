@@ -26,12 +26,14 @@ QLabel#homeSubtitle {
     margin-left: 10px;
 }
 
+
+
 /* Botones seleccionables */
 QPushButton[btnType="operacion"] {
     background-color: #f1f5f9;
     color: #647790;
-    border: 1px solid #e4eaf1;
-    border-radius: 2px;
+    border: 2px solid #e4eaf1;
+    border-radius: 4px;
     font-size: 20px;
     padding: 10px 20px;
 }

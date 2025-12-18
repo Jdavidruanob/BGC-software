@@ -26,9 +26,9 @@ class MembersPage(QWidget):
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(80, 20, 80, 30)
 
-        title = QLabel("Socios")
-        title.setObjectName("title-members")
-        header_layout.addWidget(title)
+        #title = QLabel("Socios")
+        #title.setObjectName("title-members")
+        #header_layout.addWidget(title)
         header_layout.addStretch()
 
         

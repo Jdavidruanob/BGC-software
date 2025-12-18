@@ -108,16 +108,11 @@ class HomePage(QWidget):
         self.form_retiro = FormRetiro(self.db_manager)
         self.form_aporte_pago = FormCombinado(self.db_manager, self.assistant_page)
 
-        #for widget in [self.form_aporte, self.page_pago, self.form_nuevo_credito, self.form_retiro, self.form_aporte_pago]:
-            #widget.setStyleSheet("font-size: 16px; padding: 20px;")
-
         self.stack.addWidget(self.form_aporte)         # 0
         self.stack.addWidget(self.page_pago)           # 1
         self.stack.addWidget(self.form_nuevo_credito)  # 2
         self.stack.addWidget(self.form_retiro)         # 3
         self.stack.addWidget(self.form_aporte_pago)    # 4
-
-        #self.stack.setStyleSheet(""" background-color: trasparent; border-radius: 8px""")
 
         scroll_area.setWidget(self.stack)
         self.form_layout.addWidget(scroll_area)

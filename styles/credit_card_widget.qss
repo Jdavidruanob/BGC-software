@@ -8,7 +8,7 @@ QFrame#CreditCardWidget {
 
 QFrame#CreditCardWidget:hover {
     background-color: #f0f8ff; /* Azul muy claro al pasar el mouse (similar a tu #f3f8ff pero más vibrante) */
-    border-color: #4285F4; /* Un azul primario más definido al hacer hover */
+    border-color: #1a365d; /* Un azul primario más definido al hacer hover */
 }
 
 /* Estilo para el QLabel que contiene el resumen del crédito */
