@@ -10,6 +10,7 @@ from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
+from views.widgets.edit_saldo_dialog import EditSaldoDialog
 from utils.message_boxes import show_error, show_success, show_warning, show_info
 
 
@@ -133,8 +134,6 @@ class HomePage(QWidget):
         right_layout.setAlignment(Qt.AlignTop)
         right_layout.setSpacing(20)
 
-        # ...existing code...
-
         # 1) Widget de resumen
         resumen = self.create_resumen_widget()
         right_layout.addWidget(resumen)
@@ -147,7 +146,7 @@ class HomePage(QWidget):
 
         btn_editar_saldo = QPushButton("  Editar Saldo")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
-        btn_editar_saldo.setIcon(load_svg_icon("icons/edit2.svg"))
+        btn_editar_saldo.setIcon(load_svg_icon("icons/edit.svg"))
         btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
         admin_buttons_layout.addWidget(btn_editar_saldo)
@@ -243,16 +242,12 @@ class HomePage(QWidget):
 
         
         return frame
-    
 
     def editar_saldo_en_caja(self):
         saldo_actual = self.db_manager.get_config_value_as_int("saldo_en_caja")
-        nuevo, ok = QInputDialog.getInt(
-            self, "Editar Saldo en Caja",
-            "Nuevo saldo en caja:",
-            value=saldo_actual, minValue=0
-        )
-        if ok:
+        dlg = EditSaldoDialog(saldo_actual, self)
+        if dlg.exec():
+            nuevo = dlg.get_saldo()
             self.db_manager.set_config_value("saldo_en_caja", str(nuevo))
             show_success(self, "Saldo actualizado", f"El saldo en caja ahora es: $ {format_miles_colombian_int(nuevo)}")
             self.refresh_view()
