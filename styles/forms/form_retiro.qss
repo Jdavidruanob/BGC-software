@@ -11,14 +11,13 @@
 #ComboSocio {
     height: 40px;
     font-size: 15px;
-    padding: 8px 12px;
-    border: 1px solid #d2d2d2;
+    padding: 4px 8px;
+    border : 1px solid #d2d2d2;
     border-radius: 4px;
-    background-color: white;
 }
 
 #ComboSocio:hover {
-    background-color: #fafafa;
+    background-color: #f1f5f9;
 }
 
 #MontoInput, QLineEdit {
@@ -97,14 +96,12 @@ QLabel#MontoSaldoFinal {
     background-color: #2a4a80;
 }
 
-/* Estilos para el popup (QAbstractItemView) */
+/* Popup de QComboBox */
 QComboBox QAbstractItemView {
-  font-size: 16px;        /* Mismo tamaño de fuente en la lista desplegable */
-  spacing: 6px;           /* Espacio vertical entre ítems */
-  outline: none;          /* Quitar borde azul al enfocar */
+  font-size: 16px;
+  spacing: 6px;
+  outline: none;
 }
-
-/* Altura de cada ítem */
 QComboBox QAbstractItemView::item {
   min-height: 30px;
   padding: 4px 8px;

@@ -80,3 +80,35 @@ QPushButton[btnType="operacion"]:checked {
     color: #1E293B;
 }
 
+QPushButton#btnEditarSaldo {
+    background: #fff;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 0;
+    text-align: center;
+    margin-bottom: 0px;
+}
+
+QPushButton#btnEditarSaldo:hover {
+    background: #f1f5f9;
+}
+
+QPushButton#btnCambiarBD {
+    background: #fff;
+    color: #334155;
+    border: 1px solid #e4eaf1;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 0;
+    text-align: center;
+}
+
+QPushButton#btnCambiarBD:hover {
+    background: #f9fafb;
+    border: 2px solid #e4eaf1;
+}
+

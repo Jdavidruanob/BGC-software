@@ -10,16 +10,44 @@
   margin-top: 8px;
 }
 
-QComboBox, QLineEdit {
-  height: 40px;
-  font-size: 15px;
-  padding: 4px 8px;
+QComboBox {
+    height: 40px;
+    font-size: 15px;
+    padding: 4px 8px;
+    border : 1px solid #d2d2d2;
+    border-radius: 4px;
 }
 
-#AddAporteButton, #AddPagoButton {
-  font-size: 15px;
-  padding: 6px 12px;
-  min-height: 36px;
+QLineEdit{
+    font-size: 15px;
+    padding: 4px 8px;
+    background-color: #f1f5f9;
+    color: #647790;
+    font-weight: bold;
+    border: 1px solid #d2d2d2;
+    border-radius: 4px
+
+}
+
+#AddAporteButton, #AddPagoButton, #AddLetraButton{
+    font-size: 15px;
+    padding: 2px 4px;
+    min-height: 26px;
+    color: %(PRIMARY_COLOR)s;
+    font-weight: bold;
+    border: 1px solid transparent;         /* borde base transparente */
+    border-radius: 4px;
+    border-bottom: 1px solid transparent;  /* espacio para el underscore */
+    background: transparent;
+}
+#AddAporteButton:hover {
+    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
+}
+#AddPagoButton:hover {
+    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
+}
+#AddLetraButton:hover {
+    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
 }
 
 #createReceipt {
@@ -39,7 +67,7 @@ QComboBox, QLineEdit {
   border: none;
 }
 #DeleteButton:hover, #DeletePagoButton:hover {
-  background-color: #f0f0f0;
+  background-color: #fef2f2;
   border-radius: 4px;
 }
 
