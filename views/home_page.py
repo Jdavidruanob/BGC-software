@@ -11,6 +11,7 @@ from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.edit_saldo_dialog import EditSaldoDialog
+
 from utils.message_boxes import show_error, show_success, show_warning, show_info
 
 
@@ -155,7 +156,7 @@ class HomePage(QWidget):
         btn_cambiar_bd.setObjectName("btnCambiarBD")
         btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
         btn_cambiar_bd.setIconSize(QSize(16, 16))
-        # btn_cambiar_bd.clicked.connect(self.cambiar_bd)
+        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)  # ← Cambia esta línea
         admin_buttons_layout.addWidget(btn_cambiar_bd)
 
         admin_buttons_widget.setLayout(admin_buttons_layout)
@@ -251,6 +252,48 @@ class HomePage(QWidget):
             self.db_manager.set_config_value("saldo_en_caja", str(nuevo))
             show_success(self, "Saldo actualizado", f"El saldo en caja ahora es: $ {format_miles_colombian_int(nuevo)}")
             self.refresh_view()
+
+    def cambiar_base_datos(self):
+        """Abre el explorador de archivos para seleccionar una BD de año anterior."""
+        from PySide6.QtWidgets import QFileDialog
+        
+        # Comienza en la carpeta de la aplicación (Archivos_BGC)
+        start_dir = os.path.join(DYNAMIC_DATA_BASE_DIR, "Archivos_BGC")
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Seleccionar Base de Datos",
+            start_dir,
+            "Base de Datos SQLite (*.db);;Todos los archivos (*.*)"
+        )
+
+        if not file_path:
+            return  # Usuario canceló
+
+        if not os.path.exists(file_path):
+            show_error(self, "Error", "El archivo seleccionado no existe.")
+            return
+
+        try:
+            # Desconectar la BD actual
+            if self.db_manager.conn:
+                self.db_manager.conn.close()
+            
+            # Cambiar la ruta de la BD en el mismo db_manager
+            self.db_manager.db_path = file_path
+            
+            # Conectar a la nueva BD
+            if not self.db_manager.connect():
+                show_error(self, "Error", "No se pudo conectar a la base de datos seleccionada.")
+                return
+            
+            # Refrescar toda la vista con los datos de la nueva BD
+            show_success(self, "BD Cambiada", f"Ahora estás consultando:\n{os.path.basename(file_path)}")
+            self.refresh_view()
+            self.refresh_forms()
+            
+        except Exception as e:
+            show_error(self, "Error", f"Error al cambiar la base de datos:\n{str(e)}")
 
     def update_form(self):
         if self.btn_nuevo_credito.isChecked():
@@ -371,7 +414,7 @@ class HomePage(QWidget):
         btn_cambiar_bd.setObjectName("btnCambiarBD")
         btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
         btn_cambiar_bd.setIconSize(QSize(16, 16))
-        # btn_cambiar_bd.clicked.connect(self.cambiar_bd)
+        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)  # ← Cambia esta línea
         admin_buttons_layout.addWidget(btn_cambiar_bd)
 
         admin_buttons_widget.setLayout(admin_buttons_layout)
