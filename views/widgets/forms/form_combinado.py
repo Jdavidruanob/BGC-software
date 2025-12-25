@@ -31,7 +31,7 @@ class FormCombinado(QWidget):
         # --- Layout principal ---
         main_layout = QVBoxLayout()
         main_layout.setAlignment(Qt.AlignTop)
-        main_layout.setContentsMargins(20, 20, 20, 30)
+        main_layout.setContentsMargins(20, 0, 20, 30)
         main_layout.setSpacing(16)
         self.setLayout(main_layout)
 
@@ -156,14 +156,9 @@ class FormCombinado(QWidget):
         row_layout.addWidget(monto_input)
         row_layout.addWidget(btn_eliminar)
 
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
-
         container = QVBoxLayout()
         container.setContentsMargins(0, 0, 0, 0)
         container.addWidget(row_widget)
-        container.addWidget(line)
 
         wrapper = QWidget()
         wrapper.setLayout(container)

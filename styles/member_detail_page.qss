@@ -54,9 +54,9 @@
 #editMemberButton {
     font-size: 16px;
     padding: 9px 20px;
-    color: %(PRIMARY_COLOR)s; /* Primary color */
+    color: #3b82f6; /* Primary color */
     border-radius: 8px;
-    border: 1px solid %(PRIMARY_COLOR)s
+    border: 1px solid #3b82f6
 }
 
 #editMemberButton:hover {

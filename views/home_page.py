@@ -22,7 +22,7 @@ class HomePage(QWidget):
         self.main_window = window
 
         main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(80, 40, 80, 20)
+        main_layout.setContentsMargins(80, 40, 80, 20) # right up left bottom
         main_layout.setSpacing(30)
 
         # PANEL IZQUIERDO
@@ -133,17 +133,34 @@ class HomePage(QWidget):
         right_layout.setAlignment(Qt.AlignTop)
         right_layout.setSpacing(20)
 
+        # ...existing code...
+
         # 1) Widget de resumen
         resumen = self.create_resumen_widget()
         right_layout.addWidget(resumen)
 
-        # Botón para editar saldo en caja
-        #FIXME: Cambiar estilo boton y input.
-        btn_editar_saldo = QPushButton("Editar Saldo en Caja")
+        # --- Layout agrupador para los botones de administración ---
+        admin_buttons_widget = QWidget()
+        admin_buttons_layout = QVBoxLayout()
+        admin_buttons_layout.setContentsMargins(0, 16, 0, 0)  # top margin para separarlos del resumen
+        admin_buttons_layout.setSpacing(8)  # Espaciado pequeño entre botones
+
+        btn_editar_saldo = QPushButton("  Editar Saldo")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
-        btn_editar_saldo.setStyleSheet("margin-left: 10px; margin-bottom: 10px; background-color: #4A90E2; color: white; padding: 8px; border-radius: 5px;")
+        btn_editar_saldo.setIcon(load_svg_icon("icons/edit2.svg"))
+        btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
-        right_layout.addWidget(btn_editar_saldo)
+        admin_buttons_layout.addWidget(btn_editar_saldo)
+
+        btn_cambiar_bd = QPushButton("  Cambiar BD")
+        btn_cambiar_bd.setObjectName("btnCambiarBD")
+        btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
+        btn_cambiar_bd.setIconSize(QSize(16, 16))
+        # btn_cambiar_bd.clicked.connect(self.cambiar_bd)
+        admin_buttons_layout.addWidget(btn_cambiar_bd)
+
+        admin_buttons_widget.setLayout(admin_buttons_layout)
+        right_layout.addWidget(admin_buttons_widget)
 
         self.right_panel.setLayout(right_layout)
         main_layout.addWidget(self.left_panel, 2.5)
@@ -179,8 +196,6 @@ class HomePage(QWidget):
             "SELECT COUNT(*) FROM creditos"
         ).fetchone()[0]
 
-        # Total socios
-        total_socios = len(self.db_manager.get_all_members_full())
 
         # --- Construcción visual ---
         frame = QFrame()
@@ -202,7 +217,7 @@ class HomePage(QWidget):
         # Body
         body = QWidget()
         bl = QVBoxLayout(body)
-        bl.setContentsMargins(12, 12, 12, 12)
+        bl.setContentsMargins(16, 16, 16, 16)
         bl.setSpacing(8)
 
         # Fila helper
@@ -222,7 +237,6 @@ class HomePage(QWidget):
         add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
         add_row("Administración:", f"$ {format_miles_colombian_int(admin)}", bold=True)
         add_row("Créditos Activos:", str(total_creditos), bold=True)
-        add_row("Total Socios:", str(total_socios), bold=True)
 
         v.addWidget(header)
         v.addWidget(body)
@@ -325,18 +339,45 @@ class HomePage(QWidget):
         
         # 🔄 ACTUALIZAR EL WIDGET DEL PANEL DERECHO
         # Elimina contenido anterior del right_panel
-        for i in reversed(range(self.right_panel.layout().count())):
-            widget = self.right_panel.layout().itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
-
+        layout = self.right_panel.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            else:
+                # Si es un layout anidado, elimínalo recursivamente
+                child_layout = item.layout()
+                if child_layout is not None:
+                    while child_layout.count():
+                        child_item = child_layout.takeAt(0)
+                        child_widget = child_item.widget()
+                        if child_widget is not None:
+                            child_widget.deleteLater()
+        
         # Carga de nuevo el resumen
         resumen_widget = self.create_resumen_widget()
-        self.right_panel.layout().addWidget(resumen_widget)
+        layout.addWidget(resumen_widget)
 
-        # Vuelve a agregar el botón de editar saldo
-        btn_editar_saldo = QPushButton("Editar Saldo en Caja")
+        # --- Layout agrupador para los botones de administración ---
+        admin_buttons_widget = QWidget()
+        admin_buttons_layout = QVBoxLayout()
+        admin_buttons_layout.setContentsMargins(0, 16, 0, 0)
+        admin_buttons_layout.setSpacing(8)
+
+        btn_editar_saldo = QPushButton("  Editar Saldo")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
-        btn_editar_saldo.setStyleSheet("margin-left: 10px; margin-bottom: 10px; background-color: #4A90E2; color: white; padding: 8px; border-radius: 5px;")
+        btn_editar_saldo.setIcon(load_svg_icon("icons/edit.svg"))
+        btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
-        self.right_panel.layout().addWidget(btn_editar_saldo)
+        admin_buttons_layout.addWidget(btn_editar_saldo)
+
+        btn_cambiar_bd = QPushButton("  Cambiar BD")
+        btn_cambiar_bd.setObjectName("btnCambiarBD")
+        btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
+        btn_cambiar_bd.setIconSize(QSize(16, 16))
+        # btn_cambiar_bd.clicked.connect(self.cambiar_bd)
+        admin_buttons_layout.addWidget(btn_cambiar_bd)
+
+        admin_buttons_widget.setLayout(admin_buttons_layout)
+        layout.addWidget(admin_buttons_widget)
