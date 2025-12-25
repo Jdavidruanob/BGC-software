@@ -430,9 +430,7 @@ class FormPagoCredito(QWidget):
             
             for _, _, w in self.pagos_widgets:
                 w.setParent(None)
-            self.pagos_widgets.clear()
-            self.load_socios() 
-            self.refresh() 
+            self.clear_form()  # ← Simplemente esto 
 
         except Exception as e:
             self.db.conn.rollback()
@@ -458,3 +456,17 @@ class FormPagoCredito(QWidget):
                         combo.setCurrentIndex(i)
                         break
             combo.blockSignals(False)
+
+    def clear_form(self):
+        """Limpia el formulario y recarga los socios."""
+        # Elimina todos los widgets de pago dinámicos
+        for i in reversed(range(self.pagos_container.count())):
+            widget = self.pagos_container.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+        
+        # Vacía la lista de widgets de pago
+        self.pagos_widgets.clear()
+        
+        # Recarga los socios
+        self.load_socios()

@@ -597,13 +597,17 @@ class FormCombinado(QWidget):
         """Limpia todos los campos y reinicia el formulario."""
         self.combo_recibi_de.setCurrentIndex(-1)
 
+        # Limpiar aportes
         for _, _, widget in self.aportes_widgets:
             widget.setParent(None)
         self.aportes_widgets.clear()
 
-        for _, _, widget in self.pagos_widgets:
-            widget.setParent(None)
-        self.pagos_widgets.clear()
+        # Limpiar pagos de crédito dinámicamente del contenedor
+        while self.pagos_container.count() > 0:
+            item = self.pagos_container.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
 
         self.load_socios()
     
