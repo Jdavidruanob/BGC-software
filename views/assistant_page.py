@@ -29,39 +29,31 @@ class AssistantPage(QWidget):
 
         self.setObjectName("assistantPage")
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(80, 30, 80, 30)
+        main_layout.setContentsMargins(80, 50, 80, 30)
         main_layout.setSpacing(15)
 
-        # Top bar azul con título
-        top_bar = QFrame()
-        top_bar.setObjectName("assistantTopBar")
-        top_bar_layout = QHBoxLayout(top_bar)
-        top_bar_layout.setContentsMargins(20, 10, 20, 10)
-
-        title = QLabel("📘 Registro de Operaciones")
-        title.setObjectName("assistantTitle")
-        top_bar_layout.addWidget(title)
-        top_bar_layout.addStretch()
-        top_bar.setLayout(top_bar_layout)
-        main_layout.addWidget(top_bar)
 
         # --- Zona de Filtros ---
         filters_frame = QFrame()
         filters_frame.setObjectName("filtersFrame")
         filters_layout = QVBoxLayout(filters_frame)
-        filters_layout.setContentsMargins(15, 15, 15, 15)
+        filters_layout.setContentsMargins(20, 20, 20, 20)
         filters_layout.setSpacing(10)
+        # (Opcional) Puedes agregar un pequeño título aquí si quieres:
+        # filters_title = QLabel("Filtros de búsqueda")
+        # filters_title.setObjectName("filtersTitle")
+        # filters_layout.addWidget(filters_title)
 
         # Fila 1 de filtros: Fechas, Número y Cuota/Letra
         date_number_cuota_layout = QHBoxLayout() 
         
-        date_number_cuota_layout.addWidget(QLabel("Fecha Inicio:"))
+        date_number_cuota_layout.addWidget(QLabel("Desde:"))
         self.date_start_edit = QDateEdit(calendarPopup=True)
         self.date_start_edit.setDate(QDate(QDate.currentDate().year() - 1, 11, 30)) # 30 noviembre del año pasado
         self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_start_edit)
 
-        date_number_cuota_layout.addWidget(QLabel("Fecha Fin:"))
+        date_number_cuota_layout.addWidget(QLabel("Hasta:"))
         self.date_end_edit = QDateEdit(calendarPopup=True)
         self.date_end_edit.setDate(QDate(QDate.currentDate().year(), 11, 30)) # 30 noviembre del año pasado
         self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
