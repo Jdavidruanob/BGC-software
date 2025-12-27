@@ -24,7 +24,7 @@ LETRA_CREDITO_CELL = 'B7'
 CAPITAL_CREDITO_CELL = 'F7'
 SOCIOS_PARTICIPANTES_CELL = 'B9'
 # CAMBIO 1: Ahora usaremos esta celda para la FECHA DE PRIMER VENCIMIENTO
-FECHA_PRIMER_VENCIMIENTO_CELL = 'A12' 
+FECHA_CREACION_CREDITO = 'A12' 
 NO_CUOTAS_CELL = 'B12'
 VALOR_CUOTA_ESTIMADA_CELL = 'C12'
 INTERES_CREDITO_CELL = 'D12'
@@ -82,8 +82,7 @@ def generar_liquidacion_credito(
         fecha_inicio_dt = datetime.strptime(credit_data["fecha_inicio"][:10], "%Y-%m-%d")
         
         # CAMBIO 1: Calcular la fecha de la primera cuota para el "Vencimiento"
-        fecha_primer_vencimiento_dt = fecha_inicio_dt + relativedelta(months=+1)
-        ws[FECHA_PRIMER_VENCIMIENTO_CELL] = fecha_primer_vencimiento_dt.strftime("%Y-%m-%d")
+        ws[FECHA_CREACION_CREDITO] = fecha_inicio_dt.strftime("%Y-%m-%d")
 
         ws[NO_CUOTAS_CELL] = credit_data['no_cuotas']
         ws[INTERES_CREDITO_CELL] = f"{credit_data['interes'] * 100:.2f}%"
