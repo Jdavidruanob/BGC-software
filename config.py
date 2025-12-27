@@ -21,16 +21,15 @@ else:
     DYNAMIC_DATA_BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 # --- Definir el Año Fiscal ---
-""" from datetime import date
+from datetime import date
 today = date.today()
 if today.month == 12:
     # Si estamos en Diciembre, el año fiscal es el siguiente año calendario.
     FISCAL_YEAR = str(today.year + 1)
 else:
     # Si estamos de Enero a Noviembre, es el año calendario actual.
-    FISCAL_YEAR = str(today.year) """
+    FISCAL_YEAR = str(today.year)
 
-FISCAL_YEAR = "2025" # Para pruebas migracion final de anio
 
 # Rutas que necesitan sys._MEIPASS para funcionar
 ASSETS_DIR = os.path.join(STATIC_BASE_DIR, "assets")
