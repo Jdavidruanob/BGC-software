@@ -77,7 +77,8 @@ def main():
     # 7. Reseteo de secuencias
     # Esto solo debe correr en la DB nueva. Lo envolvemos en la lógica de creación.
     if db_created_now and not db_needs_migration:
-        db_manager.set_sequence_start_value("recibos", 230) 
+        db_manager.set_sequence_start_value("recibos", 0) 
+        
         db_manager.set_sequence_start_value("creditos", 437)
     
             

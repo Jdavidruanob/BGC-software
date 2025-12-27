@@ -591,13 +591,13 @@ class DBManager:
             self.conn.rollback()
 
     def get_auxiliary_operations(self, limit=10, offset=0, 
-                                start_date=None, end_date=None, 
-                                operation_type=None, socio_name=None,
-                                numero=None, 
-                                letra_credito=None): # <-- Nuevo parámetro
+                            start_date=None, end_date=None, 
+                            operation_type=None, socio_name=None,
+                            numero=None, 
+                            letra_credito=None):
 
         query = """
-            SELECT fecha, tipo, socio, numero, monto, saldo, cuota, id_credito -- ¡Asegúrate de seleccionar id_credito!
+            SELECT fecha, tipo, socio, numero, monto, saldo, cuota, id_credito
             FROM auxiliar
             WHERE 1=1
         """
@@ -620,11 +620,9 @@ class DBManager:
             query += " AND numero = ?"
             params.append(numero)
         
-        # --- Filtro por Letra del Crédito ---
-        if letra_credito: # Si hay un valor para letra_credito
+        if letra_credito:
             query += " AND id_credito = ?" 
             params.append(letra_credito)
-        # --- FIN Filtro ---
 
         query += " ORDER BY fecha DESC, id DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
@@ -633,13 +631,15 @@ class DBManager:
             cursor = self.conn.cursor()
             cursor.execute(query, tuple(params))
             
-            # Convierte los resultados a un formato de diccionario para fácil acceso por nombre de columna
+            # ✅ CORRECCIÓN: Primero fetch, LUEGO accedes a description
+            rows = cursor.fetchall()
             column_names = [description[0] for description in cursor.description]
-            operations = [dict(zip(column_names, row)) for row in cursor.fetchall()]
+            operations = [dict(zip(column_names, row)) for row in rows]
             
+            print(f"✅ Se recuperaron {len(operations)} operaciones")
             return operations
         except Exception as e:
-            print(f"❌ Error obteniendo operaciones del auxiliar con filtros: {e}")
+            print(f"❌ Error obteniendo operaciones del auxiliar: {e}")
             return []
         
     def get_config_value_as_int(self, key):
@@ -701,3 +701,54 @@ class DBManager:
             except Exception as e:
                 print(f"❌ Error al establecer la secuencia para '{table_name}': {e}")
                 self.conn.rollback()
+
+
+    def debug_check_auxiliar(self):
+        """Método temporal para verificar qué hay en la tabla auxiliar"""
+        try:
+            cursor = self.conn.cursor()
+            
+            # 1. Contar todas las filas
+            cursor.execute("SELECT COUNT(*) as total FROM auxiliar")
+            result = cursor.fetchone()
+            total = result['total'] if result else 0
+            
+            print(f"\n🔍 DEBUG AUXILIAR:")
+            print(f"   Total de filas en tabla: {total}")
+            
+            if total > 0:
+                # 2. Mostrar todas las columnas
+                cursor.execute("PRAGMA table_info(auxiliar)")
+                columns = cursor.fetchall()
+                print(f"   Columnas en la tabla:")
+                for col in columns:
+                    print(f"      - {col['name']} ({col['type']})")
+                
+                # 3. Mostrar primeras 3 filas completas
+                cursor.execute("SELECT * FROM auxiliar LIMIT 3")
+                rows = cursor.fetchall()
+                print(f"\n   Primeras 3 filas:")
+                for i, row in enumerate(rows, 1):
+                    print(f"      Fila {i}: {dict(row)}")
+                
+                # 4. Probar la query exacta que usa get_auxiliary_operations()
+                print(f"\n   Probando query de get_auxiliary_operations():")
+                query = """
+                    SELECT fecha, tipo, socio, numero, monto, saldo, cuota, id_credito
+                    FROM auxiliar
+                    WHERE 1=1
+                    ORDER BY fecha DESC, id DESC 
+                    LIMIT 10 OFFSET 0
+                """
+                cursor.execute(query)
+                test_rows = cursor.fetchall()
+                print(f"   Resultado: {len(test_rows)} filas")
+                if test_rows:
+                    print(f"   Primera fila: {dict(test_rows[0])}")
+            else:
+                print("   ⚠️ La tabla auxiliar está VACÍA")
+                
+        except Exception as e:
+            print(f"❌ Error en debug_check_auxiliar: {e}")
+            import traceback
+            traceback.print_exc()

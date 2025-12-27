@@ -49,13 +49,13 @@ class AssistantPage(QWidget):
         
         date_number_cuota_layout.addWidget(QLabel("Desde:"))
         self.date_start_edit = QDateEdit(calendarPopup=True)
-        self.date_start_edit.setDate(QDate(QDate.currentDate().year() - 1, 11, 30)) # 30 noviembre del año pasado
+        self.date_start_edit.setDate(QDate(QDate.currentDate().year(), 12, 1)) # 30 noviembre del año pasado
         self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_start_edit)
 
         date_number_cuota_layout.addWidget(QLabel("Hasta:"))
         self.date_end_edit = QDateEdit(calendarPopup=True)
-        self.date_end_edit.setDate(QDate(QDate.currentDate().year(), 11, 30)) # 30 noviembre del año pasado
+        self.date_end_edit.setDate(QDate(QDate.currentDate().year()+1, 11, 30))
         self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_end_edit)
         
@@ -164,19 +164,14 @@ class AssistantPage(QWidget):
 
         qss_path = os.path.join(STYLES_DIR, "assistant_page.qss")
         load_styles(self, qss_path)
-
         # Cargar la primera página con los filtros iniciales
         self.apply_filters() 
 
 
     def load_next_page(self):
-        # Evita llamadas concurrentes
-        #print("➡️ load_next_page called")  # FIXME
-        #print(f"no_more_pages: {self.no_more_pages}, loading: {self.loading}")  # FIXME
         if self.no_more_pages or self.loading:
             return
         self.loading = True
-        #self.load_more_btn.setEnabled(False)
 
         try:
             ops = self.db_manager.get_auxiliary_operations(
@@ -189,6 +184,13 @@ class AssistantPage(QWidget):
                 numero=self.filter_numero,
                 letra_credito=self.filter_id_credito
             )
+            
+            # 🔍 DEBUG
+            print(f"✅ ops retornadas: {ops}")
+            print(f"✅ tipo de ops: {type(ops)}")
+            if ops:
+                print(f"✅ primera op: {ops[0]}")
+            # FIN DEBUG
 
             if not ops:
                 self.no_more_pages = True
@@ -234,7 +236,6 @@ class AssistantPage(QWidget):
         self.filter_operation_type = self.type_combo.currentData() 
         self.filter_socio_name = self.socio_search_input.text().strip()
         
-        # Capturar el filtro de número de recibo
         numero_text = self.numero_search_input.text().strip()
         if numero_text:
             try:
@@ -244,20 +245,16 @@ class AssistantPage(QWidget):
         else:
             self.filter_numero = None
 
-        # --- NUEVO: Capturar el filtro de id_credito (desde el campo "Cuota/Letra") ---
-        # Si el usuario ingresa un valor en "Cuota/Letra", lo usamos para filtrar por id_credito.
-        # No intentamos convertirlo a int aquí, ya que id_credito es TEXT en la DB.
         self.filter_id_credito = self.cuota_letra_search_input.text().strip()
         if not self.filter_id_credito:
             self.filter_id_credito = None
-        # --- FIN NUEVO ---
 
         # Reiniciar la tabla y la paginación para aplicar los nuevos filtros
         self.table_widget.setRowCount(0)
         self.current_page = 0
-        self.no_more_pages = False             # <-- reiniciar paginación
-        #self.load_more_btn.setVisible(False)
-        self.load_next_page()
+        self.no_more_pages = False
+        
+        self.load_next_page()  # ← ¡ASEGÚRATE QUE ESTÉ AQUÍ!
 
     def clear_filters(self):
         """
