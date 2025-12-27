@@ -69,10 +69,11 @@ def main():
     # También añadimos una condición para que solo migre si la DB fue creada ahora.
     if db_needs_migration and db_created_now:
         # Construir la ruta al archivo DB del año anterior
-        prev_db_path = os.path.join(
+        print("Se necesita migracion")
+        """ prev_db_path = os.path.join(
             os.path.dirname(os.path.dirname(DB_PATH_FINAL)), prev_fiscal_year, DB_FILE_NAME
         )
-        db_manager.run_annual_migration(prev_db_path)
+        db_manager.run_annual_migration(prev_db_path) """
 
     # 7. Reseteo de secuencias
     # Esto solo debe correr en la DB nueva. Lo envolvemos en la lógica de creación.

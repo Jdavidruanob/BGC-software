@@ -185,13 +185,6 @@ class AssistantPage(QWidget):
                 letra_credito=self.filter_id_credito
             )
             
-            # 🔍 DEBUG
-            print(f"✅ ops retornadas: {ops}")
-            print(f"✅ tipo de ops: {type(ops)}")
-            if ops:
-                print(f"✅ primera op: {ops[0]}")
-            # FIN DEBUG
-
             if not ops:
                 self.no_more_pages = True
                 return
