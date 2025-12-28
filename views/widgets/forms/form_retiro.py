@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox,
     QHBoxLayout, QSizePolicy, QSpacerItem, QFrame
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from datetime import date
 import os
 
@@ -15,6 +15,7 @@ class NoScrollComboBox(QComboBox):
         event.ignore()
 
 class FormRetiro(QWidget):
+    operation_registered = Signal()
     def __init__(self, db_manager, assistant_page=None):
         super().__init__()
         self.db = db_manager
@@ -267,6 +268,8 @@ class FormRetiro(QWidget):
 
             if generated_receipt_path:
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}", file_path=generated_receipt_path)
+                self.operation_registered.emit()
+
             else:
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}")
 
