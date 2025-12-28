@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
     QMessageBox, QHBoxLayout, QFrame, QSizePolicy
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 from datetime import date
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_success, show_error, show_warning
@@ -18,6 +18,7 @@ class NoScrollComboBox(QComboBox):
         event.ignore()
 
 class FormAporte(QWidget):
+    operation_registered = Signal()
     def __init__(self, db_manager, assistant_page=None):
         super().__init__()
         self.db = db_manager
@@ -253,6 +254,7 @@ class FormAporte(QWidget):
             
             if recibo_path:
                 show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.", file_path=recibo_path)
+                self.operation_registered.emit()  # 🎯 Emit after success
             else:
                 show_warning(self, "", "Recibo creado y saldos actualizados, pero hubo un error al generar el archivo Excel.")
             

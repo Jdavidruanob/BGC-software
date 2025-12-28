@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
     QHBoxLayout, QComboBox, QSizePolicy, QSpacerItem, QScrollArea, QFrame
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 from datetime import date, timedelta
 import os
 from datetime import date
@@ -18,6 +18,7 @@ class NoScrollComboBox(QComboBox):
         event.ignore()  # Evita scroll accidental
 
 class FormNuevoCredito(QWidget):
+    operation_registered = Signal()
     def __init__(self, db_manager, window, assistant_page=None):
         super().__init__()
         self.db = db_manager
@@ -320,7 +321,6 @@ class FormNuevoCredito(QWidget):
                     self.main_window.add_view(view_name, liquidation_view)
 
                 show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}.", file_path= generated_liq_path)
-
                 # Limpiar el formulario
                 self.capital_input.clear()
                 self.interes_input.setText("0.01")
@@ -332,6 +332,7 @@ class FormNuevoCredito(QWidget):
                         item.widget().deleteLater()
                 self.load_socios() # Recargar socios y resetear el combo
                 self.actualizar_resumen_credito() # Limpiar el resumen
+                self.operation_registered.emit()  # 🎯 Emit after success
 
         except Exception as e:
             show_error(self, "", f"Error al crear crédito:\n{e}")

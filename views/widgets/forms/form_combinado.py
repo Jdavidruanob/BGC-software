@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
     QHBoxLayout, QFrame, QSizePolicy
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, Signal
 
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_success, show_error, show_warning, show_info
@@ -17,6 +17,7 @@ class NoScrollComboBox(QComboBox):
         event.ignore()  # Evita que se cambie el valor al hacer scroll
 
 class FormCombinado(QWidget):
+    operation_registered = Signal()
     def __init__(self, db_manager, assistant_page):
         
         super().__init__()
@@ -581,6 +582,7 @@ class FormCombinado(QWidget):
                 
                 if recibo_path:
                     show_success(self, "", f"Recibo combinado #{recibo_id} creado exitosamente.", file_path = recibo_path)
+                    self.operation_registered.emit()  # 🎯 Emit after success
                 else:
                     show_warning(self, "", "Recibo combinado registrado, pero hubo un error al generar el archivo Excel.")
                 

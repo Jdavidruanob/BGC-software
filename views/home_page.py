@@ -110,6 +110,13 @@ class HomePage(QWidget):
         self.form_retiro = FormRetiro(self.db_manager)
         self.form_aporte_pago = FormCombinado(self.db_manager, self.assistant_page)
 
+         # 🎯 CONNECT SIGNALS TO REFRESH
+        self.form_aporte.operation_registered.connect(self.refresh_view)
+        self.page_pago.operation_registered.connect(self.refresh_view)
+        self.form_nuevo_credito.operation_registered.connect(self.refresh_view)
+        self.form_retiro.operation_registered.connect(self.refresh_view)
+        self.form_aporte_pago.operation_registered.connect(self.refresh_view)
+        
         self.stack.addWidget(self.form_aporte)         # 0
         self.stack.addWidget(self.page_pago)           # 1
         self.stack.addWidget(self.form_nuevo_credito)  # 2

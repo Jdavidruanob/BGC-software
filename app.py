@@ -1,7 +1,7 @@
 # importar librerías necesarias
 import sys
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QFontDatabase, QFont
+from PySide6.QtGui import QFontDatabase, QFont, QIcon
 import os 
 
 # Importar vistas y el gestor de base de datos
@@ -22,6 +22,15 @@ from config import (
 
 def main():
     app = QApplication(sys.argv)
+
+    # 🎯 CARGAR LOGO SVG
+    logo_path = os.path.join(ASSETS_DIR, "logo_BGC_grande.svg")
+    if os.path.exists(logo_path):
+        app.setWindowIcon(QIcon(logo_path))
+        print(f"✅ Logo SVG cargado: {logo_path}")
+    else:
+        print(f"⚠️ Logo no encontrado en: {logo_path}")
+
     # Cargar fuente Inter Variable
     font_path = os.path.join(ASSETS_DIR, "fonts", "InterVariable.ttf") 
     font_id = QFontDatabase.addApplicationFont(font_path)
@@ -31,6 +40,7 @@ def main():
         print(f"✅ Fuente '{family}' cargada correctamente.")
     else:
         print("❌ No se pudo cargar la fuente Inter Variable.")
+
 
     # Inicializar y conectar la base de datos
     db_path = os.path.join(DYNAMIC_DATA_BASE_DIR, "BGC-software.db")
