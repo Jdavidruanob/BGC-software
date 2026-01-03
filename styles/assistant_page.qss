@@ -53,7 +53,9 @@ QTableWidget#operationsTable::item:last-child {
 #opTipo_aporte,
 #opTipo_pago_credito,
 #opTipo_nuevo_credito,
-#opTipo_retiro {
+#opTipo_retiro,
+#opTipo_abono_capital,  /* NUEVO: Abono Capital */
+#opTipo_custom {
     font-size: 14px; /* <--- CAMBIO: Fuente del badge un poco más pequeña */
     padding: 6px 14px;
     font-weight: bold;
@@ -66,6 +68,17 @@ QTableWidget#operationsTable::item:last-child {
 #opTipo_nuevo_credito { background-color: #007bff; border-radius: 10px}
 #opTipo_retiro { background-color: #dc3545; border-radius: 10px }
 
+/* NUEVO: Abono a Capital -> Amarillo (Ocre para que se lea el texto blanco) */
+#opTipo_abono_capital { 
+    background-color: #ffca1a; /* Amarillo intenso */
+    border-radius: 10px;           
+}
+
+/* NUEVO: Custom (Edición Saldo/Motivo) -> Café */
+#opTipo_custom { 
+    background-color: #795548; /* Café Material Design */
+    border-radius: 10px 
+}
 
 /* Estilos para los QLabel de Monto y Saldo (insertados como widgets) */
 QLabel#opMonto, QLabel#opSaldo {

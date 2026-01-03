@@ -121,7 +121,7 @@ class AssistantPage(QWidget):
         self.table_widget.setAlternatingRowColors(False) 
 
         # Tus encabezados de columna originales (sin la columna "Letra Crédito" visible)
-        column_headers = ["Fecha", "Tipo", "Socio", "Número", "Cuota", "Monto", "Saldo en Caja"]
+        column_headers = ["Fecha", "Motivo", "Socio", "Número", "Cuota", "Monto", "Saldo en Caja"]
         self.table_widget.setColumnCount(len(column_headers))
         self.table_widget.setHorizontalHeaderLabels(column_headers)
 
@@ -303,46 +303,61 @@ class AssistantPage(QWidget):
 
     def build_operation_row(self, op, row_index):
         """
-        Construye una fila en el QTableWidget con los datos de una operación.
-        No se añade una nueva columna visible para 'id_credito' aquí.
+        Construye una fila. Detecta tipos desconocidos para aplicar estilo 'custom' (café).
         """
-        # Fecha (QTableWidgetItem) - Centrado
+        # Fecha
         item_fecha = QTableWidgetItem(op["fecha"])
         item_fecha.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 0, item_fecha)
         
-        # Tipo de operación (QLabel) - Centrado
-        lbl_tipo = QLabel(op["tipo"])
-        lbl_tipo.setObjectName(f"opTipo_{op['tipo'].lower().replace(' ', '_')}")
+        # --- CAMBIO 2: Lógica de estilos para el Tipo/Motivo ---
+        tipo_texto = op["tipo"]
+        # Normalizamos el texto (ej: "Pago Credito" -> "pago_credito")
+        tipo_normalizado = tipo_texto.lower().replace(" ", "_")
+        
+        # Lista de tipos estándar que tienen su propio color definido
+        tipos_estandar = ["aporte", "pago_credito", "nuevo_credito", "retiro", "abono_capital"]
+        
+        lbl_tipo = QLabel(tipo_texto)
+        
+        if tipo_normalizado in tipos_estandar:
+            # Si es estándar, usa su ID específico (ej: #opTipo_aporte)
+            lbl_tipo.setObjectName(f"opTipo_{tipo_normalizado}")
+        else:
+            # Si NO es estándar (es una edición manual), usa el estilo genérico (Café)
+            lbl_tipo.setObjectName("opTipo_custom")
+
         lbl_tipo.setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setCellWidget(row_index, 1, lbl_tipo)
+        # -------------------------------------------------------
 
-        # Socio (QTableWidgetItem) - Izquierda
+        # Socio
         item_socio = QTableWidgetItem(op["socio"])
-        item_socio.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter) 
+        item_socio.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter) 
         self.table_widget.setItem(row_index, 2, item_socio)
         
-        # Número (QTableWidgetItem) - Centrado
+        # Número
         numero_display = str(op.get("numero", "")) if op.get("numero") is not None else ""
         item_numero = QTableWidgetItem(numero_display)
         item_numero.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 3, item_numero)
 
-        # Cuota (QTableWidgetItem) - Centrado, con lógica para mostrar solo en Pagos Credito
+        # Cuota (Mostrar solo si es Pago Credito o Abono Capital si deseas)
         item_cuota = QTableWidgetItem("")
-        if op.get("tipo", "").lower() == "pago credito" and op.get("cuota") is not None:
+        # Puedes ajustar esta condición si quieres mostrar algo para Abono Capital (ej: "0" o "-")
+        if op.get("tipo", "").lower() in ["pago credito", "abono capital"] and op.get("cuota") is not None:
             item_cuota.setText(str(op["cuota"]))
         item_cuota.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
         self.table_widget.setItem(row_index, 4, item_cuota)
 
-        # Monto (QLabel) - Derecha
+        # Monto
         lbl_monto = QLabel(f"{format_miles_colombian_int(op['monto'])}")
         lbl_monto.setObjectName("opMonto")
         lbl_monto.setProperty("montoTipo", "negativo" if op["monto"] < 0 else "positivo")
         lbl_monto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table_widget.setCellWidget(row_index, 5, lbl_monto)
 
-        # Saldo (QLabel) - Derecha
+        # Saldo
         lbl_saldo = QLabel(f"{format_miles_colombian_int(op['saldo'])}")
         lbl_saldo.setObjectName("opSaldo")
         lbl_saldo.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
