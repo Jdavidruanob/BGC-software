@@ -183,25 +183,27 @@ class HomePage(QWidget):
         show_info(self, "prueba info", "mensaje de info de prueba") """
 
     def create_resumen_widget(self):
-        """Construye el widget 'Resumen de Caja'."""
-        # --- Recuperar datos ---
-        # Saldo en caja
-        row = self.db_manager.conn.execute(
-            "SELECT value FROM config WHERE key = ?", ("saldo_en_caja",)
-        ).fetchone()
-        saldo_caja = int(row["value"]) if row else 0
+        """Construye el widget 'Resumen de Caja' con desglose de Administración."""
+        cursor = self.db_manager.conn.cursor()
 
-        row2 = self.db_manager.conn.execute(
-            "SELECT value FROM config WHERE key = ?", ("total_admin",)
-        ).fetchone()
-        admin = int(row2["value"]) if row2 else 0
+        # 1. Saldo en caja
+        row_caja = cursor.execute("SELECT value FROM config WHERE key = 'saldo_en_caja'").fetchone()
+        saldo_caja = int(row_caja["value"]) if row_caja else 0
 
-        # Créditos activos (total)
-        # Asumimos que get_active_credits_by_member solo trae por socio;
-        # si quieres global, tendrías que un método new:
-        total_creditos = self.db_manager.conn.execute(
-            "SELECT COUNT(*) FROM creditos"
-        ).fetchone()[0]
+        # 2. Papelería (Acumulado histórico guardado en config como 'total_admin')
+        row_papeleria = cursor.execute("SELECT value FROM config WHERE key = 'total_admin'").fetchone()
+        papeleria = int(row_papeleria["value"]) if row_papeleria else 0
+
+        # 3. Mora (Calculado sumando todos los abonos por mora en recibos)
+        # Usamos COALESCE para que si es Null devuelva 0
+        row_mora = cursor.execute("SELECT COALESCE(SUM(abono_mora), 0) FROM detalle_recibo").fetchone()
+        total_mora = row_mora[0] if row_mora else 0
+
+        # 4. Total Administración (Suma visual)
+        gran_total_admin = papeleria + total_mora
+
+        # 5. Créditos activos
+        total_creditos = cursor.execute("SELECT COUNT(*) FROM creditos").fetchone()[0]
 
 
         # --- Construcción visual ---
@@ -225,29 +227,44 @@ class HomePage(QWidget):
         body = QWidget()
         bl = QVBoxLayout(body)
         bl.setContentsMargins(16, 16, 16, 16)
-        bl.setSpacing(8)
+        bl.setSpacing(6) # Espaciado un poco más ajustado
 
-        # Fila helper
-        def add_row(label, value, bold=False):
+        # Función helper mejorada con indentación
+        def add_row(label, value, is_bold=False, is_subitem=False):
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
-            row.addWidget(QLabel(label), alignment=Qt.AlignLeft)
+            
+            # Label
+            lbl_text = QLabel(label)
+            row.addWidget(lbl_text, alignment=Qt.AlignLeft)
+            
+            # Valor
             val_lbl = QLabel(value)
-            if bold:
-                val_lbl.setObjectName("summaryValueBold")
-            else:
-                val_lbl.setObjectName("summaryValue")
+            val_lbl.setObjectName("summaryValueBold") # Estilo negrita grande
+            
+
             row.addStretch()
             row.addWidget(val_lbl, alignment=Qt.AlignRight)
             bl.addLayout(row)
 
-        add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", bold=True)
-        add_row("Administración:", f"$ {format_miles_colombian_int(admin)}", bold=True)
-        add_row("Créditos Activos:", str(total_creditos), bold=True)
+        # --- Filas ---
+        add_row("Saldo en Caja:", f"$ {format_miles_colombian_int(saldo_caja)}", is_bold=True)
+        
+        # Sección Admin con desglose
+        add_row("Administración Total:", f"$ {format_miles_colombian_int(gran_total_admin)}", is_bold=True)
+        add_row("- Papelería:", f"$ {format_miles_colombian_int(papeleria)}", is_subitem=True)
+        add_row("- Por Mora:", f"$ {format_miles_colombian_int(total_mora)}", is_subitem=True)
+        
+        # Separador visual opcional o espacio
+        spacer = QFrame()
+        spacer.setFrameShape(QFrame.HLine)
+        spacer.setStyleSheet("color: #DDD;")
+        bl.addWidget(spacer)
+
+        add_row("Créditos Activos:", str(total_creditos), is_bold=True)
 
         v.addWidget(header)
         v.addWidget(body)
-
         
         return frame
 

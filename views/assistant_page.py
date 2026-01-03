@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QIntValidator # ¡Asegúrate de que QIntValidator esté importado!
 import os
 
-from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR, FISCAL_YEAR
 
 class AssistantPage(QWidget):
     def __init__(self, db_manager):
@@ -49,13 +49,13 @@ class AssistantPage(QWidget):
         
         date_number_cuota_layout.addWidget(QLabel("Desde:"))
         self.date_start_edit = QDateEdit(calendarPopup=True)
-        self.date_start_edit.setDate(QDate(QDate.currentDate().year(), 12, 1)) # 30 noviembre del año pasado
+        self.date_start_edit.setDate(QDate(int(FISCAL_YEAR)-1, 12, 1)) # 30 noviembre del año pasado
         self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_start_edit)
 
         date_number_cuota_layout.addWidget(QLabel("Hasta:"))
         self.date_end_edit = QDateEdit(calendarPopup=True)
-        self.date_end_edit.setDate(QDate(QDate.currentDate().year()+1, 11, 30))
+        self.date_end_edit.setDate(QDate(int(FISCAL_YEAR), 11, 30))
         self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
         date_number_cuota_layout.addWidget(self.date_end_edit)
         

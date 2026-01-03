@@ -119,15 +119,26 @@ def generar_recibo_solo_pagos(
                 ws[f'{CREDITO_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
                 ws[f'{CREDITO_LETRA_COL}{row_to_fill}'] = letra_id
 
-                # Formato de la columna 'cuota' (ej: "1-3/36" o "1/36" si es una sola)
-                if letra_id not in cuotas_info_cache:
-                    total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
-                    cuotas_info_cache[letra_id] = total_cuotas_credito
-                
-                if nro_cuotas_start == nro_cuotas_end:
-                    cuota_display = f"{nro_cuotas_start} / {cuotas_info_cache[letra_id]}"
+
+                # --- MODIFICACIÓN AQUÍ ---
+                # Detectar si es un Abono a Capital (usando un flag o verificando tipos)
+                es_abono = False
+                if isinstance(nro_cuotas_start, str) and "ABONO" in nro_cuotas_start:
+                    es_abono = True
+
+                if es_abono:
+                    # Si es abono, mostramos el texto directo
+                    cuota_display = "NA"
                 else:
-                    cuota_display = f"{nro_cuotas_start}-{nro_cuotas_end} / {cuotas_info_cache[letra_id]}"
+                    # Lógica normal de cuotas (1-3 / 10)
+                    if letra_id not in cuotas_info_cache:
+                        total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
+                        cuotas_info_cache[letra_id] = total_cuotas_credito
+                    
+                    if nro_cuotas_start == nro_cuotas_end:
+                        cuota_display = f"{nro_cuotas_start} / {cuotas_info_cache[letra_id]}"
+                    else:
+                        cuota_display = f"{nro_cuotas_start}-{nro_cuotas_end} / {cuotas_info_cache[letra_id]}"
                 
                 ws[f'{CREDITO_CUOTA_COL}{row_to_fill}'] = cuota_display
                 

@@ -1,12 +1,14 @@
+# views/liquidation_page.py
+
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QScrollArea, QPushButton, QFrame,
+    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 import os
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from datetime import datetime
+from config import load_styles, format_miles_colombian_int, STYLES_DIR
 
 class CreditLiquidationPage(QWidget):
     def __init__(self, credit, member_id, main_window, db_manager):
@@ -24,7 +26,7 @@ class CreditLiquidationPage(QWidget):
         main_layout.setContentsMargins(80, 30, 80, 30)
         main_layout.setSpacing(15)
 
-        # Top bar azul con título y botón de regreso
+        # Top bar
         top_bar = QFrame()
         top_bar.setObjectName("liqTopBar")
         top_bar_layout = QHBoxLayout()
@@ -45,7 +47,7 @@ class CreditLiquidationPage(QWidget):
         top_bar.setLayout(top_bar_layout)
         main_layout.addWidget(top_bar)
 
-        # Encabezado de datos del crédito
+        # Info del crédito
         credit_info = QFrame()
         credit_info.setObjectName("liqHeader")
         info_layout = QHBoxLayout()
@@ -66,142 +68,131 @@ class CreditLiquidationPage(QWidget):
         credit_info.setLayout(info_layout)
         main_layout.addWidget(credit_info)
 
-        # Socios
         socios_label = QLabel(f"👥 Socios participantes: {credit['socios']}")
         socios_label.setObjectName("liqSocios")
         main_layout.addWidget(socios_label)
 
-        # ---- QTableWidget para la tabla de liquidación ----
+        # Tabla
         headers = [
-            "Fecha", "Cuota", "Valor Cuota", "Intereses",
-            "Total Mensual", "Saldo Capital", "Fecha Pago"
+            "Fecha Venc.", "Cuota", "Valor Capital", "Intereses",
+            "Total Cuota", "Saldo Restante", "Estado / Pago" 
         ]
         self.table = QTableWidget(0, len(headers))
-        self.table.setObjectName("liqTableWidget")
+        self.table.setObjectName("liqTableWidget") # ID para el QSS
         self.table.setHorizontalHeaderLabels(headers)
-        self.table.verticalHeader().setVisible(False)  # Oculta la columna de índices
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Ocupa todo el ancho
+        
+        # Ocultar header vertical (números de fila)
+        self.table.verticalHeader().setVisible(False)
+        
+        # Ajustar columnas
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        # --- DESACTIVAR INTERACCIÓN (Evita el azul y el click) ---
         self.table.setSelectionMode(QTableWidget.NoSelection)
+        self.table.setFocusPolicy(Qt.NoFocus) # <--- IMPORTANTE: Quita el foco azul al hacer click
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setShowGrid(False) # Opcional: Quita la rejilla para un look más limpio
         self.table.setAlternatingRowColors(True)
-        self.table.setStyleSheet("""
-            QTableWidget#liqTableWidget {
-                background: white;
-                border: 1px solid #DADDE1;
-                font-size: 16px;
-            }
-            QHeaderView::section {
-                background: #E9ECEF;
-                font-weight: bold;
-                font-size: 15px;
-                color: #333;
-                border: 1px solid #DADDE1;
-                padding: 8px 4px;
-            }
-            QTableWidget::item {
-                padding: 5px 8px;
-                border-right: 1px solid #EEEEEE;
-            }
-            QTableWidget::item:last-child {
-                border-right: none;
-            }
-        """)
 
         main_layout.addWidget(self.table)
-
         self.setLayout(main_layout)
 
-        # Estilos adicionales
         qss_path = os.path.join(STYLES_DIR, "liquidation_page.qss")
         load_styles(self, qss_path)
 
-        # Generar cuotas
-        self.generate_liquidation_schedule()
+        # Cargar datos
+        self.load_liquidation_from_db()
 
-    def generate_liquidation_schedule(self):
-        capital = self.credit["capital"]
-        interes = self.credit["interes"]
-        cuotas = self.credit["no_cuotas"]
-        fecha_inicio = datetime.strptime(self.credit["fecha_inicio"][:10], "%Y-%m-%d")
-
-        cuota_base = None
-        cuota_final = None
-
-        # Buscar el mejor redondeo que cumpla condiciones
-        for redondeo in [10000, 9000, 8000, 7000, 6000, 5000, 2000, 1000]:
-            posible_cuota = round((capital / cuotas) / redondeo) * redondeo
-            total_normales = posible_cuota * (cuotas - 1)
-            ultima_cuota = capital - total_normales
-
-            if 10000 <= ultima_cuota <= posible_cuota * 1.5:
-                cuota_base = posible_cuota
-                cuota_final = ultima_cuota
-                break
-
-        if cuota_base is None:
-            # Último recurso: sin redondear, pero garantizando últimas condiciones mínimas
-            cuota_base = capital // cuotas
-            cuota_final = capital - cuota_base * (cuotas - 1)
-
-        saldo = capital
-        cuotas_db = []
-        self.table.setRowCount(cuotas)
-        fecha_primera_cuota = fecha_inicio + timedelta(days=30)
-
-        for i in range(cuotas):
-            nro_cuota = i + 1
-            fecha = fecha_inicio + relativedelta(months=+nro_cuota)
-            cuota_valor = cuota_final if i == cuotas - 1 else cuota_base
-            intereses = round(saldo * interes)
-            cuota_mensual = cuota_valor + intereses
-            saldo -= cuota_valor
-
-            # Buscar si ya fue pagada
+    def load_liquidation_from_db(self):
+        """Lee cuotas de la BD y aplica colores a TODA LA FILA según estado."""
+        letra = self.credit["letra"]
+        try:
             cursor = self.db_manager.conn.cursor()
             cursor.execute("""
-                SELECT fecha_pago FROM liquidaciones
-                WHERE credito_letra = ? AND nro_cuota = ?
-            """, (self.credit["letra"], nro_cuota))
-            fecha_pago_row = cursor.fetchone()
-            fecha_pago_str = fecha_pago_row["fecha_pago"] if fecha_pago_row and fecha_pago_row["fecha_pago"] else ""
+                SELECT fecha_vencimiento, nro_cuota, valor_cuota, interes_mes, 
+                       cuota_mensual, saldo_capital, fecha_pago
+                FROM liquidaciones
+                WHERE credito_letra = ?
+                ORDER BY nro_cuota ASC
+            """, (letra,))
+            
+            cuotas = cursor.fetchall()
+            self.table.setRowCount(len(cuotas))
+            
+            hoy_str = datetime.now().strftime("%Y-%m-%d")
 
-            row = [
-                fecha.strftime("%Y-%m-%d"),
-                str(nro_cuota),
-                f"${format_miles_colombian_int(cuota_valor)}",
-                f"${format_miles_colombian_int(intereses)}",
-                f"${format_miles_colombian_int(cuota_mensual)}",
-                f"${format_miles_colombian_int(max(0, saldo))}",
-                fecha_pago_str
-            ]
+            for i, c in enumerate(cuotas):
+                # Datos básicos
+                f_venc = c["fecha_vencimiento"]
+                nro = str(c["nro_cuota"])
+                v_cap = f"${format_miles_colombian_int(c['valor_cuota'])}"
+                v_int = f"${format_miles_colombian_int(c['interes_mes'])}"
+                v_total = f"${format_miles_colombian_int(c['cuota_mensual'])}"
+                v_saldo = f"${format_miles_colombian_int(c['saldo_capital'])}"
+                
+                f_pago = c["fecha_pago"] 
 
-            for col, val in enumerate(row):
-                item = QTableWidgetItem(val)
-                item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(i, col, item)
+                # LÓGICA DE ESTADO
+                estado_text = "Pendiente"
+                color_texto = QColor("#333333") # Negro suave por defecto
+                es_bold = False
 
-            cuotas_db.append((
-                self.credit["letra"],
-                nro_cuota,
-                fecha.strftime("%Y-%m-%d"),
-                cuota_valor,
-                intereses,
-                cuota_mensual,
-                max(0, saldo),
-                None
-            ))
+                if f_pago:
+                    # PAGADA: Verde y solo fecha
+                    estado_text = f_pago 
+                    color_texto = QColor("#2E7D32") # Verde
+                    es_bold = True
+                else:
+                    # NO PAGADA
+                    if f_venc < hoy_str:
+                        # VENCIDA: Rojo
+                        estado_text = "VENCIDA"
+                        color_texto = QColor("#D32F2F") # Rojo
+                        es_bold = True
+                    else:
+                        # PENDIENTE: Negro
+                        estado_text = "Pendiente"
 
-        existing = self.db_manager.conn.execute(
-            "SELECT COUNT(*) FROM liquidaciones WHERE credito_letra = ?",
-            (self.credit["letra"],)
-        ).fetchone()[0]
+                # Armar fila
+                row_data = [f_venc, nro, v_cap, v_int, v_total, v_saldo, estado_text]
 
-        if existing == 0:
-            self.db_manager.guardar_liquidaciones(cuotas_db)
+                for col, val in enumerate(row_data):
+                    item = QTableWidgetItem(val)
+                    item.setTextAlignment(Qt.AlignCenter)
+                    
+                    # Aplicar color a toda la fila
+                    item.setForeground(color_texto)
+                    
+                    # Aplicar negrita si corresponde (Pagada o Vencida)
+                    if es_bold:
+                        font = item.font()
+                        font.setBold(True)
+                        item.setFont(font)
+                    
+                    # Nos aseguramos de quitar flags de selección por si acaso
+                    item.setFlags(Qt.ItemIsEnabled) 
+                    
+                    self.table.setItem(i, col, item)
+
+        except Exception as e:
+            print(f"❌ Error al cargar liquidación visual: {e}")
 
 
+    def get_current_balance(self, credit_data):
+        """Calcula el saldo actual basandose en la ultima cuota pagada."""
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("""
+                SELECT saldo_capital 
+                FROM liquidaciones 
+                WHERE credito_letra = ? AND fecha_pago IS NOT NULL 
+                ORDER BY nro_cuota DESC LIMIT 1
+            """, (credit_data['letra'],))
+            row = cursor.fetchone()
+            return row['saldo_capital'] if row else credit_data['capital']
+        except:
+            return credit_data['capital']
 
     def refresh_view(self):
-        """Refresca la tabla de liquidación mostrando fechas de pago actualizadas."""
         self.table.clearContents()
-        self.generate_liquidation_schedule()
+        self.load_liquidation_from_db()
