@@ -62,7 +62,7 @@
 #RegisterButton:hover {
   background-color: #2a4a80;
 }
-#CuotasInput{
+#CuotasInput, #AbonoInput{
     font-size: 15px;
     padding: 4px 8px;
     background-color: #f1f5f9;

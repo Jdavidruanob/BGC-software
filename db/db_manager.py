@@ -1,5 +1,6 @@
 import sqlite3
-import os
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 class DBManager:
     def __init__(self, db_path):
@@ -127,6 +128,65 @@ class DBManager:
             print("✅ Tablas creadas.")
         except sqlite3.Error as e:
             print(f"❌ Error creando tablas: {e}")
+
+
+    def check_and_migrate_schema(self):
+        """
+        Escala la base de datos agregando columnas para Mora y Notificaciones
+        sin borrar los datos existentes de los socios.
+        """
+        cursor = self.conn.cursor()
+        
+        # --- 1. ACTUALIZACIÓN TABLA LIQUIDACIONES ---
+        # Columnas para controlar la mora y las notificaciones por cuota
+        cols_liquidaciones = [
+            ("interes_mora", "INTEGER DEFAULT 0"),     # Valor monetario de la mora (el 2%)
+            ("mora_aplicada", "INTEGER DEFAULT 0"),    # Booleano (0 o 1) para no aplicar doble vez
+            ("notif_prev_enviada", "INTEGER DEFAULT 0"), # Booleano: ¿Ya se avisó antes de vencer?
+            ("notif_venc_enviada", "INTEGER DEFAULT 0")  # Booleano: ¿Ya se avisó que venció?
+        ]
+        
+        for col_name, col_type in cols_liquidaciones:
+            try:
+                cursor.execute(f"ALTER TABLE liquidaciones ADD COLUMN {col_name} {col_type}")
+                print(f"✅ Columna '{col_name}' agregada a liquidaciones.")
+            except Exception as e:
+                # Si falla es probable que la columna ya exista, ignoramos.
+                pass
+
+        # --- 2. ACTUALIZACIÓN TABLA DETALLE_RECIBO ---
+        # Necesario para separar cuánto ingreso corresponde a mora (Admin) vs Interes Normal
+        try:
+            cursor.execute("ALTER TABLE detalle_recibo ADD COLUMN abono_mora INTEGER DEFAULT 0")
+            print("✅ Columna 'abono_mora' agregada a detalle_recibo.")
+        except Exception:
+            pass
+            
+        self.conn.commit()
+
+    def initialize_config_values(self):
+            """
+            Garantiza que existan los valores base en la tabla config.
+            Si ya existen, NO los sobrescribe (preserva el dinero actual).
+            """
+            cursor = self.conn.cursor()
+            
+            # Diccionario con valores por defecto
+            # total_admin aquí guardará el histórico de papelería/gestión
+            default_values = {
+                "saldo_en_caja": "0",
+                "total_admin": "0",    
+                "porcentaje_mora": "0.02" 
+            }
+
+            for key, default_val in default_values.items():
+                # Intentamos insertar ignorando si ya existe (INSERT OR IGNORE)
+                cursor.execute("""
+                    INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)
+                """, (key, default_val))
+            
+            self.conn.commit()
+            print("✅ Configuración inicial verificada.")
 
     def run_annual_migration(self, prev_db_path):
         """
@@ -752,3 +812,192 @@ class DBManager:
             print(f"❌ Error en debug_check_auxiliar: {e}")
             import traceback
             traceback.print_exc()
+
+    def add_historical_credit(self, letra, capital, interes, no_cuotas, fecha_inicio, socios_ids, cuotas_data):
+        """
+        Agrega un crédito histórico permitiendo especificar el número de letra manualmente.
+        """
+        try:
+            cursor = self.conn.cursor()
+            
+            # 1. Insertar el crédito especificando la letra (ID)
+            # Si letra es None, SQLite usará AUTOINCREMENT, pero aquí lo forzamos.
+            cursor.execute("""
+                INSERT INTO creditos (letra, capital, interes, no_cuotas, fecha_inicio)
+                VALUES (?, ?, ?, ?, ?)
+            """, (letra, capital, interes, no_cuotas, fecha_inicio))
+            
+            # Si pasamos letra=None, recuperamos la asignada, si no, usamos la que pasamos.
+            nueva_letra = letra if letra is not None else cursor.lastrowid
+            print(f"✅ Crédito histórico #{nueva_letra} creado.")
+            
+            # 2. Asociar el crédito a los socios
+            for socio_id in socios_ids:
+                cursor.execute("""
+                    INSERT INTO socio_credito (socio_id, credito_letra)
+                    VALUES (?, ?)
+                """, (socio_id, nueva_letra))
+            
+            # 3. Insertar las cuotas en 'liquidaciones'
+            for cuota in cuotas_data:
+                cursor.execute("""
+                    INSERT INTO liquidaciones (
+                        credito_letra, nro_cuota, fecha_vencimiento, valor_cuota,
+                        interes_mes, cuota_mensual, saldo_capital, fecha_pago
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    nueva_letra,
+                    cuota['nro_cuota'],
+                    cuota['fecha_vencimiento'],
+                    cuota['valor_cuota'],
+                    cuota['interes_mes'],
+                    cuota['cuota_mensual'],
+                    cuota['saldo_capital'],
+                    cuota['fecha_pago']
+                ))
+            
+            # 4. Registrar en auxiliar
+            socios_nombres = []
+            for socio_id in socios_ids:
+                cursor.execute("SELECT nombres, apellidos FROM socios WHERE id = ?", (socio_id,))
+                row = cursor.fetchone()
+                if row:
+                    # row es una tupla o dict según tu configuración de row_factory
+                    socios_nombres.append(f"{row[0]} {row[1]}") 
+            
+            
+            self.conn.commit()
+            return nueva_letra
+            
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error al crear crédito histórico letra {letra}: {e}")
+            return None
+        
+
+    def add_multiple_historical_credits(self, credits_list):
+        """
+        Agrega múltiples créditos históricos procesando el campo 'letra' de cada uno.
+        """
+        print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
+        
+        resultados = []
+        for i, credit in enumerate(credits_list, 1):
+            # Extraemos la letra si existe en el dict, si no, enviamos None
+            letra_especifica = credit.get('letra') 
+            
+            print(f"[{i}/{len(credits_list)}] Procesando Letra: {letra_especifica}")
+            
+            res = self.add_historical_credit(
+                letra=letra_especifica,
+                capital=credit['capital'],
+                interes=credit['interes'],
+                no_cuotas=credit['no_cuotas'],
+                fecha_inicio=credit['fecha_inicio'],
+                socios_ids=credit['socios_ids'],
+                cuotas_data=credit['cuotas']
+            )
+            resultados.append(res)
+        
+        exitosos = len([l for l in resultados if l])
+        print(f"\n✅ Proceso finalizado: {exitosos} créditos creados correctamente.")
+        return resultados
+    
+    
+    def registrar_credito_completo(self, socio_ids, capital, interes_tasa, n_cuotas, usuario_tesorero="ALVARO L. BURBANO GARCIA"):
+        """
+        Crea el crédito, calcula la liquidación robusta, descuenta caja y registra en auxiliar.
+        Todo en una sola transacción atómica.
+        Retorna: (letra_id, saldo_nuevo_caja)
+        """
+        try:
+            cursor = self.conn.cursor()
+            fecha_actual_str = date.today().strftime("%Y-%m-%d")
+
+            # 1. INSERTAR CABECERA DEL CRÉDITO
+            # Convertimos la lista de IDs a string "1, 2" para visualización rápida en columna 'socios'
+            # (Aunque idealmente usas la tabla relacional socio_credito, aquí mantenemos tu lógica actual)
+            # Primero obtenemos nombres para guardar el string "Nombres..."
+            placeholders = ','.join(['?'] * len(socio_ids))
+            cursor.execute(f"SELECT nombres, apellidos FROM socios WHERE id IN ({placeholders})", socio_ids)
+            socios_data = cursor.fetchall()
+            nombres_txt = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in socios_data])
+
+            cursor.execute("""
+                INSERT INTO creditos (capital, interes, no_cuotas, fecha_inicio)
+                VALUES (?, ?, ?, ?)
+            """, (capital, interes_tasa, n_cuotas, fecha_actual_str))
+            
+            letra_id = cursor.lastrowid
+
+            # Insertar relaciones muchos a muchos
+            for sid in socio_ids:
+                cursor.execute("INSERT INTO socio_credito (socio_id, credito_letra) VALUES (?, ?)", (sid, letra_id))
+
+            # 2. CALCULAR LIQUIDACIÓN (LÓGICA ROBUSTA)
+            cuota_base = None
+            cuota_final = None
+
+            for redondeo in [10000, 9000, 8000, 7000, 6000, 5000, 2000, 1000]:
+                posible_cuota = round((capital / n_cuotas) / redondeo) * redondeo
+                total_normales = posible_cuota * (n_cuotas - 1)
+                ultima_cuota = capital - total_normales
+                
+                if 10000 <= ultima_cuota <= posible_cuota * 1.5:
+                    cuota_base = posible_cuota
+                    cuota_final = ultima_cuota
+                    break
+
+            if cuota_base is None:
+                cuota_base = capital // n_cuotas
+                cuota_final = capital - cuota_base * (n_cuotas - 1)
+
+            # Generar filas
+            cuotas_db = []
+            saldo_temp = capital
+            fecha_inicio_dt = date.today()
+            
+            for i in range(n_cuotas):
+                nro = i + 1
+                fecha_venc = fecha_inicio_dt + relativedelta(months=+nro)
+                
+                cuota_cap = cuota_final if i == n_cuotas - 1 else cuota_base
+                interes_val = int(round(saldo_temp * interes_tasa))
+                cuota_mensual = int(cuota_cap + interes_val)
+                saldo_final = int(saldo_temp - cuota_cap)
+                if saldo_final < 0: saldo_final = 0
+
+                cuotas_db.append((
+                    letra_id, nro, fecha_venc.strftime("%Y-%m-%d"),
+                    int(cuota_cap), interes_val, cuota_mensual, saldo_final
+                ))
+                saldo_temp = saldo_final
+
+            # 3. INSERTAR LIQUIDACIONES
+            cursor.executemany("""
+                INSERT INTO liquidaciones 
+                (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, cuotas_db)
+
+            # 4. ACTUALIZAR CAJA
+            # Leer saldo actual de forma segura dentro de la transacción
+            cursor.execute("SELECT value FROM config WHERE key='saldo_en_caja'")
+            row = cursor.fetchone()
+            saldo_actual = int(row['value']) if row else 0
+            nuevo_saldo = saldo_actual - capital
+            
+            cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('saldo_en_caja', ?)", (str(nuevo_saldo),))
+
+            # 5. INSERTAR EN AUXILIAR
+            cursor.execute("""
+                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo, id_credito)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (fecha_actual_str, "Nuevo Credito", nombres_txt, letra_id, -capital, nuevo_saldo, letra_id))
+
+            self.conn.commit()
+            return letra_id, nuevo_saldo
+
+        except Exception as e:
+            self.conn.rollback()
+            raise e  # Relanzar el error para que la UI lo muestre

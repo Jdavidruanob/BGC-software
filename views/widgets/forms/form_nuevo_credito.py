@@ -247,99 +247,81 @@ class FormNuevoCredito(QWidget):
                 show_warning(self, "", "Debes seleccionar al menos un socio.")
                 return
 
-            capital = parse_miles_colombian(self.capital_input.text())
-            interes = float(self.interes_input.text())
-            cuotas = int(self.cuotas_input.text())
+            # Validaciones de input
+            try:
+                capital = parse_miles_colombian(self.capital_input.text())
+                interes_tasa = float(self.interes_input.text())
+                n_cuotas = int(self.cuotas_input.text())
+            except ValueError:
+                show_error(self, "", "Datos inválidos. Verifique capital, interés y cuotas.")
+                return
 
-            if capital <= 0 or interes <= 0 or cuotas <= 0:
+            if capital <= 0 or interes_tasa <= 0 or n_cuotas <= 0:
                 show_error(self, "", "Revisa que todos los valores sean válidos y positivos.")
                 return
 
             socio_ids = [s['id'] for s in self.socios_seleccionados]
             
-            # La función add_credit guarda el crédito y devuelve la letra
-            letra = self.db.add_credit(socio_ids, capital, interes, cuotas)
+            # --- LLAMADA MAESTRA AL DB MANAGER ---
+            # Toda la lógica pesada ocurre aquí adentro
+            letra, nuevo_saldo_caja = self.db.registrar_credito_completo(
+                socio_ids, capital, interes_tasa, n_cuotas
+            )
             
-            # Obtener los datos completos del crédito recién creado para pasarlos al generador
-            credit_data_from_db = self.db.get_credit_by_letra(letra) 
-
             if letra:
-                # Actualizar saldo caja global
-                saldo_actual = self.db.get_config_value_as_int("saldo_en_caja")
-                nuevo_saldo = saldo_actual - capital
-                self.db.set_config_value("saldo_en_caja", str(nuevo_saldo))
-
-                fecha_actual = date.today().strftime("%Y-%m-%d")
-                nombres = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
-
-                self.db.add_to_auxiliar(
-                    fecha=fecha_actual,
-                    tipo="Nuevo Credito",
-                    socio=nombres,
-                    # Si `numero` en auxiliar es el ID del recibo del crédito, y `letra` es tu `id_credito` TEXT,
-                    # deberías tener un `recibo_id_credito_nuevo` o similar para `numero`.
-                    # Por ahora, dado que `numero` es INTEGER NOT NULL y antes pasabas `letra` (que es tu ID de crédito),
-                    # y si `letra` *realmente* puede ser un entero, se mantiene.
-                    # Si `letra` es TEXT (ej. "CR001"), entonces `numero` en auxiliar debería ser NULL o un ID numérico de recibo.
-                    # POR AHORA, ASUMIMOS QUE LA `letra` GENERADA POR `add_credit` ES NUMÉRICA Y PUEDE IR EN `numero` (como antes)
-                    # Y TAMBIÉN SE VA A `id_credito` PARA EL NUEVO FILTRO.
-                    numero=letra, # Si 'letra' es numérica, puede ir aquí. Si es alfanumérica, necesitas un número de recibo aquí.
-                    monto=-capital,
-                    saldo=nuevo_saldo,
-                    cuota=None, # Los nuevos créditos no tienen 'cuota' individual
-                    id_credito=letra # <-- ¡Aquí es donde realmente quieres la letra!
-                )
-
-                # Agregar visual en AssistantPage
+                # Actualizar UI auxiliar (solo visual)
+                fecha_actual_str = date.today().strftime("%Y-%m-%d")
+                nombres_str = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
+                
                 if self.assistant_page:
                     self.assistant_page.add_operation({
-                        "fecha": fecha_actual,
+                        "fecha": fecha_actual_str,
                         "tipo": "Nuevo Credito",
-                        "socio": nombres,
-                        "numero": letra, # Y aquí también para la visualización consistente
+                        "socio": nombres_str,
+                        "numero": letra,
                         "cuota": None,
                         "monto": -capital,
-                        "saldo": nuevo_saldo,
-                        "id_credito": letra # <-- ¡Y aquí también para la visualización y filtro en AssistantPage!
+                        "saldo": nuevo_saldo_caja,
+                        "id_credito": letra
                     })
 
-                # --- Generar el archivo de liquidación Excel ---
+                # Generar Excel (Usando datos frescos de la BD)
+                credit_data_from_db = self.db.get_credit_by_letra(letra) 
+                
                 generated_liq_path = generar_liquidacion_credito(
                     credit_data=credit_data_from_db,
-                    socios_list=self.socios_seleccionados # Pasamos la lista de diccionarios de socios
+                    socios_list=self.socios_seleccionados
                 )
                 
-                # Crear la vista de liquidación en la UI (esto ya lo tienes)
-                for id_socio in socio_ids: # Iterar por cada socio para la vista
+                # Crear vistas
+                for id_socio in socio_ids:
                     liquidation_view = CreditLiquidationPage(
                         credit_data_from_db, 
                         member_id=id_socio, 
                         main_window=self.main_window, 
                         db_manager=self.db
                     )
-                    view_name = f"liquidation_credit_{letra}_{id_socio}" # Un nombre único por socio si lo necesitas
-                    self.main_window.add_view(view_name, liquidation_view)
+                    self.main_window.add_view(f"liquidation_credit_{letra}_{id_socio}", liquidation_view)
 
-                show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}.", file_path= generated_liq_path)
-                # Limpiar el formulario
+                show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}.", file_path=generated_liq_path)
+                
+                # Limpiar formulario
                 self.capital_input.clear()
                 self.interes_input.setText("0.01")
                 self.cuotas_input.clear()
                 self.socios_seleccionados.clear()
                 while self.selected_container.count():
                     item = self.selected_container.takeAt(0)
-                    if item.widget():
-                        item.widget().deleteLater()
-                self.load_socios() # Recargar socios y resetear el combo
-                self.actualizar_resumen_credito() # Limpiar el resumen
-                self.operation_registered.emit()  # 🎯 Emit after success
+                    if item.widget(): item.widget().deleteLater()
+                self.load_socios()
+                self.actualizar_resumen_credito()
+                self.operation_registered.emit()
 
         except Exception as e:
-            show_error(self, "", f"Error al crear crédito:\n{e}")
+            show_error(self, "Error BD", f"Error al registrar crédito:\n{e}")
             import traceback
-            traceback.print_exc() # Para ver el error completo en la consola
+            traceback.print_exc()
+
 
     def refresh(self):
-        """Refresca el formulario: limpia inputs, recarga socios y borra etiquetas previas."""
-        self.load_socios()  # Recarga lista de socios
-
+        self.load_socios()  

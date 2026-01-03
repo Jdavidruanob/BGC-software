@@ -216,22 +216,44 @@ class FormCombinado(QWidget):
                     )
                     letra_combo.addItem(texto, userData=l)
 
+            # --- INPUT ABONO CAPITAL (Nuevo con formato en tiempo real) ---
+            abono_input = QLineEdit()
+            abono_input.setObjectName("AbonoInput")
+            abono_input.setPlaceholderText("$ Abono capital")
+            abono_input.setAlignment(Qt.AlignRight)
+            abono_input.setFixedHeight(34)
+            abono_input.setFixedWidth(140) 
+
+            def on_abono_changed(text):
+                # Usamos las funciones de config.py para limpiar y formatear
+                raw = parse_miles_colombian(text)
+                formatted = format_miles_colombian_int(raw)
+                if formatted != text:
+                    abono_input.blockSignals(True)
+                    abono_input.setText(formatted)
+                    # Mantenemos el cursor al final para que no salte al inicio
+                    abono_input.setCursorPosition(len(formatted))
+                    abono_input.blockSignals(False)
+
+            abono_input.textChanged.connect(on_abono_changed)       
+
             cuotas_input = QLineEdit()
             cuotas_input.setObjectName("CuotasInput")
             cuotas_input.setPlaceholderText("# Cuotas")
             cuotas_input.setAlignment(Qt.AlignRight)
             cuotas_input.setFixedHeight(34)
-            cuotas_input.setFixedWidth(80)
+            cuotas_input.setFixedWidth(90)
 
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")
             btn_delete_letra.setIcon(load_svg_icon("icons/x.svg"))
-            btn_delete_letra.setIconSize(QSize(16,16))
+            btn_delete_letra.setIconSize(QSize(16,16))  
             btn_delete_letra.setFixedSize(28,28)
             btn_delete_letra.setToolTip("Eliminar esta letra")
             btn_delete_letra.clicked.connect(lambda: letra_row_widget.setParent(None))
 
             letra_row.addWidget(letra_combo)
+            letra_row.addWidget(abono_input) # <--- AGREGAMOS EL INPUT AQUÍ
             letra_row.addWidget(cuotas_input)
             letra_row.addWidget(btn_delete_letra)
 
