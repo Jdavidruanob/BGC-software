@@ -507,23 +507,22 @@ class FormPagoCredito(QWidget):
                         # 2. REGISTRO EN BD (CORREGIDO: Usamos 'pago_credito' para cumplir el CHECK)
                         cursor.execute(
                             "INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) "
-                            "VALUES (?, 'pago_credito', ?, ?, 0, ?)", # <--- 'pago_credito' y nro_cuota 0
+                            "VALUES (?, 'abono_capital', ?, ?, 0, ?)", # <--- 'abono_capital' y nro_cuota 0
                             (recibo_id, socio_selected['id'], letra_id, valor_abono)
                         )
                         saldo_caja += valor_abono
 
-                        # 3. RECALCULAR (La función ahora busca 'pago_credito' con cuota 0)
+                        # 3. RECALCULAR (La función ahora busca 'abono_capital' con cuota 0)
                         self.recalcular_tabla_amortizacion(letra_id, valor_abono)
 
                         # 4. AUXILIAR
                         self.db.add_to_auxiliar(
                             fecha=fecha_actual, 
-                            tipo="Pago Credito", 
+                            tipo="Abono Capital", 
                             socio=f"{socio_full['nombres']} {socio_full['apellidos']}", 
                             numero=recibo_id, 
                             monto=valor_abono, 
                             saldo=saldo_caja, 
-                            cuota=0, 
                             id_credito=letra_id
                         )
 
