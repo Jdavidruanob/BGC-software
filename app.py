@@ -76,7 +76,6 @@ def main():
     # 5. Crear la estructura de tablas. Es crucial si el archivo se acaba de crear.
     db_manager.create_tables()  # No sujeta a condicion IF porque dentro de ella ya tiene "if not exists"
     
-    db_manager.check_and_migrate_schema() # alteracion para el interes por mora
     
     # 6. Ejecutar Migración SI y SOLO SI es un reset de año
     # También añadimos una condición para que solo migre si la DB fue creada ahora.
