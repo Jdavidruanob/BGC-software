@@ -272,18 +272,20 @@ class FormNuevoCredito(QWidget):
                 # Actualizar UI auxiliar (solo visual)
                 fecha_actual_str = date.today().strftime("%Y-%m-%d")
                 nombres_str = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
+
+                self.db.add_to_auxiliar(
+                    fecha=fecha_actual_str,
+                    tipo="Nuevo Credito",
+                    socio=nombres_str,
+                    recibo=None,           # <--- CAMBIO: Nuevo crédito no suele tener recibo de caja
+                        id_credito=letra,      # <--- CORRECTO: La letra va aquí
+                        monto=-capital,
+                        saldo=nuevo_saldo_caja,
+                        cuota=None
+                    )
                 
-                if self.assistant_page:
-                    self.assistant_page.add_operation({
-                        "fecha": fecha_actual_str,
-                        "tipo": "Nuevo Credito",
-                        "socio": nombres_str,
-                        "numero": letra,
-                        "cuota": None,
-                        "monto": -capital,
-                        "saldo": nuevo_saldo_caja,
-                        "id_credito": letra
-                    })
+                self.db.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
+                self.db.conn.commit()
 
                 # Generar Excel (Usando datos frescos de la BD)
                 credit_data_from_db = self.db.get_credit_by_letra(letra) 

@@ -121,20 +121,20 @@ class AssistantPage(QWidget):
         self.table_widget.setAlternatingRowColors(False) 
 
         # Tus encabezados de columna originales (sin la columna "Letra Crédito" visible)
-        column_headers = ["Fecha", "Motivo", "Socio", "Número", "Cuota", "Monto", "Saldo en Caja"]
+        column_headers = ["Fecha", "Motivo", "Socio", "Recibo", "Letra", "Cuota", "Monto", "Saldo en Caja"]
         self.table_widget.setColumnCount(len(column_headers))
         self.table_widget.setHorizontalHeaderLabels(column_headers)
 
         header = self.table_widget.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
         self.table_widget.setColumnWidth(0, 150) # Fecha
-        self.table_widget.setColumnWidth(1, 150) # Tipo (para el badge)
-        self.table_widget.setColumnWidth(2, 650) # Socio (más grande)
-        self.table_widget.setColumnWidth(3, 80)  # Número
-        self.table_widget.setColumnWidth(4, 80)  # Cuota
-        self.table_widget.setColumnWidth(5, 130) # Monto
-        self.table_widget.setColumnWidth(6, 183.5) # Saldo en Caja
-
+        self.table_widget.setColumnWidth(1, 160) # Tipo (para el badge)
+        self.table_widget.setColumnWidth(2, 560) # Socio (más grande)
+        self.table_widget.setColumnWidth(3, 80)  # Recibo (Nuevo)
+        self.table_widget.setColumnWidth(4, 80)  # Letra (Nuevo)
+        self.table_widget.setColumnWidth(5, 80)  # Cuota
+        self.table_widget.setColumnWidth(6, 130) # Monto
+        self.table_widget.setColumnWidth(7, 183.5) # Saldo en Caja
         self.table_widget.verticalHeader().setVisible(False)
         self.table_widget.verticalHeader().setDefaultSectionSize(50) 
         
@@ -336,32 +336,38 @@ class AssistantPage(QWidget):
         item_socio.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter) 
         self.table_widget.setItem(row_index, 2, item_socio)
         
-        # Número
-        numero_display = str(op.get("numero", "")) if op.get("numero") is not None else ""
-        item_numero = QTableWidgetItem(numero_display)
-        item_numero.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.table_widget.setItem(row_index, 3, item_numero)
+        # COLUMNA 3: Recibo
+        recibo_val = str(op.get("recibo", "")) if op.get("recibo") is not None else ""
+        item_recibo = QTableWidgetItem(recibo_val)
+        item_recibo.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.table_widget.setItem(row_index, 3, item_recibo)
 
-        # Cuota (Mostrar solo si es Pago Credito o Abono Capital si deseas)
+        # COLUMNA 4: Letra (Usamos id_credito)
+        letra_val = str(op.get("id_credito", "")) if op.get("id_credito") else ""
+        item_letra = QTableWidgetItem(letra_val)
+        item_letra.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.table_widget.setItem(row_index, 4, item_letra)
+
+        # COLUMNA 5: Cuota
         item_cuota = QTableWidgetItem("")
-        # Puedes ajustar esta condición si quieres mostrar algo para Abono Capital (ej: "0" o "-")
-        if op.get("tipo", "").lower() in ["pago credito", "abono capital"] and op.get("cuota") is not None:
-            item_cuota.setText(str(op["cuota"]))
+        # Mostrar cuota solo si aplica
+        if op.get("cuota") is not None and op.get("cuota") != 0:
+             item_cuota.setText(str(op["cuota"]))
         item_cuota.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.table_widget.setItem(row_index, 4, item_cuota)
+        self.table_widget.setItem(row_index, 5, item_cuota)
 
-        # Monto
+        # COLUMNA 6: Monto (Actualizar índice)
         lbl_monto = QLabel(f"{format_miles_colombian_int(op['monto'])}")
         lbl_monto.setObjectName("opMonto")
         lbl_monto.setProperty("montoTipo", "negativo" if op["monto"] < 0 else "positivo")
         lbl_monto.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table_widget.setCellWidget(row_index, 5, lbl_monto)
+        self.table_widget.setCellWidget(row_index, 6, lbl_monto)
 
-        # Saldo
+        # COLUMNA 7: Saldo (Actualizar índice)
         lbl_saldo = QLabel(f"{format_miles_colombian_int(op['saldo'])}")
         lbl_saldo.setObjectName("opSaldo")
         lbl_saldo.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table_widget.setCellWidget(row_index, 6, lbl_saldo)
+        self.table_widget.setCellWidget(row_index, 7, lbl_saldo)
 
         # No se añade ni se manipula la columna 7, ya que la has eliminado de los encabezados.
 

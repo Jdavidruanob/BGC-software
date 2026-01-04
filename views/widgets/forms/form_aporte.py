@@ -219,20 +219,11 @@ class FormAporte(QWidget):
                     fecha=fecha_actual_db_format,
                     tipo="Aporte",
                     socio=nombre_socio_log,
-                    numero=recibo_id,
+                    recibo=recibo_id,
                     monto=monto_aporte_db,
                     saldo=saldo_caja
                 )
 
-                if self.assistant_page:
-                    self.assistant_page.add_operation({
-                        "fecha": fecha_actual_db_format,
-                        "tipo": "Aporte",
-                        "socio": nombre_socio_log,
-                        "numero": recibo_id,
-                        "monto": monto_aporte_db,
-                        "saldo": saldo_caja
-                    })
             
             # Finalmente, actualizar el saldo en caja en la configuración global
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
