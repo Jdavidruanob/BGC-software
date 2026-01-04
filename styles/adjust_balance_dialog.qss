@@ -1,0 +1,78 @@
+/* Dialogo Principal */
+#AdjustBalanceDialog {
+    background-color: white;
+    border-radius: 8px;
+}
+
+/* Etiquetas */
+#FormLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+/* Inputs (Monto y Motivo) */
+#InputField {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 14px;
+    background-color: #f9f9f9;
+}
+#InputField:focus {
+    border: 1px solid #153A66;
+    background-color: white;
+}
+
+/* Botones de Seleccion de Tipo */
+QPushButton[class="modeButton"] {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    background-color: #f0f0f0;
+}
+
+/* Estado Activo: INGRESO (Verde) */
+QPushButton[class="modeButton"][active="true"][mode="ingreso"] {
+    background-color: #e6fffa;
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+
+/* Estado Activo: EGRESO (Rojo) */
+QPushButton[class="modeButton"][active="true"][mode="egreso"] {
+    background-color: #fff5f5;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
+/* Contador de caracteres */
+#CharCounter {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+#CharCounter[limitReached="true"] {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Boton Guardar */
+#ActionSaveButton {
+    background-color: #153A66;
+    color: white;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+#ActionSaveButton:hover {
+    background-color: #0f2b4d;
+}
+#ActionSaveButton:disabled {
+    background-color: #ccc;
+}

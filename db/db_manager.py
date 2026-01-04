@@ -671,7 +671,6 @@ class DBManager:
             column_names = [description[0] for description in cursor.description]
             operations = [dict(zip(column_names, row)) for row in rows]
             
-            print(f"✅ Se recuperaron {len(operations)} operaciones")
             return operations
         except Exception as e:
             print(f"❌ Error obteniendo operaciones del auxiliar: {e}")
