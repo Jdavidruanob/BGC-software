@@ -1,6 +1,7 @@
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
+
 
 class DBManager:
     def __init__(self, db_path):
@@ -113,11 +114,11 @@ class DBManager:
                     fecha TEXT NOT NULL,
                     tipo TEXT NOT NULL,
                     socio TEXT NOT NULL,
-                    numero INTEGER NOT NULL,
+                    recibo INTEGER,         -- Nuevo: Para el # de recibo (puede ser NULL)
                     monto INTEGER NOT NULL,
                     saldo INTEGER NOT NULL,
                     cuota INTEGER,
-                    id_credito TEXT
+                    id_credito TEXT         -- Ya existente: Para el # de letra
                 )
             """)
 
@@ -608,13 +609,13 @@ class DBManager:
             print(f"❌ Error obteniendo letras por socio: {e}")
             return []
         
-    def add_to_auxiliar(self, fecha, tipo, socio, numero, monto, saldo, cuota=None, id_credito=None): # <-- Añade id_credito=None
+    def add_to_auxiliar(self, fecha, tipo, socio, monto, saldo, recibo=None, cuota=None, id_credito=None):
         try:
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo, cuota, id_credito)
+                INSERT INTO auxiliar (fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (fecha, tipo, socio, numero, monto, saldo, cuota, id_credito)) # <-- Pásalo aquí
+            """, (fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito))
             self.conn.commit()
         except Exception as e:
             print(f"❌ Error al añadir al auxiliar: {e}")
@@ -626,8 +627,10 @@ class DBManager:
                             numero=None, 
                             letra_credito=None):
 
+        # CAMBIO 1: Seleccionamos 'recibo' en lugar de 'numero'
+        # 'id_credito' se mantiene igual
         query = """
-            SELECT fecha, tipo, socio, numero, monto, saldo, cuota, id_credito
+            SELECT fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito
             FROM auxiliar
             WHERE 1=1
         """
@@ -646,10 +649,12 @@ class DBManager:
             query += " AND LOWER(socio) LIKE ?"
             params.append(f"%{socio_name.lower()}%")
         
+        # CAMBIO 2: El filtro 'numero' ahora busca en la columna 'recibo'
         if numero is not None:
-            query += " AND numero = ?"
+            query += " AND recibo = ?"
             params.append(numero)
         
+        # Este filtro busca en la columna 'id_credito' (esto no cambia)
         if letra_credito:
             query += " AND id_credito = ?" 
             params.append(letra_credito)
@@ -661,7 +666,7 @@ class DBManager:
             cursor = self.conn.cursor()
             cursor.execute(query, tuple(params))
             
-            # ✅ CORRECCIÓN: Primero fetch, LUEGO accedes a description
+            # Tu corrección se mantiene: primero fetch, luego description
             rows = cursor.fetchall()
             column_names = [description[0] for description in cursor.description]
             operations = [dict(zip(column_names, row)) for row in rows]
@@ -954,17 +959,141 @@ class DBManager:
             saldo_actual = int(row['value']) if row else 0
             nuevo_saldo = saldo_actual - capital
             
-            cursor.execute("INSERT OR REPLACE INTO config (key, value) VALUES ('saldo_en_caja', ?)", (str(nuevo_saldo),))
-
-            # 5. INSERTAR EN AUXILIAR
-            cursor.execute("""
-                INSERT INTO auxiliar (fecha, tipo, socio, numero, monto, saldo, id_credito)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (fecha_actual_str, "Nuevo Credito", nombres_txt, letra_id, -capital, nuevo_saldo, letra_id))
-
             self.conn.commit()
             return letra_id, nuevo_saldo
 
         except Exception as e:
             self.conn.rollback()
             raise e  # Relanzar el error para que la UI lo muestre
+        
+        # Asegúrate de tener estos imports al inicio de db_manager.py
+    
+
+    # --- NUEVOS MÉTODOS PARA LÓGICA FINANCIERA ---
+
+    def get_deuda_capital_actual(self, letra_id):
+        """Calcula el saldo de capital pendiente real mirando la tabla."""
+        try:
+            cursor = self.conn.cursor()
+            # Busca la primera cuota NO pagada
+            cursor.execute("""
+                SELECT valor_cuota, saldo_capital 
+                FROM liquidaciones 
+                WHERE credito_letra = ? AND fecha_pago IS NULL 
+                ORDER BY nro_cuota ASC LIMIT 1
+            """, (letra_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                # Deuda = Saldo Final de esa cuota + Lo que amortiza esa cuota
+                return row['saldo_capital'] + row['valor_cuota']
+            else:
+                # Si no hay pendientes, verifica el saldo final de la última pagada
+                cursor.execute("SELECT saldo_capital FROM liquidaciones WHERE credito_letra = ? ORDER BY nro_cuota DESC LIMIT 1", (letra_id,))
+                last = cursor.fetchone()
+                return last['saldo_capital'] if last else 0
+        except Exception as e:
+            print(f"Error calculando deuda actual: {e}")
+            return 0
+
+    def recalcular_tabla_amortizacion(self, letra_id, abono_capital_recien_registrado):
+        """
+        Regenera la tabla de amortización tras un abono extra.
+        Calcula el saldo por diferencia (Capital - Pagos) y respeta las cuotas vencidas.
+        """
+        try:
+            cursor = self.conn.cursor()
+            hoy = date.today().strftime("%Y-%m-%d")
+
+            # 1. Obtener datos maestros
+            cursor.execute("SELECT capital, interes, fecha_inicio FROM creditos WHERE letra = ?", (letra_id,))
+            credito = cursor.fetchone()
+            if not credito: return
+            
+            capital_original = credito['capital']
+            tasa_interes = credito['interes']
+
+            # 2. Calcular Pagos Realizados
+            # A) Capital en cuotas normales
+            cursor.execute("SELECT SUM(valor_cuota) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NOT NULL", (letra_id,))
+            pagado_cuotas = cursor.fetchone()[0] or 0
+
+            # B) Abonos Extra (Buscamos 'abono_capital')
+            cursor.execute("""
+                SELECT SUM(monto) FROM detalle_recibo 
+                WHERE credito_letra = ? AND tipo_operacion = 'abono_capital'
+            """, (letra_id,))
+            pagado_abonos = cursor.fetchone()[0] or 0
+
+            # Saldo Real Nuevo
+            saldo_real_nuevo = capital_original - pagado_cuotas - pagado_abonos
+
+            # Si ya pagó todo
+            if saldo_real_nuevo <= 0:
+                cursor.execute("DELETE FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL", (letra_id,))
+                self.conn.commit()
+                return
+
+            # 3. Respetar Vencidas (El Pasado)
+            cursor.execute("""
+                SELECT id, valor_cuota FROM liquidaciones 
+                WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento < ?
+            """, (letra_id, hoy))
+            vencidas = cursor.fetchall()
+            capital_en_vencidas = sum(v['valor_cuota'] for v in vencidas)
+            
+            capital_para_futuro = saldo_real_nuevo - capital_en_vencidas
+            if capital_para_futuro < 0: capital_para_futuro = 0
+
+            # 4. Borrar Futuro
+            cursor.execute("""
+                DELETE FROM liquidaciones 
+                WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento >= ?
+            """, (letra_id, hoy))
+
+            if capital_para_futuro == 0:
+                self.conn.commit()
+                return
+
+            # 5. Regenerar Proyección
+            # Cuota Base
+            cursor.execute("SELECT valor_cuota FROM liquidaciones WHERE credito_letra = ? AND nro_cuota = 1", (letra_id,))
+            row_base = cursor.fetchone()
+            amortizacion_fija = row_base['valor_cuota'] if row_base else (capital_original // 10)
+
+            # Fecha de arranque
+            cursor.execute("SELECT nro_cuota, fecha_vencimiento FROM liquidaciones WHERE credito_letra = ? ORDER BY nro_cuota DESC LIMIT 1", (letra_id,))
+            ultimo_reg = cursor.fetchone()
+            
+            nro_start = ultimo_reg['nro_cuota'] + 1 if ultimo_reg else 1
+            fecha_start = datetime.strptime(ultimo_reg['fecha_vencimiento'], "%Y-%m-%d") if ultimo_reg else datetime.strptime(credito['fecha_inicio'][:10], "%Y-%m-%d")
+
+            nuevas_cuotas = []
+            saldo_iter = capital_para_futuro
+            
+            while saldo_iter > 0:
+                fecha_start = fecha_start + relativedelta(months=+1)
+                cap_pago = min(saldo_iter, amortizacion_fija)
+                int_mes = int((saldo_iter + capital_en_vencidas) * tasa_interes)
+                cuota_total = cap_pago + int_mes
+                saldo_final_row = (saldo_iter - cap_pago) + capital_en_vencidas
+                
+                nuevas_cuotas.append((
+                    letra_id, nro_start, fecha_start.strftime("%Y-%m-%d"),
+                    int(cap_pago), int(int_mes), int(cuota_total), int(saldo_final_row)
+                ))
+                saldo_iter -= cap_pago
+                nro_start += 1
+
+            cursor.executemany("""
+                INSERT INTO liquidaciones 
+                (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, interes_mora, mora_aplicada, notif_prev_enviada, notif_venc_enviada, fecha_pago)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)
+            """, nuevas_cuotas)
+
+            self.conn.commit()
+            print("✅ Tabla recalculada correctamente.")
+
+        except Exception as e:
+            print(f"❌ Error recalculando tabla: {e}")
+            self.conn.rollback()

@@ -213,141 +213,7 @@ class FormPagoCredito(QWidget):
 
         # Conecta eliminación
         btn_delete_pago.clicked.connect(lambda: wrapper_widget.setParent(None))
-
-
-# --- NUEVA FUNCIÓN HELPER PARA CALCULAR DEUDA ---
-    def get_deuda_capital_actual(self, letra_id):
-        """
-        Calcula el saldo de capital pendiente real mirando la tabla.
-        Lógica: Busca la primera cuota NO pagada. 
-        Deuda = Su Saldo Capital (final) + Su Amortización Capital (lo que paga esa cuota).
-        """
-        cursor = self.db.conn.cursor()
-        # Buscar primera cuota pendiente (ya sea vencida o futura)
-        cursor.execute("""
-            SELECT valor_cuota, saldo_capital 
-            FROM liquidaciones 
-            WHERE credito_letra = ? AND fecha_pago IS NULL 
-            ORDER BY nro_cuota ASC LIMIT 1
-        """, (letra_id,))
-        row = cursor.fetchone()
         
-        if row:
-            # Ejemplo: Si en la cuota 1 el saldo final es 16.5M y amortiza 500k, 
-            # entonces debía 17M antes de pagar.
-            return row['saldo_capital'] + row['valor_cuota']
-        else:
-            # Si no hay pendientes, puede ser que ya pagó todo o no hay tabla (error)
-            # Verificamos si hay saldo en la última pagada
-            cursor.execute("SELECT saldo_capital FROM liquidaciones WHERE credito_letra = ? ORDER BY nro_cuota DESC LIMIT 1", (letra_id,))
-            last = cursor.fetchone()
-            return last['saldo_capital'] if last else 0
-
-    def recalcular_tabla_amortizacion(self, letra_id, abono_capital_recien_registrado):
-            """
-            Regenera la tabla de amortización.
-            Identifica los abonos anteriores buscando 'pago_credito' con nro_cuota = 0.
-            """
-            cursor = self.db.conn.cursor()
-            hoy = date.today().strftime("%Y-%m-%d")
-
-            # 1. Obtener Deuda Total
-            cursor.execute("SELECT capital, interes, fecha_inicio FROM creditos WHERE letra = ?", (letra_id,))
-            credito = cursor.fetchone()
-            capital_original = credito['capital']
-            tasa_interes = credito['interes']
-
-            # A) Capital pagado en cuotas normales (nro_cuota > 0) - Usamos la tabla liquidaciones
-            cursor.execute("SELECT SUM(valor_cuota) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NOT NULL", (letra_id,))
-            pagado_cuotas = cursor.fetchone()[0] or 0
-
-            # B) Capital abonado extra (SUMA TOTAL HISTÓRICA, INCLUYENDO EL ACTUAL)
-            # CORRECCIÓN: Buscamos 'pago_credito' donde nro_cuota sea 0
-            cursor.execute("""
-                SELECT SUM(monto) FROM detalle_recibo 
-                WHERE credito_letra = ? AND tipo_operacion = 'pago_credito' AND nro_cuota = 0
-            """, (letra_id,))
-            pagado_abonos = cursor.fetchone()[0] or 0
-
-            saldo_real_nuevo = capital_original - pagado_cuotas - pagado_abonos
-
-            # Si ya no debe nada, borrar todo lo pendiente y salir
-            if saldo_real_nuevo <= 0:
-                cursor.execute("DELETE FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL", (letra_id,))
-                self.db.conn.commit()
-                return
-
-            # 2. IDENTIFICAR CUOTAS VENCIDAS (EL PASADO - NO SE TOCAN)
-            cursor.execute("""
-                SELECT id, valor_cuota, nro_cuota, fecha_vencimiento 
-                FROM liquidaciones 
-                WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento < ?
-                ORDER BY nro_cuota ASC
-            """, (letra_id, hoy))
-            vencidas = cursor.fetchall()
-            
-            capital_en_vencidas = sum(v['valor_cuota'] for v in vencidas)
-            capital_para_futuro = saldo_real_nuevo - capital_en_vencidas
-
-            # Validación de seguridad
-            if capital_para_futuro < 0: capital_para_futuro = 0 
-
-            # 3. BORRAR EL FUTURO (Cuotas pendientes desde HOY en adelante)
-            cursor.execute("""
-                DELETE FROM liquidaciones 
-                WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento >= ?
-            """, (letra_id, hoy))
-
-            if capital_para_futuro == 0:
-                self.db.conn.commit()
-                return
-
-            # 4. REGENERAR PROYECCIÓN FUTURA
-            cursor.execute("SELECT valor_cuota FROM liquidaciones WHERE credito_letra = ? AND nro_cuota = 1", (letra_id,))
-            row_base = cursor.fetchone()
-            amortizacion_fija = row_base['valor_cuota'] if row_base else (capital_original // 10)
-
-            # Definir arranque
-            cursor.execute("""
-                SELECT nro_cuota, fecha_vencimiento FROM liquidaciones 
-                WHERE credito_letra = ? 
-                ORDER BY nro_cuota DESC LIMIT 1
-            """, (letra_id,))
-            ultimo_reg = cursor.fetchone()
-            
-            nro_start = ultimo_reg['nro_cuota'] + 1 if ultimo_reg else 1
-            fecha_start = datetime.strptime(ultimo_reg['fecha_vencimiento'], "%Y-%m-%d") if ultimo_reg else datetime.strptime(credito['fecha_inicio'][:10], "%Y-%m-%d")
-
-            nuevas_cuotas = []
-            saldo_iter = capital_para_futuro
-            
-            while saldo_iter > 0:
-                fecha_start = fecha_start + relativedelta(months=+1)
-                cap_pago = min(saldo_iter, amortizacion_fija)
-                
-                # Interés sobre saldo total vivo (Futuro + Vencido)
-                int_mes = int((saldo_iter + capital_en_vencidas) * tasa_interes)
-                cuota_total = cap_pago + int_mes
-                
-                # Saldo visual en tabla = Saldo Futuro Restante + Capital Vencido
-                saldo_final_row = (saldo_iter - cap_pago) + capital_en_vencidas
-                
-                nuevas_cuotas.append((
-                    letra_id, nro_start, fecha_start.strftime("%Y-%m-%d"),
-                    int(cap_pago), int(int_mes), int(cuota_total), int(saldo_final_row)
-                ))
-                
-                saldo_iter -= cap_pago
-                nro_start += 1
-
-            cursor.executemany("""
-                INSERT INTO liquidaciones 
-                (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital, interes_mora, mora_aplicada, notif_prev_enviada, notif_venc_enviada, fecha_pago)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)
-            """, nuevas_cuotas)
-
-            self.db.conn.commit()
-
 
     def on_register(self):
         """Valida y registra pagos de cuotas y abonos a capital."""
@@ -483,22 +349,17 @@ class FormPagoCredito(QWidget):
                             nombre_log = f"{socio_full['nombres']} {socio_full['apellidos']}"
                             self.db.add_to_auxiliar(
                                 fecha=fecha_actual, tipo="Pago Credito", socio=nombre_log, 
-                                numero=recibo_id, monto=monto_total, saldo=saldo_caja, 
+                                recibo=recibo_id, monto=monto_total, saldo=saldo_caja, 
                                 cuota=nro, id_credito=letra_id
                             )
-                            if self.assistant_page:
-                                self.assistant_page.add_operation({
-                                    "fecha": fecha_actual, "tipo": "Pago Credito", "socio": nombre_log,
-                                    "numero": recibo_id, "cuota": nro, "monto": monto_total, 
-                                    "saldo": saldo_caja, "id_credito": letra_id
-                                })
+                            
 
                     # --- 2. PROCESAR ABONO CAPITAL ---
                     if valor_abono > 0:
                         letra_id = letra_selected['letra']
 
                         # 1. VALIDACIÓN
-                        deuda_capital_real = self.get_deuda_capital_actual(letra_id)
+                        deuda_capital_real = self.db.get_deuda_capital_actual(letra_id)
                         if valor_abono > deuda_capital_real:
                             show_warning(self, "Monto Inválido", 
                                          f"El abono supera el saldo de capital actual (${format_miles_colombian_int(deuda_capital_real)}).")
@@ -513,17 +374,18 @@ class FormPagoCredito(QWidget):
                         saldo_caja += valor_abono
 
                         # 3. RECALCULAR (La función ahora busca 'abono_capital' con cuota 0)
-                        self.recalcular_tabla_amortizacion(letra_id, valor_abono)
+                        self.db.recalcular_tabla_amortizacion(letra_id, valor_abono)
 
                         # 4. AUXILIAR
                         self.db.add_to_auxiliar(
                             fecha=fecha_actual, 
-                            tipo="Abono Capital", 
+                            tipo="Abono Capital", # o "Pago Credito" según el caso
                             socio=f"{socio_full['nombres']} {socio_full['apellidos']}", 
-                            numero=recibo_id, 
+                            recibo=recibo_id,      # <--- CAMBIO: usa 'recibo' en lugar de 'numero'
+                            id_credito=letra_id,   # <--- CORRECTO: esto llena la columna Letra
                             monto=valor_abono, 
                             saldo=saldo_caja, 
-                            id_credito=letra_id
+                            cuota=0
                         )
 
                         # 5. PREPARAR RECIBO (Esto sigue igual, es solo visual para el Excel)
