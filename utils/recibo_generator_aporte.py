@@ -40,15 +40,16 @@ GASTO_POR_APORTE = 3000 # Nueva constante para el valor de cada aporte
 def generar_recibo_solo_aportes(
     db_manager, 
     recibo_id: int,
-    recibi_de_data: dict, # Ahora se procesará para mayúsculas y alineación
-    aportes_info: list = None
+    recibi_de_data: dict, 
+    aportes_info: list = None,
+    num_aportes_cobrables: int = None # <--- NUEVO PARÁMETRO
 ):
     """
     Genera un recibo de solo aportes utilizando la plantilla recibo_template_aporte.xlsx.
     Rellena hasta 10 filas de aportes y los totales.
     Ajusta el formato de los nombres de los socios y del "Recibí de".
     
-    El gasto administrativo se calcula como GASTO_POR_APORTE * número de aportes.
+    El gasto administrativo se calcula como GASTO_POR_APORTE * num_aportes_cobrables.
     """
     if aportes_info is None:
         aportes_info = []
@@ -72,19 +73,19 @@ def generar_recibo_solo_aportes(
 
         # --- PROCESAR APORTES ---
         total_aportes_acumulado = 0
-        num_aportes_actual = len(aportes_info)
+        num_aportes_total_lista = len(aportes_info)
         
         for i in range(MAX_APORTES_ROWS_IN_TEMPLATE):
             row_to_fill = APORTE_DATA_START_ROW + i
             
-            if i < num_aportes_actual:
+            if i < num_aportes_total_lista:
                 socio_data, monto_aporte, saldo_socio_antes, saldo_socio_despues = aportes_info[i]
                 
                 # AJUSTE 2: Formatear el nombre del socio para los detalles del aporte
                 formatted_socio_name = format_full_name_for_excel(
                     socio_data['nombres'], 
                     socio_data['apellidos'], 
-                    max_length=24 # Basado en tu indicación
+                    max_length=24 
                 )
                 ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
                 ws[f'{APORTE_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_antes)
@@ -102,8 +103,14 @@ def generar_recibo_solo_aportes(
         ws[APORTE_TOTAL_CELL] = format_miles_colombian_int(total_aportes_acumulado)
 
         # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
-        # *** ESTE ES EL CAMBIO CLAVE ***
-        gastos_admin = GASTO_POR_APORTE * num_aportes_actual
+        # Determinar la cantidad real a cobrar
+        if num_aportes_cobrables is not None:
+            cantidad_a_cobrar = num_aportes_cobrables
+        else:
+            cantidad_a_cobrar = num_aportes_total_lista # Comportamiento por defecto (todos pagan)
+
+        gastos_admin = GASTO_POR_APORTE * cantidad_a_cobrar
+        
         ws[GASTOS_ADMIN_CELL] = format_miles_colombian_int(gastos_admin)
         
         total_general = total_aportes_acumulado + gastos_admin

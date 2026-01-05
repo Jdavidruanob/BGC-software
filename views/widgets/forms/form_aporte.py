@@ -1,9 +1,9 @@
-# views/forms/form_aporte.py
+
 
 import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
-    QMessageBox, QHBoxLayout, QFrame, QSizePolicy
+    QMessageBox, QHBoxLayout, QFrame, QSizePolicy, QCheckBox
 )
 from PySide6.QtCore import Qt, QSize, Signal
 from datetime import date
@@ -82,8 +82,9 @@ class FormAporte(QWidget):
                 nombre = f"{socio['nombres']} {socio['apellidos']}"
                 self.combo_recibi_de.addItem(nombre, userData=socio)
             
-            # Recargar los combos existentes si se recargan los socios después de agregar aportes
-            for combo, _, _ in self.aportes_widgets:
+            # Recargar los combos existentes
+            # AHORA DESEMPAQUETAMOS 4 ELEMENTOS: combo, input, check, wrapper
+            for combo, _, _, _ in self.aportes_widgets: 
                 combo.clear()
                 for socio in self.socios_data:
                     nombre = f"{socio['nombres']} {socio['apellidos']}"
@@ -118,6 +119,15 @@ class FormAporte(QWidget):
                 monto_input.blockSignals(False)
         monto_input.textChanged.connect(on_text_changed)
 
+        # --- NUEVO CHECKBOX ---
+        chk_papeleria = QCheckBox("Papelería")
+        chk_papeleria.setObjectName("ChkPapeleria") # Para darle estilo si quieres
+        chk_papeleria.setChecked(True) # Por defecto activado
+        chk_papeleria.setToolTip("Desmarcar para no cobrar gastos de administración a este aporte")
+        # Ajuste visual opcional
+        chk_papeleria.setCursor(Qt.PointingHandCursor)
+        # ----------------------
+
         btn_eliminar = QPushButton("")
         btn_eliminar.setObjectName("DeleteButton")
         btn_eliminar.setIcon(load_svg_icon("icons/x.svg"))
@@ -131,6 +141,7 @@ class FormAporte(QWidget):
         row_layout.setSpacing(8)
         row_layout.addWidget(combo)
         row_layout.addWidget(monto_input)
+        row_layout.addWidget(chk_papeleria)
         row_layout.addWidget(btn_eliminar)
 
         container = QVBoxLayout()
@@ -157,8 +168,10 @@ class FormAporte(QWidget):
         aportes_for_db = [] 
         # Lista para los datos que se pasarán al generador de recibos Excel
         aportes_for_recibo = [] 
+        count_cobrables = 0 # <--- Contador para administración
 
-        for combo, monto_input, _ in self.aportes_widgets:
+        # Iteramos con la nueva estructura
+        for combo, monto_input, chk_papeleria, _ in self.aportes_widgets:
             socio_selected = combo.currentData()
             raw_monto = parse_miles_colombian(monto_input.text())
             
@@ -166,6 +179,10 @@ class FormAporte(QWidget):
                 show_error(self, "", "Revisa que todos los aportes tengan socio y monto válido.")
                 return
             
+            # Contar si este aporte paga administración
+            if chk_papeleria.isChecked():
+                count_cobrables += 1
+
             # Es CRUCIAL obtener el saldo actual del socio ANTES de aplicar el aporte.
             socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
             if not socio_data_full:
@@ -227,7 +244,7 @@ class FormAporte(QWidget):
             
             # Finalmente, actualizar el saldo en caja en la configuración global
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
-            gastos_admin = 3000 * len(aportes_for_recibo)
+            gastos_admin = 3000 * count_cobrables
             self.db.set_config_value("total_admin", str(saldo_admin + gastos_admin))
 
             self.db.conn.commit()
@@ -236,11 +253,13 @@ class FormAporte(QWidget):
 
             # Llamar a la función generar_recibo_solo_aportes para crear el recibo Excel
             # YA NO SE PASA pagos_credito_info
+            # GENERAR EXCEL CON EL NUEVO PARÁMETRO
             recibo_path = generar_recibo_solo_aportes(
-                db_manager=self.db, # Pasamos la instancia de DBManager
+                db_manager=self.db, 
                 recibo_id=recibo_id,
-                recibi_de_data=recibi, # Dict completo del socio que recibe
-                aportes_info=aportes_for_recibo, # La lista ya preparada
+                recibi_de_data=recibi, 
+                aportes_info=aportes_for_recibo,
+                num_aportes_cobrables=count_cobrables # <--- Pasamos el dato aquí
             )
             
             if recibo_path:
@@ -270,14 +289,12 @@ class FormAporte(QWidget):
         return self.combo_recibi_de.currentData()
 
     def get_aportes(self):
-        # Esta función no es usada directamente por on_register, pero si la necesitas en otro lado
         return [
             (combo.currentData(), parse_miles_colombian(input.text()))
-            for combo, input, _ in self.aportes_widgets
+            for combo, input, _, _ in self.aportes_widgets # <--- Ignoramos check y wrapper
         ]
 
     def clear_form(self):
-        for _, _, wrapper in self.aportes_widgets:
-            wrapper.setParent(None) # Elimina los widgets del layout
-        self.aportes_widgets.clear() # Vacía la lista
-        # self.load_socios() # Ya se llama después de generar el recibo, o al inicio del formulario
+        for _, _, _, wrapper in self.aportes_widgets: # <--- Usamos el 4to elemento
+            wrapper.setParent(None) 
+        self.aportes_widgets.clear()

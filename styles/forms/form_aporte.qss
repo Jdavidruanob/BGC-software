@@ -89,3 +89,13 @@ QComboBox QAbstractItemView::item {
   min-height: 30px;
   padding: 4px 8px;
 }
+
+QCheckBox#ChkPapeleria {
+    font-size: 13px;
+    color: #555;
+    spacing: 5px;
+}
+QCheckBox#ChkPapeleria::indicator {
+    width: 18px;
+    height: 18px;
+}
