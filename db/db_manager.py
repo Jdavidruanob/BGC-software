@@ -630,7 +630,7 @@ class DBManager:
         # CAMBIO 1: Seleccionamos 'recibo' en lugar de 'numero'
         # 'id_credito' se mantiene igual
         query = """
-            SELECT fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito
+            SELECT id, fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito
             FROM auxiliar
             WHERE 1=1
         """
@@ -675,6 +675,45 @@ class DBManager:
         except Exception as e:
             print(f"❌ Error obteniendo operaciones del auxiliar: {e}")
             return []
+        
+    def delete_auxiliary_operation(self, op_id):
+        """
+        Elimina una operación del auxiliar y recalcula los saldos posteriores.
+        """
+        try:
+            cursor = self.conn.cursor()
+            
+            # 1. Obtener el monto de la operación que vamos a borrar
+            cursor.execute("SELECT monto FROM auxiliar WHERE id = ?", (op_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            
+            monto_eliminado = row['monto']
+
+            # 2. Eliminar la fila
+            cursor.execute("DELETE FROM auxiliar WHERE id = ?", (op_id,))
+
+            # 3. Actualizar MASIVAMENTE todos los saldos posteriores (Efecto Dominó)
+            # Lógica: Si borro un ingreso de +100, todos los saldos futuros bajan 100.
+            #         Si borro un egreso de -50, todos los saldos futuros suben 50 (menos por menos da más).
+            # SQL lo hace eficiente en una sola pasada.
+            cursor.execute("UPDATE auxiliar SET saldo = saldo - ? WHERE id > ?", (monto_eliminado, op_id))
+
+            # 4. Actualizar el saldo actual en la configuración (Caja)
+            # Leemos el saldo actual y le restamos lo eliminado
+            saldo_actual = self.get_config_value_as_int("saldo_en_caja")
+            nuevo_saldo_caja = saldo_actual - monto_eliminado
+            self.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
+
+            self.conn.commit()
+            print(f"🗑️ Operación ID {op_id} eliminada. Saldos recalculados.")
+            return True
+
+        except Exception as e:
+            print(f"❌ Error eliminando operación auxiliar: {e}")
+            self.conn.rollback()
+            return False
         
     def get_config_value_as_int(self, key):
         cursor = self.conn.cursor()

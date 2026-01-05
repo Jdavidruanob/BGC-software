@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit, QComboBox,
-    QDateEdit
+    QDateEdit, QMenu, QMessageBox
 )
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QIntValidator # ¡Asegúrate de que QIntValidator esté importado!
@@ -118,7 +118,9 @@ class AssistantPage(QWidget):
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table_widget.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_widget.setSelectionMode(QTableWidget.SingleSelection)
-        self.table_widget.setAlternatingRowColors(False) 
+        self.table_widget.setAlternatingRowColors(False)
+        self.table_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table_widget.customContextMenuRequested.connect(self.open_context_menu)
 
         # Tus encabezados de columna originales (sin la columna "Letra Crédito" visible)
         column_headers = ["Fecha", "Motivo", "Socio", "Recibo", "Letra", "Cuota", "Monto", "Saldo en Caja"]
@@ -308,6 +310,7 @@ class AssistantPage(QWidget):
         # Fecha
         item_fecha = QTableWidgetItem(op["fecha"])
         item_fecha.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        item_fecha.setData(Qt.UserRole, op["id"])
         self.table_widget.setItem(row_index, 0, item_fecha)
         
         # --- CAMBIO 2: Lógica de estilos para el Tipo/Motivo ---
@@ -370,6 +373,73 @@ class AssistantPage(QWidget):
         self.table_widget.setCellWidget(row_index, 7, lbl_saldo)
 
         # No se añade ni se manipula la columna 7, ya que la has eliminado de los encabezados.
+
+    def open_context_menu(self, position):
+        """Muestra el menú clic derecho."""
+        # Obtener el ítem bajo el mouse
+        item = self.table_widget.itemAt(position)
+        if not item: return
+        
+        # Seleccionar la fila completa visualmente
+        self.table_widget.selectRow(item.row())
+        
+        # Crear menú
+        menu = QMenu()
+        delete_action = menu.addAction("🗑️ Eliminar Operación")
+        
+        # Ejecutar y esperar acción
+        action = menu.exec(self.table_widget.mapToGlobal(position))
+        
+        if action == delete_action:
+            self.delete_current_operation()
+
+    def delete_current_operation(self):
+        """Lógica para confirmar y borrar."""
+        row = self.table_widget.currentRow()
+        if row < 0: return
+
+        # Recuperar datos para el mensaje
+        item_fecha = self.table_widget.item(row, 0)
+        op_id = item_fecha.data(Qt.UserRole) # Recuperamos el ID oculto
+        
+        # Obtenemos tipo y monto visualmente para confirmar
+        widget_tipo = self.table_widget.cellWidget(row, 1) # Es un Label
+        tipo_txt = widget_tipo.text() if widget_tipo else "Operación"
+        
+        widget_monto = self.table_widget.cellWidget(row, 6) # Es un Label
+        monto_txt = widget_monto.text() if widget_monto else "$0"
+
+        # --- ADVERTENCIA DE SEGURIDAD ---
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Confirmar Eliminación")
+        msg.setIcon(QMessageBox.Warning)
+        
+        texto_principal = f"¿Estás seguro de eliminar esta operación?\n\nID: {op_id}\nTipo: {tipo_txt}\nMonto: {monto_txt}"
+        
+        # Si es una operación del sistema, advertimos extra
+        tipos_sistema = ["Aporte", "Pago Credito", "Nuevo Credito", "Retiro"]
+        if tipo_txt in tipos_sistema:
+            texto_principal += "\n\n⚠️ ¡ADVERTENCIA CRÍTICA! ⚠️\nEsta operación parece ser automática del sistema.\nEliminarla aquí SOLO ajustará el saldo en caja, pero NO anulará el crédito ni devolverá el saldo al socio.\nPara una corrección completa, deberías usar los módulos correspondientes."
+        else:
+            texto_principal += "\n\nEl saldo en caja y los registros posteriores se recalcularán automáticamente."
+
+        msg.setText(texto_principal)
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        button_yes = msg.button(QMessageBox.Yes)
+        button_yes.setText("Sí, Eliminar")
+        button_no = msg.button(QMessageBox.No)
+        button_no.setText("Cancelar")
+        
+        msg.exec()
+
+        if msg.clickedButton() == button_yes:
+            success = self.db_manager.delete_auxiliary_operation(op_id)
+            if success:
+                # Recargar todo para ver los saldos recalculados
+                self.refresh_view()
+                # Opcional: Mostrar éxito rápido en barra de estado si tuvieras
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo eliminar la operación.")
 
     def refresh_view(self):
         """
