@@ -120,7 +120,7 @@ class FormAporte(QWidget):
         monto_input.textChanged.connect(on_text_changed)
 
         # --- NUEVO CHECKBOX ---
-        chk_papeleria = QCheckBox("Papelería")
+        chk_papeleria = QCheckBox("")
         chk_papeleria.setObjectName("ChkPapeleria") # Para darle estilo si quieres
         chk_papeleria.setChecked(True) # Por defecto activado
         chk_papeleria.setToolTip("Desmarcar para no cobrar gastos de administración a este aporte")
@@ -151,11 +151,14 @@ class FormAporte(QWidget):
         wrapper = QWidget()
         wrapper.setLayout(container)
         self.aportes_container.addWidget(wrapper)
-        self.aportes_widgets.append((combo, monto_input, wrapper))
+        # Debes agregar chk_papeleria a la tupla
+        self.aportes_widgets.append((combo, monto_input, chk_papeleria, wrapper))
 
         def eliminar():
             wrapper.setParent(None)
-            self.aportes_widgets[:] = [t for t in self.aportes_widgets if t[2] is not wrapper]
+            # CORRECCIÓN CLAVE: Buscar el wrapper en el índice 3
+            self.aportes_widgets[:] = [t for t in self.aportes_widgets if t[3] is not wrapper]
+            
         btn_eliminar.clicked.connect(eliminar)
 
     def on_register(self):
