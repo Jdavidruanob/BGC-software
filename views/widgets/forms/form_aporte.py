@@ -158,7 +158,6 @@ class FormAporte(QWidget):
             wrapper.setParent(None)
             # CORRECCIÓN CLAVE: Buscar el wrapper en el índice 3
             self.aportes_widgets[:] = [t for t in self.aportes_widgets if t[3] is not wrapper]
-            
         btn_eliminar.clicked.connect(eliminar)
 
     def on_register(self):

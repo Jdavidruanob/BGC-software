@@ -51,19 +51,17 @@ TOTAL_GENERAL_CELL_COMBINADO = 'K36'
 # Valor por cada aporte
 GASTO_POR_APORTE = 3000
 
-# --- Funciones auxiliares ---
-#
-
 def generar_recibo_combinado(
     db_manager, 
     recibo_id: int,
     recibi_de_data: dict, 
     aportes_info: list = None, 
-    pagos_credito_info: list = None
+    pagos_credito_info: list = None,
+    num_aportes_cobrables: int = None # <--- NUEVO PARÁMETRO
 ):
     """
     Genera un recibo combinado de aportes y pagos de crédito.
-    El gasto administrativo se calcula como GASTO_POR_APORTE * número de aportes.
+    El gasto administrativo se calcula como GASTO_POR_APORTE * num_aportes_cobrables.
     """
     if aportes_info is None:
         aportes_info = []
@@ -157,16 +155,28 @@ def generar_recibo_combinado(
                 ws[f'{CREDITO_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
                 ws[f'{CREDITO_LETRA_COL}{row_to_fill}'] = letra_id
 
-                if letra_id not in cuotas_info_cache:
-                    total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
-                    cuotas_info_cache[letra_id] = total_cuotas_credito
-                
-                if nro_cuotas_start == nro_cuotas_end:
-                    cuota_display = f"{nro_cuotas_start}/{cuotas_info_cache[letra_id]}"
+                # --- LÓGICA DE VISUALIZACIÓN DE CUOTA / ABONO ---
+                # Detectar si es un Abono a Capital
+                es_abono = False
+                if isinstance(nro_cuotas_start, str) and "ABONO" in nro_cuotas_start:
+                    es_abono = True
+
+                if es_abono:
+                    # Si es abono, mostramos el texto directo o "NA"
+                    cuota_display = "ABONO"
                 else:
-                    cuota_display = f"{nro_cuotas_start}-{nro_cuotas_end}/{cuotas_info_cache[letra_id]}"
+                    # Lógica normal de cuotas (ej: "1 / 36" o "1-3 / 36")
+                    if letra_id not in cuotas_info_cache:
+                        total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
+                        cuotas_info_cache[letra_id] = total_cuotas_credito
+                    
+                    if nro_cuotas_start == nro_cuotas_end:
+                        cuota_display = f"{nro_cuotas_start}/{cuotas_info_cache[letra_id]}"
+                    else:
+                        cuota_display = f"{nro_cuotas_start}-{nro_cuotas_end}/{cuotas_info_cache[letra_id]}"
                 
                 ws[f'{CREDITO_CUOTA_COL}{row_to_fill}'] = cuota_display
+                # ---------------------------------------------------
                 
                 ws[f'{CREDITO_SDO_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['saldo_capital_antes_pago']) 
                 ws[f'{CREDITO_AB_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['valor_capital_consolidado'])
@@ -187,9 +197,16 @@ def generar_recibo_combinado(
         ws[TOTAL_CREDITOS_CELL] = format_miles_colombian_int(total_pagos_credito_monto_total)
 
         # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
-        # *** ESTE ES EL CAMBIO CLAVE ***
-        # El gasto administrativo ahora se calcula internamente
-        gastos_admin = GASTO_POR_APORTE * num_aportes_to_display
+        
+        # 1. Determinar cantidad a cobrar (parámetro o total de filas)
+        if num_aportes_cobrables is not None:
+            cantidad_a_cobrar = num_aportes_cobrables
+        else:
+            cantidad_a_cobrar = num_aportes_to_display
+
+        # 2. Calcular
+        gastos_admin = GASTO_POR_APORTE * cantidad_a_cobrar
+        
         ws[GASTOS_ADMIN_CELL_COMBINADO] = format_miles_colombian_int(gastos_admin) 
         
         total_general = total_aportes_monto + total_pagos_credito_monto_total + gastos_admin
