@@ -1,3 +1,5 @@
+/* ESTILOS FORMULARIO APORTE */
+
 #formTitle {
     font-size: 22px;
     font-weight: 600;
@@ -41,14 +43,14 @@
     min-height: 26px;
     color: %(PRIMARY_COLOR)s;
     font-weight: bold;
-    border: 1px solid transparent;         /* borde base transparente */
+    border: 1px solid transparent;
     border-radius: 4px;
-    border-bottom: 1px solid transparent;  /* espacio para el underscore */
+    border-bottom: 1px solid transparent;
     background: transparent;
 }
 
 #AddAporteButton:hover {
-    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
+    border-bottom: 2px solid %(PRIMARY_COLOR)s;
 }
 
 #RegisterButton {
@@ -59,7 +61,6 @@
     border-radius: 6px;
     font-weight: bold;
     border: transparent;
-    
 }
 
 #RegisterButton:hover {
@@ -76,26 +77,52 @@
     border-radius: 4px;
 }
 
-
-/* Estilos para el popup (QAbstractItemView) */
+/* Estilos para el popup */
 QComboBox QAbstractItemView {
-  font-size: 16px;        /* Mismo tamaño de fuente en la lista desplegable */
-  spacing: 6px;           /* Espacio vertical entre ítems */
-  outline: none;          /* Quitar borde azul al enfocar */
+  font-size: 16px;
+  spacing: 6px;
+  outline: none;
 }
 
-/* Altura de cada ítem */
 QComboBox QAbstractItemView::item {
   min-height: 30px;
   padding: 4px 8px;
 }
 
+/* --- ESTILO CHECKBOX MINIMALISTA (CARGANDO ARCHIVO) --- */
+
 QCheckBox#ChkPapeleria {
-    font-size: 13px;
-    color: #555;
-    spacing: 5px;
+    background: transparent;
+    border: none;
+    spacing: 0px;
+    padding: 0px;
+    min-height: 34px; 
 }
+
+/* Estado normal (sin marcar) */
 QCheckBox#ChkPapeleria::indicator {
-    width: 18px;
-    height: 18px;
+    width: 26px;
+    height: 26px;
+    subcontrol-position: center;
+    
+    background-color: white;
+    border: 2px solid #d1d5db;   /* Borde gris */
+    border-radius: 5px;
+}
+
+/* Sin hover */
+QCheckBox#ChkPapeleria:hover,
+QCheckBox#ChkPapeleria::indicator:hover {
+    background: transparent;
+    border-color: #d1d5db; 
+}
+
+/* Estado MARCADO (Checked) */
+QCheckBox#ChkPapeleria::indicator:checked {
+    background-color: white;
+    border: 1px solid #3b82f6; /* Borde azul */
+    
+    /* CARGAMOS LA IMAGEN DESDE ASSETS */
+    /* Asegúrate de que esta ruta sea correcta relativa a tu main.py */
+    image: url(assets/icons/check.svg);
 }
