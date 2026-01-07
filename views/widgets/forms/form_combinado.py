@@ -129,7 +129,7 @@ class FormCombinado(QWidget):
         monto_input.setPlaceholderText("Monto aporte")
         monto_input.setAlignment(Qt.AlignRight)
         monto_input.setFixedHeight(34)
-        monto_input.setFixedWidth(130) # Ajustado un poco para que quepa todo
+        monto_input.setFixedWidth(140) # Ajustado un poco para que quepa todo
 
         def on_text_changed(text):
             raw = parse_miles_colombian(text)
@@ -147,8 +147,7 @@ class FormCombinado(QWidget):
         chk_papeleria.setChecked(True)
         chk_papeleria.setToolTip("Cobrar gastos de administración")
         chk_papeleria.setCursor(Qt.PointingHandCursor)
-        chk_papeleria.setFixedHeight(34)
-        chk_papeleria.setFixedWidth(40)
+        
         # ------------------------------------------------
 
         btn_eliminar = QPushButton("")
