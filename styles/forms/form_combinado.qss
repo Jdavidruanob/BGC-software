@@ -1,15 +1,17 @@
+/* ESTILOS FORMULARIO COMBINADO */
+
 #formTitle {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 14px;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 14px;
 }
 
 #FormLabel {
-  font-size: 16px;
-  font-weight: bold;
-  margin-top: 8px;
+    font-size: 16px;
+    font-weight: bold;
 }
 
+/* Combos y Entradas */
 QComboBox {
     height: 40px;
     font-size: 15px;
@@ -18,72 +20,161 @@ QComboBox {
     border-radius: 4px;
 }
 
-QLineEdit{
+QComboBox:hover {
+    background-color: #f1f5f9;
+}
+
+QLineEdit {
     font-size: 15px;
     padding: 4px 8px;
     background-color: #f1f5f9;
     color: #647790;
     font-weight: bold;
     border: 1px solid #d2d2d2;
-    border-radius: 4px
-
+    border-radius: 4px;
 }
 
-#AddAporteButton, #AddPagoButton, #AddLetraButton{
+/* Botones de Agregar (Texto azul con linea abajo) */
+#AddAporteButton, #AddPagoButton, #AddLetraButton {
     font-size: 15px;
     padding: 2px 4px;
     min-height: 26px;
     color: %(PRIMARY_COLOR)s;
     font-weight: bold;
-    border: 1px solid transparent;         /* borde base transparente */
+    border: 1px solid transparent;
     border-radius: 4px;
-    border-bottom: 1px solid transparent;  /* espacio para el underscore */
+    border-bottom: 1px solid transparent;
     background: transparent;
 }
-#AddAporteButton:hover {
-    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
-}
-#AddPagoButton:hover {
-    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
-}
-#AddLetraButton:hover {
-    border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
+
+#AddAporteButton:hover, #AddPagoButton:hover, #AddLetraButton:hover {
+    border-bottom: 2px solid %(PRIMARY_COLOR)s;
 }
 
-#createReceipt {
-  font-size: 16px;
-  padding: 8px 20px;
-  background-color: %(PRIMARY_COLOR)s;
-  color: white;
-  border-radius: 6px;
-  font-weight: bold;
-}
-#createReceipt:hover {
-  background-color: #2a4a80;
+/* Boton Principal Registrar */
+#RegisterButton {
+    font-size: 16px;
+    padding: 8px 20px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
 }
 
-#DeleteButton, #DeletePagoButton {
-  background: transparent;
-  border: none;
+#RegisterButton:hover {
+    background-color: #2a4a80;
 }
-#DeleteButton:hover, #DeletePagoButton:hover {
-  background-color: #fef2f2;
-  border-radius: 4px;
+
+/* Botones de Eliminar (X) */
+#DeleteButton {
+    background: transparent;
+    border: none;
+}
+#DeleteButton:hover {
+    background-color: #fef2f2;
+    border-radius: 4px;
 }
 
 /* Popup de QComboBox */
 QComboBox QAbstractItemView {
-  font-size: 16px;
-  spacing: 6px;
-  outline: none;
+    font-size: 16px;
+    spacing: 6px;
+    outline: none;
 }
 QComboBox QAbstractItemView::item {
-  min-height: 30px;
-  padding: 4px 8px;
+    min-height: 30px;
+    padding: 4px 8px;
 }
 
+/* ESTILOS FORMULARIO COMBINADO */
 
-/* --- ESTILO CHECKBOX MINIMALISTA (CARGANDO ARCHIVO) --- */
+#formTitle {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+#FormLabel {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Combos y Entradas */
+QComboBox {
+    height: 40px;
+    font-size: 15px;
+    padding: 4px 8px;
+    border : 1px solid #d2d2d2;
+    border-radius: 4px;
+}
+
+QComboBox:hover {
+    background-color: #f1f5f9;
+}
+
+QLineEdit {
+    font-size: 15px;
+    padding: 4px 8px;
+    background-color: #f1f5f9;
+    color: #647790;
+    font-weight: bold;
+    border: 1px solid #d2d2d2;
+    border-radius: 4px;
+}
+
+/* Botones de Agregar (Texto azul con linea abajo) */
+#AddAporteButton, #AddPagoButton, #AddLetraButton {
+    font-size: 15px;
+    padding: 2px 4px;
+    min-height: 26px;
+    color: %(PRIMARY_COLOR)s;
+    font-weight: bold;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+}
+
+#AddAporteButton:hover, #AddPagoButton:hover, #AddLetraButton:hover {
+    border-bottom: 2px solid %(PRIMARY_COLOR)s;
+}
+
+/* Boton Principal Registrar */
+#RegisterButton {
+    font-size: 16px;
+    padding: 8px 20px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+}
+
+#RegisterButton:hover {
+    background-color: #2a4a80;
+}
+
+/* Botones de Eliminar (X) */
+#DeleteButton {
+    background: transparent;
+    border: none;
+}
+#DeleteButton:hover {
+    background-color: #fef2f2;
+    border-radius: 4px;
+}
+
+/* Popup de QComboBox */
+QComboBox QAbstractItemView {
+    font-size: 16px;
+    spacing: 6px;
+    outline: none;
+}
+QComboBox QAbstractItemView::item {
+    min-height: 30px;
+    padding: 4px 8px;
+}
 
 QCheckBox#ChkPapeleria {
     background: transparent;
@@ -93,18 +184,18 @@ QCheckBox#ChkPapeleria {
     min-height: 34px; 
 }
 
-/* Estado normal (sin marcar) */
+/* Cajita sin marcar (Gris suave) */
 QCheckBox#ChkPapeleria::indicator {
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     subcontrol-position: center;
     
     background-color: white;
-    border: 2px solid #d1d5db;   /* Borde gris */
+    border: 2px solid #d1d5db;
     border-radius: 5px;
 }
 
-/* Sin hover */
+/* Sin efectos hover en la caja */
 QCheckBox#ChkPapeleria:hover,
 QCheckBox#ChkPapeleria::indicator:hover {
     background: transparent;
@@ -116,7 +207,6 @@ QCheckBox#ChkPapeleria::indicator:checked {
     background-color: white;
     border: 1px solid #3b82f6; /* Borde azul */
     
-    /* CARGAMOS LA IMAGEN DESDE ASSETS */
-    /* Asegúrate de que esta ruta sea correcta relativa a tu main.py */
-    image: url(assets/icons/check.svg);
+    /* Usamos la variable que inyectamos desde Python */
+    image: url(%(ASSETS_DIR)s/icons/check.svg);
 }

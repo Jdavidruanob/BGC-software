@@ -104,10 +104,10 @@ class FormAporte(QWidget):
 
         monto_input = QLineEdit()
         monto_input.setObjectName("MontoInput")
-        monto_input.setPlaceholderText("Monto del aporte")
+        monto_input.setPlaceholderText("Monto aporte")
         monto_input.setAlignment(Qt.AlignRight)
         monto_input.setFixedHeight(34)
-        monto_input.setFixedWidth(160)
+        monto_input.setFixedWidth(140)
 
         def on_text_changed(text):
             raw = parse_miles_colombian(text)

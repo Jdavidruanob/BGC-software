@@ -64,13 +64,17 @@ TEXT_COLOR = "#FFFFFF"        # Texto blanco
 # --- Metodos Globlales ---
 
 def load_styles(self, qss_path):
-    """ Carga un archivo QSS y aplica los colores globales definidos."""
+    """ Carga un archivo QSS y aplica los colores y rutas globales."""
     try:
         with open(qss_path, "r") as f:
+            # Preparamos la ruta de assets para CSS (reemplazando \ por / para que Qt la entienda)
+            assets_path_css = ASSETS_DIR.replace("\\", "/")
+            
             qss = f.read() % {
                 "PRIMARY_COLOR": PRIMARY_COLOR,
                 "SECONDARY_COLOR": SECONDARY_COLOR,
-                "TEXT_COLOR": TEXT_COLOR
+                "TEXT_COLOR": TEXT_COLOR,
+                "ASSETS_DIR": assets_path_css  # <--- AGREGAMOS ESTA VARIABLE
             }
             self.setStyleSheet(qss)
     except Exception as e:
