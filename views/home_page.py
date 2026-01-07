@@ -11,6 +11,7 @@ from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
+from views.widgets.edit_admin_dialog import EditAdminDialog 
 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
 
@@ -149,21 +150,43 @@ class HomePage(QWidget):
         # --- Layout agrupador para los botones de administración ---
         admin_buttons_widget = QWidget()
         admin_buttons_layout = QVBoxLayout()
-        admin_buttons_layout.setContentsMargins(0, 16, 0, 0)  # top margin para separarlos del resumen
-        admin_buttons_layout.setSpacing(8)  # Espaciado pequeño entre botones
+        admin_buttons_layout.setContentsMargins(0, 16, 0, 0)
+        admin_buttons_layout.setSpacing(8)
 
-        btn_editar_saldo = QPushButton("  Editar Saldo")
+        # 1. FILA SUPERIOR (Saldo + Admin)
+        row_admin_actions = QHBoxLayout()
+        row_admin_actions.setSpacing(10) # Espacio entre los dos botones
+        row_admin_actions.setContentsMargins(0, 0, 0, 0)
+
+        # Botón Editar Saldo
+        btn_editar_saldo = QPushButton(" Editar Saldo")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
         btn_editar_saldo.setIcon(load_svg_icon("icons/edit.svg"))
         btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
-        admin_buttons_layout.addWidget(btn_editar_saldo)
+        # Expandir para que ocupen mitad y mitad
+        btn_editar_saldo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
+        # Botón Editar Admin (NUEVO)
+        btn_editar_admin = QPushButton(" Editar Admin")
+        btn_editar_admin.setObjectName("btnEditarAdmin") # ID para el CSS
+        # Usamos un icono de configuración o herramientas (puedes reutilizar edit.svg si no tienes otro)
+        btn_editar_admin.setIcon(load_svg_icon("icons/edit.svg")) 
+        btn_editar_admin.setIconSize(QSize(18, 18))
+        btn_editar_admin.clicked.connect(self.editar_gastos_admin)
+        btn_editar_admin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        btn_cambiar_bd = QPushButton("  Cambiar BD")
+        row_admin_actions.addWidget(btn_editar_saldo)
+        row_admin_actions.addWidget(btn_editar_admin)
+        
+        admin_buttons_layout.addLayout(row_admin_actions)
+
+        # 2. BOTÓN CAMBIAR BD (Debajo)
+        btn_cambiar_bd = QPushButton("  Cambiar Base de Datos")
         btn_cambiar_bd.setObjectName("btnCambiarBD")
         btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
         btn_cambiar_bd.setIconSize(QSize(16, 16))
-        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)  # ← Cambia esta línea
+        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)
         admin_buttons_layout.addWidget(btn_cambiar_bd)
 
         admin_buttons_widget.setLayout(admin_buttons_layout)
@@ -304,6 +327,33 @@ class HomePage(QWidget):
             
             self.refresh_view()
 
+    def editar_gastos_admin(self):
+        """Abre el diálogo para editar fondo de papelería y % de mora."""
+        
+        # 1. Obtener valores actuales
+        current_papeleria = self.db_manager.get_config_value_as_int("total_admin")
+        
+        # Para el porcentaje, necesitamos leerlo como float (o string y convertir)
+        cursor = self.db_manager.conn.cursor()
+        row = cursor.execute("SELECT value FROM config WHERE key='porcentaje_mora'").fetchone()
+        current_mora = float(row['value']) if row else 0.02
+
+        dlg = EditAdminDialog(current_papeleria, current_mora, self)
+        
+        if dlg.exec():
+            new_papeleria, new_mora = dlg.get_data()
+            
+            # 2. Guardar en Config
+            self.db_manager.set_config_value("total_admin", str(new_papeleria))
+            self.db_manager.set_config_value("porcentaje_mora", str(new_mora))
+            
+            show_success(self, "Configuración Actualizada", 
+                         f"Papelería: $ {format_miles_colombian_int(new_papeleria)}\n"
+                         f"Tasa Mora: {new_mora}")
+            
+            # 3. Refrescar el resumen (para ver el cambio en papelería)
+            self.refresh_view()
+
     def cambiar_base_datos(self):
         """Abre el explorador de archivos para seleccionar una BD de año anterior."""
         from PySide6.QtWidgets import QFileDialog
@@ -426,8 +476,7 @@ class HomePage(QWidget):
         print("🔁 Refrescando vista home")
         self.refresh_forms()
         
-        # 🔄 ACTUALIZAR EL WIDGET DEL PANEL DERECHO
-        # Elimina contenido anterior del right_panel
+        # 🔄 1. LIMPIAR EL PANEL DERECHO
         layout = self.right_panel.layout()
         while layout.count():
             item = layout.takeAt(0)
@@ -435,37 +484,56 @@ class HomePage(QWidget):
             if widget is not None:
                 widget.deleteLater()
             else:
-                # Si es un layout anidado, elimínalo recursivamente
+                # Si hay layouts anidados, limpiar recursivamente (seguridad)
                 child_layout = item.layout()
                 if child_layout is not None:
                     while child_layout.count():
                         child_item = child_layout.takeAt(0)
-                        child_widget = child_item.widget()
-                        if child_widget is not None:
-                            child_widget.deleteLater()
+                        child_w = child_item.widget()
+                        if child_w: child_w.deleteLater()
         
-        # Carga de nuevo el resumen
+        # 🔄 2. RE-CREAR EL RESUMEN
         resumen_widget = self.create_resumen_widget()
         layout.addWidget(resumen_widget)
 
-        # --- Layout agrupador para los botones de administración ---
+        # 🔄 3. RE-CREAR LOS BOTONES DE ADMIN (¡Aquí está el cambio!)
         admin_buttons_widget = QWidget()
         admin_buttons_layout = QVBoxLayout()
         admin_buttons_layout.setContentsMargins(0, 16, 0, 0)
         admin_buttons_layout.setSpacing(8)
 
-        btn_editar_saldo = QPushButton("  Editar Saldo")
+        # Fila Horizontal: [Editar Saldo] [Editar Admin]
+        row_admin_actions = QHBoxLayout()
+        row_admin_actions.setSpacing(10)
+        row_admin_actions.setContentsMargins(0, 0, 0, 0)
+
+        # Botón Saldo
+        btn_editar_saldo = QPushButton(" Ajuste Caja")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
         btn_editar_saldo.setIcon(load_svg_icon("icons/edit.svg"))
         btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
-        admin_buttons_layout.addWidget(btn_editar_saldo)
+        btn_editar_saldo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
+        # Botón Admin (NUEVO)
+        btn_editar_admin = QPushButton(" Editar Admin")
+        btn_editar_admin.setObjectName("btnEditarAdmin")
+        btn_editar_admin.setIcon(load_svg_icon("icons/edit.svg"))
+        btn_editar_admin.setIconSize(QSize(18, 18))
+        btn_editar_admin.clicked.connect(self.editar_gastos_admin)
+        btn_editar_admin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-        btn_cambiar_bd = QPushButton("  Cambiar BD")
+        row_admin_actions.addWidget(btn_editar_saldo)
+        row_admin_actions.addWidget(btn_editar_admin)
+        
+        admin_buttons_layout.addLayout(row_admin_actions)
+
+        # Botón Cambiar BD (Debajo)
+        btn_cambiar_bd = QPushButton("  Cambiar Base de Datos")
         btn_cambiar_bd.setObjectName("btnCambiarBD")
         btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
         btn_cambiar_bd.setIconSize(QSize(16, 16))
-        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)  # ← Cambia esta línea
+        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)
         admin_buttons_layout.addWidget(btn_cambiar_bd)
 
         admin_buttons_widget.setLayout(admin_buttons_layout)
