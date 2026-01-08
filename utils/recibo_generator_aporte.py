@@ -7,121 +7,146 @@ from config import (
     format_full_name_for_excel, 
     ASSETS_DIR, RECIBOS_OUTPUT_DIR
 )
-# --- Configuración de rutas (Ajusta según tu estructura de proyecto) ---
-TEMPLATE_APORTE_REL_PATH = os.path.join("templates", "recibo_template_aporte.xlsx") 
-TEMPLATE_APORTE_PATH = os.path.join(ASSETS_DIR, TEMPLATE_APORTE_REL_PATH) 
 
 # Renombrado y ajustado para tu estructura deseada
 OUTPUT_FOLDER_PATH = RECIBOS_OUTPUT_DIR 
 
-# --- Constantes de Celda para recibo_template_aporte.xlsx ---
+# --- Constantes Generales ---
 RECIBO_ID_CELL = 'D4'
 FECHA_CELL = 'I4'
-RECIBI_DE_CELL = 'G6' # Celda para "Recibí de"
+RECIBI_DE_CELL = 'G6'
 
-# Aportes - Rango de 10 filas (de Fila 9 a Fila 18)
+# La fila donde SIEMPRE comienzan los datos (en todas las plantillas 1-6)
 APORTE_DATA_START_ROW = 9 
-APORTE_DATA_END_ROW = 18 # Fila final para datos de aportes
-MAX_APORTES_ROWS_IN_TEMPLATE = 10 # 18 - 9 + 1 = 10 filas disponibles
 
+# Columnas (Letras)
 APORTE_NOMBRE_COL = 'B'
 APORTE_SALDO_COL = 'F'
 APORTE_MONTO_COL = 'H'
 APORTE_NUEVO_SALDO_COL = 'J'
 
-APORTE_TOTAL_CELL = 'H19' # Celda para el Total de Aportes
+# Columnas para totales (Las filas ahora son dinámicas)
+COL_TOTAL_APORTES = 'H'
+COL_GASTOS_ADMIN = 'K'
+COL_TOTAL_GENERAL = 'K'
 
-# Totales Finales
-GASTOS_ADMIN_CELL = 'K21' # Celda para Gastos de Administración
-TOTAL_GENERAL_CELL = 'K22' # Celda para el Total a Pagar
-
-GASTO_POR_APORTE = 3000 # Nueva constante para el valor de cada aporte
+GASTO_POR_APORTE = 3000 
+MAX_APORTES_PERMITIDOS = 6  # Nuevo límite establecido
 
 def generar_recibo_solo_aportes(
     db_manager, 
     recibo_id: int,
     recibi_de_data: dict, 
     aportes_info: list = None,
-    num_aportes_cobrables: int = None # <--- NUEVO PARÁMETRO
+    num_aportes_cobrables: int = None
 ):
     """
-    Genera un recibo de solo aportes utilizando la plantilla recibo_template_aporte.xlsx.
-    Rellena hasta 10 filas de aportes y los totales.
-    Ajusta el formato de los nombres de los socios y del "Recibí de".
-    
-    El gasto administrativo se calcula como GASTO_POR_APORTE * num_aportes_cobrables.
+    Genera un recibo seleccionando la plantilla exacta según el número de aportes (1 a 6).
     """
     if aportes_info is None:
         aportes_info = []
+
+    # 1. Determinar cuántos aportes hay para elegir la plantilla
+    num_aportes = len(aportes_info)
+
+    # Validaciones de seguridad
+    if num_aportes == 0:
+        print("Error: No hay aportes para generar recibo.")
+        return None
+    
+    if num_aportes > MAX_APORTES_PERMITIDOS:
+        print(f"Advertencia: Hay {num_aportes} aportes. Se truncará a {MAX_APORTES_PERMITIDOS}.")
+        aportes_info = aportes_info[:MAX_APORTES_PERMITIDOS]
+        num_aportes = MAX_APORTES_PERMITIDOS
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
         file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
-        wb = load_workbook(TEMPLATE_APORTE_PATH)
+        # 2. SELECCIÓN DE PLANTILLA SEGÚN CANTIDAD (Switch lógico)
+        # Construimos el nombre: recibo_template_aporte1.xlsx, recibo_template_aporte2.xlsx, etc.
+        template_name = f"recibo_template_aporte{num_aportes}.xlsx"
+        template_rel_path = os.path.join("templates", "recibo_template_aporte", template_name)
+        template_abs_path = os.path.join(ASSETS_DIR, template_rel_path)
+
+        if not os.path.exists(template_abs_path):
+            print(f"❌ Error CRÍTICO: No se encontró la plantilla {template_name}")
+            print(f"Buscado en: {template_abs_path}")
+            return None
+
+        wb = load_workbook(template_abs_path)
         ws = wb.active
 
-        # --- Reemplazar datos de CABECERA ---
+        # --- CABECERA ---
         ws[RECIBO_ID_CELL] = recibo_id
         ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
         
-        # AJUSTE 1: Nombre "Recibí de" en MAYÚSCULAS y alineado al centro
         recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name
-        ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center') # Alineación al centro
+        ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center')
 
-        # --- PROCESAR APORTES ---
+        # --- CUERPO (Llenar filas exactas) ---
         total_aportes_acumulado = 0
-        num_aportes_total_lista = len(aportes_info)
         
-        for i in range(MAX_APORTES_ROWS_IN_TEMPLATE):
+        for i in range(num_aportes):
             row_to_fill = APORTE_DATA_START_ROW + i
             
-            if i < num_aportes_total_lista:
-                socio_data, monto_aporte, saldo_socio_antes, saldo_socio_despues = aportes_info[i]
-                
-                # AJUSTE 2: Formatear el nombre del socio para los detalles del aporte
-                formatted_socio_name = format_full_name_for_excel(
-                    socio_data['nombres'], 
-                    socio_data['apellidos'], 
-                    max_length=24 
-                )
-                ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
-                ws[f'{APORTE_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_antes)
-                ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = format_miles_colombian_int(monto_aporte)
-                ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_despues)
-                total_aportes_acumulado += monto_aporte
-            else:
-                # Limpiar las filas no utilizadas
-                ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = "" 
-                ws[f'{APORTE_SALDO_COL}{row_to_fill}'] = "" 
-                ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = "" 
-                ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = "" 
+            socio_data, monto_aporte, saldo_socio_antes, saldo_socio_despues = aportes_info[i]
+            
+            formatted_socio_name = format_full_name_for_excel(
+                socio_data['nombres'], 
+                socio_data['apellidos'], 
+                max_length=24 
+            )
+            
+            # Escribir datos
+            ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
+            ws[f'{APORTE_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_antes)
+            ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = format_miles_colombian_int(monto_aporte)
+            ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_socio_despues)
+            
+            total_aportes_acumulado += monto_aporte
 
-        # Escribir el total de aportes
-        ws[APORTE_TOTAL_CELL] = format_miles_colombian_int(total_aportes_acumulado)
+        # --- PIE DE PÁGINA (Cálculo dinámico de posiciones) ---
+        # Asumiendo que en tus plantillas manuales, la fila de "Total Aportes" 
+        # está INMEDIATAMENTE después de la última fila de datos.
+        
+        # Fila de datos final = 9 + num_aportes - 1
+        # Fila Total = 9 + num_aportes
+        row_total_aportes = APORTE_DATA_START_ROW + num_aportes
+        
+        # En tu diseño anterior, había un espacio de 2 filas entre el Total y los Gastos Admin
+        # Si al crear las plantillas manuales mantienes esa proporción:
+        # Fila Gastos Admin = Fila Total + 2
+        # Fila Total General = Fila Total + 3
+        
+        # AJUSTE ESTOS NÚMEROS SI TUS PLANTILLAS TIENEN MÁS/MENOS ESPACIO
+        row_gastos_admin = row_total_aportes + 2 
+        row_total_general = row_total_aportes + 3
 
-        # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
-        # Determinar la cantidad real a cobrar
+        # 1. Total Aportes
+        ws[f'{COL_TOTAL_APORTES}{row_total_aportes}'] = format_miles_colombian_int(total_aportes_acumulado)
+
+        # 2. Gastos Admin
         if num_aportes_cobrables is not None:
             cantidad_a_cobrar = num_aportes_cobrables
         else:
-            cantidad_a_cobrar = num_aportes_total_lista # Comportamiento por defecto (todos pagan)
-
+            cantidad_a_cobrar = num_aportes
+            
         gastos_admin = GASTO_POR_APORTE * cantidad_a_cobrar
+        ws[f'{COL_GASTOS_ADMIN}{row_gastos_admin}'] = format_miles_colombian_int(gastos_admin)
         
-        ws[GASTOS_ADMIN_CELL] = format_miles_colombian_int(gastos_admin)
-        
+        # 3. Total General
         total_general = total_aportes_acumulado + gastos_admin
-        ws[TOTAL_GENERAL_CELL] = format_miles_colombian_int(total_general)
+        ws[f'{COL_TOTAL_GENERAL}{row_total_general}'] = format_miles_colombian_int(total_general)
 
-        # --- Guardar el recibo ---
+        # --- Guardar ---
         wb.save(output_path)
         return output_path
 
     except Exception as e:
-        print(f"Error al generar recibo solo de aportes: {e}")
+        print(f"Error al generar recibo exacto de aportes: {e}")
         import traceback
         traceback.print_exc() 
         return None

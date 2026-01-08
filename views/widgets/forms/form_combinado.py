@@ -9,8 +9,11 @@ from utils.message_boxes import show_success, show_error, show_warning, show_inf
 import os
 from datetime import date
 # IMPORTAR AHORA DESDE EL NUEVO ARCHIVO ESPECÍFICO DE RECIBO COMBINADO
-from utils.recibo_generator_combinado import generar_recibo_combinado, MAX_APORTE_ROWS_IN_TEMPLATE, MAX_CREDITO_ROWS_IN_TEMPLATE
+from utils.recibo_generator_combinado import generar_recibo_combinado
 import traceback # Para ver errores completos en la consola
+
+MAX_APORTE_ROWS_IN_TEMPLATE = 6
+MAX_CREDITO_ROWS_IN_TEMPLATE= 6
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
