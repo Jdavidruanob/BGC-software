@@ -14,7 +14,7 @@ from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 
 # IMPORTAR AHORA DESDE EL NUEVO ARCHIVO ESPECÍFICO DE PAGOS
-from utils.recibo_generator_pago import generar_recibo_solo_pagos, DEFAULT_GASTOS_ADMIN, MAX_CREDITO_ROWS_IN_TEMPLATE
+from utils.recibo_generator_pago import generar_recibo_solo_pagos
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):

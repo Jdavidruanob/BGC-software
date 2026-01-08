@@ -8,48 +8,37 @@ from config import (
     ASSETS_DIR, RECIBOS_OUTPUT_DIR
 )
 
-# --- Rutas y Constantes ---
-TEMPLATE_COMBINADO_REL_PATH = os.path.join("templates", "recibo_template_combinado.xlsx") 
-TEMPLATE_COMBINADO_PATH = os.path.join(ASSETS_DIR, TEMPLATE_COMBINADO_REL_PATH)
-
+# Carpeta de Salida
 OUTPUT_FOLDER_PATH = RECIBOS_OUTPUT_DIR
 
-# --- Constantes de Celda Específicas para recibo_template_combinado.xlsx ---
+# --- Constantes Generales ---
 RECIBO_ID_CELL = 'D4'
 FECHA_CELL = 'I4'
 RECIBI_DE_CELL = 'G6'
 
-# Secciones de Aportes
-APORTE_DATA_START_ROW = 9
-APORTE_DATA_END_ROW = 18 # 9 a 18 son 10 filas
-MAX_APORTE_ROWS_IN_TEMPLATE = 10 
-
+# --- CONSTANTES DE COLUMNAS (Letras) ---
+# Sección Aportes
 APORTE_NOMBRE_COL = 'B'
-APORTE_SALDO_APORTES_COL = 'F' 
+APORTE_SALDO_COL = 'F' 
 APORTE_MONTO_COL = 'H' 
 APORTE_NUEVO_SALDO_COL = 'J' 
-TOTAL_APORTES_CELL = 'H19' 
+COL_TOTAL_APORTES = 'H'
 
-# Secciones de Pagos de Crédito
-CREDITO_DATA_START_ROW = 22
-CREDITO_DATA_END_ROW = 32 # 22 a 32 son 11 filas
-MAX_CREDITO_ROWS_IN_TEMPLATE = 11 
-
+# Sección Créditos
 CREDITO_NOMBRE_COL = 'B' 
 CREDITO_LETRA_COL = 'F'
 CREDITO_CUOTA_COL = 'G'
 CREDITO_SDO_CAP_COL = 'H'
 CREDITO_AB_CAP_COL = 'I'
 CREDITO_INTERES_COL = 'J' 
-CREDITO_N_SDOCAP_COL = 'K' 
+CREDITO_N_SDOCAP_COL = 'K'
+COL_TOTAL_CREDITOS = 'H'
 
-# Totales
-TOTAL_CREDITOS_CELL = 'H33' 
-GASTOS_ADMIN_CELL_COMBINADO = 'K35'
-TOTAL_GENERAL_CELL_COMBINADO = 'K36'
+# Totales Finales (Columna K para todos los valores del pie de página)
+COL_RESUMEN_VALORES = 'K'
 
-# Valor por cada aporte
 GASTO_POR_APORTE = 3000
+MAX_FILAS_PERMITIDAS = 6 # Límite tanto para aportes como para pagos
 
 def generar_recibo_combinado(
     db_manager, 
@@ -57,167 +46,175 @@ def generar_recibo_combinado(
     recibi_de_data: dict, 
     aportes_info: list = None, 
     pagos_credito_info: list = None,
-    num_aportes_cobrables: int = None # <--- NUEVO PARÁMETRO
+    num_aportes_cobrables: int = None
 ):
     """
-    Genera un recibo combinado de aportes y pagos de crédito.
-    El gasto administrativo se calcula como GASTO_POR_APORTE * num_aportes_cobrables.
+    Genera un recibo combinado seleccionando la plantilla exacta según la matriz:
+    recibo_template_combinado{X}_{Y}.xlsx
+    Donde X = num_aportes, Y = num_pagos.
     """
-    if aportes_info is None:
-        aportes_info = []
-    if pagos_credito_info is None:
-        pagos_credito_info = []
+    if aportes_info is None: aportes_info = []
+    if pagos_credito_info is None: pagos_credito_info = []
+
+    # 1. Determinar dimensiones de la matriz (X, Y)
+    num_aportes = len(aportes_info)
+    num_pagos = len(pagos_credito_info)
+
+    # Validaciones
+    if num_aportes == 0 and num_pagos == 0:
+        print("Error: No hay movimientos para generar recibo.")
+        return None
+    
+    # Truncar si exceden el máximo (por seguridad, aunque el form ya valida)
+    if num_aportes > MAX_FILAS_PERMITIDAS:
+        aportes_info = aportes_info[:MAX_FILAS_PERMITIDAS]
+        num_aportes = MAX_FILAS_PERMITIDAS
+        
+    if num_pagos > MAX_FILAS_PERMITIDAS:
+        pagos_credito_info = pagos_credito_info[:MAX_FILAS_PERMITIDAS]
+        num_pagos = MAX_FILAS_PERMITIDAS
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
         file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
-        wb = load_workbook(TEMPLATE_COMBINADO_PATH) 
+        # 2. SELECCIÓN DE PLANTILLA MATRICIAL
+        # Carpeta: assets/templates/recibo_template_combinado/
+        # Archivo: recibo_template_combinado{X}_{Y}.xlsx
+        template_name = f"recibo_template_combinado{num_aportes}_{num_pagos}.xlsx"
+        template_rel_path = os.path.join("templates", "recibo_template_combinado", template_name)
+        template_abs_path = os.path.join(ASSETS_DIR, template_rel_path)
+
+        if not os.path.exists(template_abs_path):
+            print(f"❌ Error CRÍTICO: No se encontró la plantilla {template_name}")
+            return None
+
+        wb = load_workbook(template_abs_path) 
         ws = wb.active
 
-        # --- Reemplazar datos de CABECERA ---
+        # --- CABECERA ---
         ws[RECIBO_ID_CELL] = recibo_id
         ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
-        
         recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name
         ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center') 
 
-        # --- PROCESAR APORTES ---
-        num_aportes_to_display = len(aportes_info)
+        # ==========================================
+        # 3. SECCIÓN APORTES (Siempre inicia fila 9)
+        # ==========================================
+        start_row_aportes = 9
         total_aportes_monto = 0 
 
-        if num_aportes_to_display > MAX_APORTE_ROWS_IN_TEMPLATE:
-            print(f"ADVERTENCIA: Se intentaron procesar {num_aportes_to_display} aportes, "
-                    f"pero la plantilla solo soporta {MAX_APORTE_ROWS_IN_TEMPLATE}. Se truncará.")
-            aportes_info = aportes_info[:MAX_APORTE_ROWS_IN_TEMPLATE]
-            num_aportes_to_display = len(aportes_info)
-
-        for i in range(MAX_APORTE_ROWS_IN_TEMPLATE):
-            row_to_fill = APORTE_DATA_START_ROW + i
-            if i < num_aportes_to_display:
-                aporte_detail = aportes_info[i]
-                socio_data = aporte_detail['socio_data'] 
-                monto_aporte = aporte_detail['monto']
-                saldo_anterior_aporte = aporte_detail['saldo_anterior_aporte'] 
-                nuevo_saldo_aporte = aporte_detail['nuevo_saldo_aporte'] 
-
-                formatted_socio_name = format_full_name_for_excel(
-                    socio_data['nombres'], 
-                    socio_data['apellidos'], 
-                    max_length=24
-                )
-                ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
-                ws[f'{APORTE_SALDO_APORTES_COL}{row_to_fill}'] = format_miles_colombian_int(saldo_anterior_aporte) 
-                ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = format_miles_colombian_int(monto_aporte)
-                ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = format_miles_colombian_int(nuevo_saldo_aporte) 
-                
-                total_aportes_monto += monto_aporte 
-            else:
-                # Limpiar filas no utilizadas
-                ws[f'{APORTE_NOMBRE_COL}{row_to_fill}'] = ""
-                ws[f'{APORTE_SALDO_APORTES_COL}{row_to_fill}'] = ""
-                ws[f'{APORTE_MONTO_COL}{row_to_fill}'] = ""
-                ws[f'{APORTE_NUEVO_SALDO_COL}{row_to_fill}'] = ""
-        
-        ws[TOTAL_APORTES_CELL] = format_miles_colombian_int(total_aportes_monto)
-
-        # --- PROCESAR PAGOS DE CRÉDITO CONSOLIDADOS ---
-        total_pagos_credito_monto_total = 0 
-        num_credit_details_consolidated = len(pagos_credito_info)
-
-        if num_credit_details_consolidated > MAX_CREDITO_ROWS_IN_TEMPLATE:
-            print(f"ADVERTENCIA: Se intentaron procesar {num_credit_details_consolidated} pagos de crédito consolidados, "
-                    f"pero la plantilla solo soporta {MAX_CREDITO_ROWS_IN_TEMPLATE}. Se truncará.")
-            pagos_credito_info = pagos_credito_info[:MAX_CREDITO_ROWS_IN_TEMPLATE]
-            num_credit_details_consolidated = len(pagos_credito_info)
-        
-        # Cache para almacenar el número total de cuotas por letra
-        cuotas_info_cache = {}
-
-        for i in range(MAX_CREDITO_ROWS_IN_TEMPLATE):
-            row_to_fill = CREDITO_DATA_START_ROW + i
+        for i in range(num_aportes):
+            row = start_row_aportes + i
+            detalle = aportes_info[i]
             
-            if i < num_credit_details_consolidated:
-                detalle_consolidado = pagos_credito_info[i]
-                
-                socio_data = detalle_consolidado['socio_data'] 
-                letra_id = detalle_consolidado['letra_id']
-                nro_cuotas_start = detalle_consolidado['nro_cuotas_pagadas_start']
-                nro_cuotas_end = detalle_consolidado['nro_cuotas_pagadas_end']
+            socio = detalle['socio_data']
+            nombre = format_full_name_for_excel(socio['nombres'], socio['apellidos'])
+            
+            ws[f'{APORTE_NOMBRE_COL}{row}'] = nombre
+            ws[f'{APORTE_SALDO_COL}{row}'] = format_miles_colombian_int(detalle['saldo_anterior_aporte']) 
+            ws[f'{APORTE_MONTO_COL}{row}'] = format_miles_colombian_int(detalle['monto'])
+            ws[f'{APORTE_NUEVO_SALDO_COL}{row}'] = format_miles_colombian_int(detalle['nuevo_saldo_aporte']) 
+            
+            total_aportes_monto += detalle['monto']
 
-                formatted_socio_name = format_full_name_for_excel(
-                    socio_data['nombres'], 
-                    socio_data['apellidos'], 
-                    max_length=24 
-                )
-                ws[f'{CREDITO_NOMBRE_COL}{row_to_fill}'] = formatted_socio_name
-                ws[f'{CREDITO_LETRA_COL}{row_to_fill}'] = letra_id
+        # Total Aportes (Justo después de los datos)
+        row_total_aportes = start_row_aportes + num_aportes
+        ws[f'{COL_TOTAL_APORTES}{row_total_aportes}'] = format_miles_colombian_int(total_aportes_monto)
 
-                # --- LÓGICA DE VISUALIZACIÓN DE CUOTA / ABONO ---
-                # Detectar si es un Abono a Capital
-                es_abono = False
-                if isinstance(nro_cuotas_start, str) and "ABONO" in nro_cuotas_start:
-                    es_abono = True
+        # ==========================================
+        # 4. SECCIÓN CRÉDITOS (Posición Dinámica)
+        # ==========================================
+        # Lógica: Fila Total Aportes + 3 filas de espacio (headers créditos) = Inicio Datos Créditos
+        start_row_creditos = row_total_aportes + 3
+        
+        total_creditos_monto = 0 
+        cuotas_cache = {}
 
-                if es_abono:
-                    # Si es abono, mostramos el texto directo o "NA"
-                    cuota_display = "ABONO"
-                else:
-                    # Lógica normal de cuotas (ej: "1 / 36" o "1-3 / 36")
-                    if letra_id not in cuotas_info_cache:
-                        total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
-                        cuotas_info_cache[letra_id] = total_cuotas_credito
-                    
-                    if nro_cuotas_start == nro_cuotas_end:
-                        cuota_display = f"{nro_cuotas_start}/{cuotas_info_cache[letra_id]}"
-                    else:
-                        cuota_display = f"{nro_cuotas_start}-{nro_cuotas_end}/{cuotas_info_cache[letra_id]}"
-                
-                ws[f'{CREDITO_CUOTA_COL}{row_to_fill}'] = cuota_display
-                # ---------------------------------------------------
-                
-                ws[f'{CREDITO_SDO_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['saldo_capital_antes_pago']) 
-                ws[f'{CREDITO_AB_CAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['valor_capital_consolidado'])
-                ws[f'{CREDITO_INTERES_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['interes_consolidado'])
-                ws[f'{CREDITO_N_SDOCAP_COL}{row_to_fill}'] = format_miles_colombian_int(detalle_consolidado['saldo_capital_despues_pago'])
-                
-                total_pagos_credito_monto_total += (detalle_consolidado['valor_capital_consolidado'] + detalle_consolidado['interes_consolidado'])
+        for i in range(num_pagos):
+            row = start_row_creditos + i
+            detalle = pagos_credito_info[i]
+            
+            socio = detalle['socio_data'] 
+            letra_id = detalle['letra_id']
+            nombre = format_full_name_for_excel(socio['nombres'], socio['apellidos'])
+            
+            # Datos básicos
+            ws[f'{CREDITO_NOMBRE_COL}{row}'] = nombre
+            ws[f'{CREDITO_LETRA_COL}{row}'] = letra_id
+            
+            # Cuota / Abono Logic
+            n_start = detalle['nro_cuotas_pagadas_start']
+            n_end = detalle['nro_cuotas_pagadas_end']
+            
+            es_abono = isinstance(n_start, str) and "ABONO" in n_start
+            
+            if es_abono:
+                cuota_txt = "ABONO"
             else:
-                # Limpiar las filas no utilizadas
-                ws[f'{CREDITO_NOMBRE_COL}{row_to_fill}'] = "" 
-                ws[f'{CREDITO_LETRA_COL}{row_to_fill}'] = "" 
-                ws[f'{CREDITO_CUOTA_COL}{row_to_fill}'] = "" 
-                ws[f'{CREDITO_SDO_CAP_COL}{row_to_fill}'] = "" 
-                ws[f'{CREDITO_AB_CAP_COL}{row_to_fill}'] = "" 
-                ws[f'{CREDITO_INTERES_COL}{row_to_fill}'] = "" 
-                ws[f'{CREDITO_N_SDOCAP_COL}{row_to_fill}'] = "" 
-        
-        ws[TOTAL_CREDITOS_CELL] = format_miles_colombian_int(total_pagos_credito_monto_total)
+                if letra_id not in cuotas_cache:
+                    cuotas_cache[letra_id] = db_manager.get_total_cuotas_credito(letra_id)
+                total_c = cuotas_cache[letra_id]
+                
+                if n_start == n_end:
+                    cuota_txt = f"{n_start}/{total_c}"
+                else:
+                    cuota_txt = f"{n_start}-{n_end}/{total_c}"
+            
+            ws[f'{CREDITO_CUOTA_COL}{row}'] = cuota_txt
+            
+            # Valores Monetarios
+            ws[f'{CREDITO_SDO_CAP_COL}{row}'] = format_miles_colombian_int(detalle['saldo_capital_antes_pago']) 
+            ws[f'{CREDITO_AB_CAP_COL}{row}'] = format_miles_colombian_int(detalle['valor_capital_consolidado'])
+            ws[f'{CREDITO_INTERES_COL}{row}'] = format_miles_colombian_int(detalle['interes_consolidado'])
+            ws[f'{CREDITO_N_SDOCAP_COL}{row}'] = format_miles_colombian_int(detalle['saldo_capital_despues_pago'])
+            
+            total_creditos_monto += (detalle['valor_capital_consolidado'] + detalle['interes_consolidado'])
 
-        # --- GASTOS ADMINISTRACIÓN y TOTAL GENERAL ---
+        # Total Créditos (Justo después de los datos)
+        row_total_creditos = start_row_creditos + num_pagos
+        ws[f'{COL_TOTAL_CREDITOS}{row_total_creditos}'] = format_miles_colombian_int(total_creditos_monto)
+
+        # ==========================================
+        # 5. PIE DE PÁGINA (Totales Finales)
+        # ==========================================
+        # Estructura geométrica asumida:
+        # Fila Total Créditos
+        # + 2 filas -> Gastos Admin
+        # + 1 fila  -> Interés Mora (NUEVO)
+        # + 1 fila  -> Total General
         
-        # 1. Determinar cantidad a cobrar (parámetro o total de filas)
+        row_admin = row_total_creditos + 2
+        row_mora = row_admin + 1
+        row_general = row_mora + 1
+
+        # 1. Gastos Admin
         if num_aportes_cobrables is not None:
-            cantidad_a_cobrar = num_aportes_cobrables
+            cant_cobrar = num_aportes_cobrables
         else:
-            cantidad_a_cobrar = num_aportes_to_display
+            cant_cobrar = num_aportes # Fallback
+            
+        val_admin = GASTO_POR_APORTE * cant_cobrar
+        ws[f'{COL_RESUMEN_VALORES}{row_admin}'] = format_miles_colombian_int(val_admin) 
+        
+        # 2. Interés Mora (0 por ahora)
+        val_mora = 0
+        ws[f'{COL_RESUMEN_VALORES}{row_mora}'] = format_miles_colombian_int(val_mora)
 
-        # 2. Calcular
-        gastos_admin = GASTO_POR_APORTE * cantidad_a_cobrar
+        # 3. Total General
+        val_general = total_aportes_monto + total_creditos_monto + val_admin + val_mora
         
-        ws[GASTOS_ADMIN_CELL_COMBINADO] = format_miles_colombian_int(gastos_admin) 
-        
-        total_general = total_aportes_monto + total_pagos_credito_monto_total + gastos_admin
-        ws[TOTAL_GENERAL_CELL_COMBINADO] = format_miles_colombian_int(total_general) 
+        # CORRECCIÓN AQUÍ: Usamos COL_RESUMEN_VALORES en lugar de la variable antigua
+        ws[f'{COL_RESUMEN_VALORES}{row_general}'] = format_miles_colombian_int(val_general) 
     
-        # --- Guardar el recibo ---
+        # --- Guardar ---
         wb.save(output_path)
         return output_path
 
     except Exception as e:
-        print(f"Error al generar recibo combinado: {e}")
+        print(f"Error al generar recibo combinado matricial: {e}")
         import traceback
         traceback.print_exc() 
         return None
