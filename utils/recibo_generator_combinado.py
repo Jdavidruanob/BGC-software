@@ -152,7 +152,7 @@ def generar_recibo_combinado(
             es_abono = isinstance(n_start, str) and "ABONO" in n_start
             
             if es_abono:
-                cuota_txt = "ABONO"
+                cuota_txt = "NA"
             else:
                 if letra_id not in cuotas_cache:
                     cuotas_cache[letra_id] = db_manager.get_total_cuotas_credito(letra_id)
