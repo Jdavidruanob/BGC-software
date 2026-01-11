@@ -298,20 +298,17 @@ class FormPagoCredito(QWidget):
                         # Consolidar para recibo
                         key_recibo = f"{letra_id}_cuotas"
                         if key_recibo not in pagos_consolidados_para_recibo:
-                            # Buscar saldo antes del pago (para recibo)
-                            first_nro = filas[0]['nro_cuota']
-                            saldo_ini = 0
-                            if first_nro == 1:
-                                saldo_ini = letra_selected['capital']
-                            else:
-                                prev = cursor.execute("SELECT saldo_capital FROM liquidaciones WHERE credito_letra=? AND nro_cuota=?", (letra_id, first_nro-1)).fetchone()
-                                saldo_ini = prev['saldo_capital'] if prev else 0
+                            
+                            # --- CORRECCIÓN: Usar get_deuda_capital_actual para el saldo inicial ---
+                            # Esto obtiene el saldo real actual, considerando abonos previos.
+                            saldo_ini = self.db.get_deuda_capital_actual(letra_id)
+                            # -----------------------------------------------------------------------
 
                             pagos_consolidados_para_recibo[key_recibo] = {
                                 'socio_data': socio_full,
                                 'letra_id': letra_id,
-                                'nro_cuotas_pagadas_start': first_nro,
-                                'nro_cuotas_pagadas_end': first_nro,
+                                'nro_cuotas_pagadas_start': filas[0]['nro_cuota'], # Primer nro de este lote
+                                'nro_cuotas_pagadas_end': filas[0]['nro_cuota'],
                                 'valor_capital_consolidado': 0,
                                 'interes_consolidado': 0,
                                 'saldo_capital_antes_pago': saldo_ini,
@@ -365,7 +362,7 @@ class FormPagoCredito(QWidget):
                                          f"El abono supera el saldo de capital actual (${format_miles_colombian_int(deuda_capital_real)}).")
                             return
 
-                        # 2. REGISTRO EN BD (CORREGIDO: Usamos 'pago_credito' para cumplir el CHECK)
+                        # 2. REGISTRO EN BD 
                         cursor.execute(
                             "INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) "
                             "VALUES (?, 'abono_capital', ?, ?, 0, ?)", # <--- 'abono_capital' y nro_cuota 0

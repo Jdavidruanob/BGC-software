@@ -1036,43 +1036,60 @@ class DBManager:
 
     def recalcular_tabla_amortizacion(self, letra_id, abono_capital_recien_registrado):
         """
-        Regenera la tabla de amortización tras un abono extra.
-        Calcula el saldo por diferencia (Capital - Pagos) y respeta las cuotas vencidas.
+        Regenera la tabla de amortización tras un abono extra y actualiza el total de cuotas.
         """
         try:
             cursor = self.conn.cursor()
             hoy = date.today().strftime("%Y-%m-%d")
 
             # 1. Obtener datos maestros
-            cursor.execute("SELECT capital, interes, fecha_inicio FROM creditos WHERE letra = ?", (letra_id,))
+            cursor.execute("SELECT capital, interes, no_cuotas, fecha_inicio FROM creditos WHERE letra = ?", (letra_id,))
             credito = cursor.fetchone()
             if not credito: return
             
             capital_original = credito['capital']
             tasa_interes = credito['interes']
+            no_cuotas_originales = credito['no_cuotas'] 
 
             # 2. Calcular Pagos Realizados
-            # A) Capital en cuotas normales
             cursor.execute("SELECT SUM(valor_cuota) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NOT NULL", (letra_id,))
             pagado_cuotas = cursor.fetchone()[0] or 0
 
-            # B) Abonos Extra (Buscamos 'abono_capital')
             cursor.execute("""
                 SELECT SUM(monto) FROM detalle_recibo 
-                WHERE credito_letra = ? AND tipo_operacion = 'abono_capital'
+                WHERE credito_letra = ? AND (
+                    (tipo_operacion = 'pago_credito' AND nro_cuota = 0) OR 
+                    tipo_operacion = 'abono_capital'
+                )
             """, (letra_id,))
             pagado_abonos = cursor.fetchone()[0] or 0
 
             # Saldo Real Nuevo
             saldo_real_nuevo = capital_original - pagado_cuotas - pagado_abonos
 
-            # Si ya pagó todo
+            # CASO A: Si ya pagó todo
             if saldo_real_nuevo <= 0:
                 cursor.execute("DELETE FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL", (letra_id,))
+                
+                # --- ACTUALIZAR CUOTAS (Se redujo el plazo) ---
+                cursor.execute("SELECT MAX(nro_cuota) FROM liquidaciones WHERE credito_letra = ?", (letra_id,))
+                ultima_cuota = cursor.fetchone()[0] or 0
+                self.update_credit_installments(letra_id, ultima_cuota)
+                # ---------------------------------------------
+
                 self.conn.commit()
                 return
 
-            # 3. Respetar Vencidas (El Pasado)
+            # --- LEER AMORTIZACIÓN ANTES DE BORRAR ---
+            cursor.execute("SELECT valor_cuota FROM liquidaciones WHERE credito_letra = ? AND nro_cuota = 1", (letra_id,))
+            row_base = cursor.fetchone()
+            
+            if row_base:
+                amortizacion_fija = row_base['valor_cuota']
+            else:
+                amortizacion_fija = capital_original // no_cuotas_originales
+
+            # 3. Respetar Vencidas
             cursor.execute("""
                 SELECT id, valor_cuota FROM liquidaciones 
                 WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento < ?
@@ -1090,16 +1107,15 @@ class DBManager:
             """, (letra_id, hoy))
 
             if capital_para_futuro == 0:
+                # --- ACTUALIZAR CUOTAS SI QUEDÓ EN 0 ---
+                cursor.execute("SELECT MAX(nro_cuota) FROM liquidaciones WHERE credito_letra = ?", (letra_id,))
+                ultima_cuota = cursor.fetchone()[0] or 0
+                self.update_credit_installments(letra_id, ultima_cuota)
+                # ---------------------------------------
                 self.conn.commit()
                 return
 
             # 5. Regenerar Proyección
-            # Cuota Base
-            cursor.execute("SELECT valor_cuota FROM liquidaciones WHERE credito_letra = ? AND nro_cuota = 1", (letra_id,))
-            row_base = cursor.fetchone()
-            amortizacion_fija = row_base['valor_cuota'] if row_base else (capital_original // 10)
-
-            # Fecha de arranque
             cursor.execute("SELECT nro_cuota, fecha_vencimiento FROM liquidaciones WHERE credito_letra = ? ORDER BY nro_cuota DESC LIMIT 1", (letra_id,))
             ultimo_reg = cursor.fetchone()
             
@@ -1129,9 +1145,29 @@ class DBManager:
                 VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)
             """, nuevas_cuotas)
 
+            # --- CASO B: ACTUALIZAR CUOTAS TRAS REGENERAR ---
+            # Buscamos cuál es la nueva última cuota registrada
+            cursor.execute("SELECT MAX(nro_cuota) FROM liquidaciones WHERE credito_letra = ?", (letra_id,))
+            nueva_ultima_cuota = cursor.fetchone()[0]
+            if nueva_ultima_cuota:
+                self.update_credit_installments(letra_id, nueva_ultima_cuota)
+            # ------------------------------------------------
+
             self.conn.commit()
-            print("✅ Tabla recalculada correctamente.")
+            print("✅ Tabla recalculada y cuotas actualizadas correctamente.")
 
         except Exception as e:
             print(f"❌ Error recalculando tabla: {e}")
             self.conn.rollback()
+
+    def update_credit_installments(self, letra_id, new_total_cuotas):
+        """Actualiza el número total de cuotas en la cabecera del crédito."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("UPDATE creditos SET no_cuotas = ? WHERE letra = ?", (new_total_cuotas, letra_id))
+            # No hacemos commit aquí para que sea parte de la transacción principal si se llama desde ahí.
+            print(f"ℹ️ Crédito {letra_id} actualizado a {new_total_cuotas} cuotas.")
+            return True
+        except Exception as e:
+            print(f"❌ Error actualizando número de cuotas: {e}")
+            return False

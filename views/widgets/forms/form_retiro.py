@@ -241,7 +241,7 @@ class FormRetiro(QWidget):
                 fecha=fecha_actual,
                 tipo="Retiro",
                 socio=nombre_completo_socio,
-                numero=recibo_id,
+                recibo=recibo_id,
                 monto=-monto,
                 saldo=nuevo_saldo_caja
             )
