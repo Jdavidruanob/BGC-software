@@ -318,10 +318,8 @@ class FormCombinado(QWidget):
         # 1. RECOPILAR APORTES (Con lógica de Checkbox Papelería)
         # ---------------------------------------------------------------------
         aportes_para_db_y_recibo = [] 
-        count_cobrables = 0 # <--- Contador para administración (Checkboxes marcados)
+        count_cobrables = 0 # <--- Contador para administración
         
-        # OJO: Aquí asumimos que ya actualizaste agregar_aporte para guardar 4 cosas
-        # (combo, input, check, wrapper)
         for combo, monto_input, chk_papeleria, _ in self.aportes_widgets:
             socio_selected = combo.currentData()
             if not socio_selected:
@@ -346,7 +344,6 @@ class FormCombinado(QWidget):
                 show_error(self, "", f"No se encontraron datos completos para el socio ID: {socio_selected['id']}")
                 return
             
-            # Obtener saldo actual DB
             current_socio_db_saldo = self.db.get_member_balance(socio_selected['id']) 
 
             aportes_para_db_y_recibo.append({
@@ -375,16 +372,15 @@ class FormCombinado(QWidget):
             if wrapper_widget:
                 combo = wrapper_widget.findChild(NoScrollComboBox, "ComboSocioPago")
                 
-                # Buscar el layout de letras (asumiendo estructura: layout -> [row_socio, layout_letras])
+                # Buscar el layout de letras
                 wrapper_layout = wrapper_widget.layout()
                 letras_container = None
                 if wrapper_layout and wrapper_layout.count() > 1:
                     item = wrapper_layout.itemAt(1)
-                    if item.layout(): # Verificar si es un layout
-                        letras_container = item.layout() # Puede ser el layout directamente
-                    elif item.widget(): # O un widget que contiene el layout
+                    if item.layout():
+                        letras_container = item.layout()
+                    elif item.widget():
                          letras_container = item.widget().layout()
-                    # Fallback simple: si es QVBoxLayout directo
                     if isinstance(item, QVBoxLayout): letras_container = item
 
                 if combo and letras_container:
@@ -450,15 +446,7 @@ class FormCombinado(QWidget):
                         return
                     
                     # Saldo inicial para recibo
-                    saldo_antes = 0
-                    if cuotas_db[0]['nro_cuota'] == 1:
-                        cred_data = self.db.get_credit_by_letra(letra_id) 
-                        if cred_data: saldo_antes = cred_data['capital']
-                    else:
-                        cursor_temp.execute("SELECT saldo_capital FROM liquidaciones WHERE credito_letra=? AND nro_cuota=?", (letra_id, cuotas_db[0]['nro_cuota'] - 1))
-                        res = cursor_temp.fetchone()
-                        saldo_antes = res['saldo_capital'] if res else 0 
-
+                    saldo_antes = self.db.get_deuda_capital_actual(letra_id)
                     # Consolidar
                     if letra_id not in pagos_consolidados_para_recibo:
                         pagos_consolidados_para_recibo[letra_id] = {
@@ -480,31 +468,41 @@ class FormCombinado(QWidget):
 
                 # --- B) ABONO CAPITAL ---
                 if valor_abono > 0:
+                    # 1. Validar saldo real actual
                     deuda_real = self.db.get_deuda_capital_actual(letra_id)
                     
                     if valor_abono > deuda_real:
-                        show_error(self, "Error", f"El abono de ${format_miles_colombian_int(valor_abono)} supera el saldo (${format_miles_colombian_int(deuda_real)}).")
+                        show_error(self, "Monto Inválido", 
+                                 f"El abono de ${format_miles_colombian_int(valor_abono)} para la letra {letra_id} supera el saldo capital actual (${format_miles_colombian_int(deuda_real)}).")
                         return
 
-                    # Ajuste visual recibo si hubo cuotas antes
+                    # 2. Lógica Visual para el Recibo (Excel)
                     key_abono = f"{letra_id}_abono"
                     saldo_final = deuda_real - valor_abono
+                    
+                    # Si en este mismo recibo también pagó cuotas normales de esa letra,
+                    # debemos restar ese capital primero para que el recibo tenga sentido visual.
                     if letra_id in pagos_consolidados_para_recibo:
-                        # Restamos el capital que se pagará en las cuotas normales de arriba
                         cap_cuotas = pagos_consolidados_para_recibo[letra_id]['valor_capital_consolidado']
                         saldo_final = (deuda_real - cap_cuotas) - valor_abono
 
                     pagos_consolidados_para_recibo[key_abono] = {
-                        'socio_data': socio_data_full, 'letra_id': letra_id,
-                        'nro_cuotas_pagadas_start': "ABONO", 'nro_cuotas_pagadas_end': "CAPITAL",
-                        'valor_capital_consolidado': valor_abono, 'interes_consolidado': 0,
+                        'socio_data': socio_data_full, 
+                        'letra_id': letra_id,
+                        'nro_cuotas_pagadas_start': "ABONO", 
+                        'nro_cuotas_pagadas_end': "CAPITAL",
+                        'valor_capital_consolidado': valor_abono, 
+                        'interes_consolidado': 0,
                         'saldo_capital_antes_pago': int(deuda_real),
                         'saldo_capital_despues_pago': int(max(0, saldo_final))
                     }
 
+                    # 3. Guardar en lista para procesar en Base de Datos al final
                     abonos_para_db.append({
-                        'socio_id': socio_selected['id'], 'letra_id': letra_id,
-                        'monto': valor_abono, 'socio_name': f"{socio_data_full['nombres']} {socio_data_full['apellidos']}"
+                        'socio_id': socio_selected['id'], 
+                        'letra_id': letra_id,
+                        'monto': valor_abono, 
+                        'socio_name': f"{socio_data_full['nombres']} {socio_data_full['apellidos']}"
                     })
 
         pagos_consolidados_lista = list(pagos_consolidados_para_recibo.values())
@@ -562,25 +560,47 @@ class FormCombinado(QWidget):
                     if self.assistant_page:
                         self.assistant_page.add_operation({"fecha": fecha_actual, "tipo": "Pago Credito", "socio": n_socio, "recibo": recibo_id, "cuota": f['nro_cuota'], "monto": monto_tot, "saldo": saldo_caja, "id_credito": letra_id})
 
-            # --- C. ABONOS ---
+            # --- C. ABONOS A CAPITAL (Ejecución Real) ---
             for ab in abonos_para_db:
-                # Insertar con nro_cuota 0 y tipo pago_credito (para cumplir constraints)
-                cursor.execute("INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) VALUES (?, 'pago_credito', ?, ?, 0, ?)",
-                               (recibo_id, ab['socio_id'], ab['letra_id'], ab['monto']))
+                # 1. Insertar en detalle_recibo
+                # IMPORTANTE: Usamos 'abono_capital' y nro_cuota=0 para que el DB Manager lo encuentre
+                cursor.execute("""
+                    INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) 
+                    VALUES (?, 'abono_capital', ?, ?, 0, ?)
+                """, (recibo_id, ab['socio_id'], ab['letra_id'], ab['monto']))
                 
                 saldo_caja += ab['monto']
-                # Recalcular usando lógica centralizada
+
+                # 2. Recalcular la Tabla de Amortización (Liquidaciones)
+                # Al hacer esto DESPUÉS del insert, la función sumará el abono nuevo + los anteriores correctamente
                 self.db.recalcular_tabla_amortizacion(ab['letra_id'], ab['monto'])
 
-                self.db.add_to_auxiliar(fecha_actual, "Abono Capital", ab['socio_name'], ab['monto'], saldo_caja, recibo=recibo_id, cuota=0, id_credito=ab['letra_id'])
+                # 3. Registrar en Auxiliar
+                self.db.add_to_auxiliar(
+                    fecha=fecha_actual,
+                    tipo="Abono Capital",
+                    socio=ab['socio_name'],
+                    recibo=recibo_id,
+                    id_credito=ab['letra_id'],
+                    monto=ab['monto'],
+                    saldo=saldo_caja,
+                    cuota=0
+                )
                 
                 if self.assistant_page:
-                    self.assistant_page.add_operation({"fecha": fecha_actual, "tipo": "Abono Capital", "socio": ab['socio_name'], "recibo": recibo_id, "monto": ab['monto'], "saldo": saldo_caja, "id_credito": ab['letra_id']})
+                    self.assistant_page.add_operation({
+                        "fecha": fecha_actual, 
+                        "tipo": "Abono Capital", 
+                        "socio": ab['socio_name'], 
+                        "recibo": recibo_id, 
+                        "monto": ab['monto'], 
+                        "saldo": saldo_caja, 
+                        "id_credito": ab['letra_id']
+                    })
 
             # --- FINALIZAR ---
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
             
-            # CALCULO DE GASTOS (Usando el contador del inicio)
             gastos_admin_nuevos = 3000 * count_cobrables
             self.db.set_config_value("total_admin", str(saldo_admin + gastos_admin_nuevos))
             
@@ -592,7 +612,6 @@ class FormCombinado(QWidget):
                 recibi_de_data=recibi, 
                 aportes_info=aportes_para_db_y_recibo, 
                 pagos_credito_info=pagos_consolidados_lista,
-                # OJO: Si generar_recibo_combinado acepta el parámetro num_aportes_cobrables, pásalo aquí:
                 num_aportes_cobrables=count_cobrables
             )
             
