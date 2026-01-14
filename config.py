@@ -4,9 +4,27 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 import os
 import sys # <-- Importa sys
+from datetime import date
 
 
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
+
+# --- MÁQUINA DEL TIEMPO ---
+# Cambia a True para viajar en el tiempo, False para usar la fecha real
+MODO_VIAJE_TIEMPO = True 
+FECHA_FUTURA = date(2026, 9, 13) # <-- CONFIGURA AQUÍ TU FECHA DESTINO
+
+def obtener_hoy():
+    if MODO_VIAJE_TIEMPO:
+        return FECHA_FUTURA
+    return date.today()
+
+# --- CONSTANTES GLOBALES DE FECHA ---
+# Úsalas en todo tu programa en lugar de date.today()
+
+HOY = obtener_hoy()                  # Objeto date (Para cálculos, sumas, restas)
+HOY_STR = HOY.strftime("%Y-%m-%d")   # Texto "YYYY-MM-DD" (Para guardar en DB, comparar con textos, Imprimir)
+
 
 # 1. Base para archivos empaquetados (Assets, Styles)
 if getattr(sys, 'frozen', False):

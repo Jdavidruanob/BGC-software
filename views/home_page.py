@@ -12,7 +12,7 @@ from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
 from views.widgets.edit_admin_dialog import EditAdminDialog 
-
+from config import HOY, HOY_STR 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
 
 
@@ -308,8 +308,8 @@ class HomePage(QWidget):
             
             # 2. Registrar en Auxiliar
             # Nota: 'motivo' se guarda en la columna 'tipo' para que salga con color café (custom)
-            fecha_actual = date.today().strftime("%Y-%m-%d")
-            
+            fecha_actual = HOY_STR
+
             self.db_manager.add_to_auxiliar(
                 fecha=fecha_actual,
                 tipo=motivo,           # El motivo será el "Tipo" (se verá Café si no es estándar)

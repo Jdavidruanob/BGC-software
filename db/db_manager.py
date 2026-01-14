@@ -1171,3 +1171,28 @@ class DBManager:
         except Exception as e:
             print(f"❌ Error actualizando número de cuotas: {e}")
             return False
+        
+    def get_config_value(self, key):
+        """Devuelve el valor crudo (string) de la configuración."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT value FROM config WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            return row["value"] if row else None
+        except Exception:
+            return None
+        
+    def get_pending_installments(self, letra_id):
+        """Obtiene todas las cuotas pendientes de una letra ordenadas por antigüedad."""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital 
+                FROM liquidaciones 
+                WHERE credito_letra = ? AND fecha_pago IS NULL 
+                ORDER BY nro_cuota ASC
+            """, (letra_id,))
+            return cursor.fetchall() # Retorna lista de filas (diccionarios si usas Row factory)
+        except Exception as e:
+            print(f"❌ Error obteniendo cuotas pendientes: {e}")
+            return []
