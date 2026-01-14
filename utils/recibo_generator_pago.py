@@ -42,7 +42,7 @@ def generar_recibo_solo_pagos(
 ):
     """
     Genera un recibo de pagos de crédito seleccionando la plantilla exacta (1 a 6).
-    Incluye lógica para fila de 'Interés por Mora' en 0.
+    Incluye lógica para fila de 'Interés por Mora'.
     """
     if pagos_credito_info is None:
         pagos_credito_info = []
@@ -88,6 +88,7 @@ def generar_recibo_solo_pagos(
 
         # --- CUERPO (Llenar filas exactas) ---
         total_acumulado_capital_interes = 0
+        total_mora_recibo = 0 # Variable para acumular la mora de todas las filas
         
         # Cache para almacenar el número total de cuotas por letra
         cuotas_info_cache = {}
@@ -100,6 +101,10 @@ def generar_recibo_solo_pagos(
             letra_id = detalle_consolidado['letra_id']
             nro_cuotas_start = detalle_consolidado['nro_cuotas_pagadas_start']
             nro_cuotas_end = detalle_consolidado['nro_cuotas_pagadas_end']
+
+            # Acumular Mora (Si existe en el diccionario)
+            mora_fila = detalle_consolidado.get('mora_consolidada', 0)
+            total_mora_recibo += mora_fila
 
             formatted_socio_name = format_full_name_for_excel(
                 socio_data['nombres'], 
@@ -156,12 +161,11 @@ def generar_recibo_solo_pagos(
         val_admin = 0
         ws[f'{COL_RESUMEN_VALORES}{row_gastos_admin}'] = format_miles_colombian_int(val_admin)
         
-        # 3. Interés por Mora (NUEVO - 0 por defecto)
-        val_mora = 0 
-        ws[f'{COL_RESUMEN_VALORES}{row_mora}'] = format_miles_colombian_int(val_mora)
+        # 3. Interés por Mora (VALOR CALCULADO)
+        ws[f'{COL_RESUMEN_VALORES}{row_mora}'] = format_miles_colombian_int(total_mora_recibo)
 
         # 4. Total General
-        total_general = total_acumulado_capital_interes + val_admin + val_mora
+        total_general = total_acumulado_capital_interes + val_admin + total_mora_recibo
         ws[f'{COL_RESUMEN_VALORES}{row_total_general}'] = format_miles_colombian_int(total_general)
 
         # --- Guardar ---

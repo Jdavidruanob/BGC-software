@@ -11,6 +11,7 @@ from datetime import date
 # IMPORTAR AHORA DESDE EL NUEVO ARCHIVO ESPECÍFICO DE RECIBO COMBINADO
 from utils.recibo_generator_combinado import generar_recibo_combinado
 import traceback # Para ver errores completos en la consola
+from config import HOY, HOY_STR 
 
 MAX_APORTE_ROWS_IN_TEMPLATE = 6
 MAX_CREDITO_ROWS_IN_TEMPLATE= 6
@@ -522,7 +523,7 @@ class FormCombinado(QWidget):
             cursor = self.db.conn.cursor()
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
-            fecha_actual = date.today().strftime("%Y-%m-%d")
+            fecha_actual = HOY_STR
 
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
             saldo_admin = self.db.get_config_value_as_int("total_admin")
