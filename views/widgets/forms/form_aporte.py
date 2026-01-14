@@ -206,9 +206,9 @@ class FormAporte(QWidget):
             show_warning(self, "", "Debes agregar al menos un aporte.")
             return
         
-        # Validar si se excede el límite de 10 aportes para el template
-        if len(aportes_for_db) > 10:
-            show_warning(self, "", "No se pueden registrar más de 10 aportes en un solo recibo. Por favor, genere un segundo recibo si es necesario.")
+        # Validar si se excede el límite de 6 aportes para el template
+        if len(aportes_for_db) > 6:
+            show_warning(self, "", "El programa solo puede generar 6 aportes por recibo. Por favor, genere un segundo recibo si es necesario.")
             return
 
 
