@@ -11,8 +11,8 @@ from datetime import date
 
 # --- MÁQUINA DEL TIEMPO ---
 # Cambia a True para viajar en el tiempo, False para usar la fecha real
-MODO_VIAJE_TIEMPO = True 
-FECHA_FUTURA = date(2026, 9, 13) # <-- CONFIGURA AQUÍ TU FECHA DESTINO
+MODO_VIAJE_TIEMPO = False 
+FECHA_FUTURA = date(2026, 11, 14) # <-- CONFIGURA AQUÍ TU FECHA DESTINO
 
 def obtener_hoy():
     if MODO_VIAJE_TIEMPO:
