@@ -219,18 +219,19 @@ class FormPagoCredito(QWidget):
 
     def on_register(self):
         """
-        Registra pagos validando exclusividad y generando un reporte HTML detallado.
+        Registra pagos validando exclusividad.
+        Lógica Financiera Ajustada:
+        - Caja y Auxiliar: Solo registran Capital + Interés Corriente.
+        - Admin: Recibe la Mora.
         """
         recibi = self.combo_recibi_de.currentData()
         if not recibi:
             show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
             return
 
-        # Estructuras de datos
         pagos_consolidados_para_recibo = {}
-        reporte_global = {} # Diccionario: { "Nombre Socio": ["Acción 1", "Acción 2"] }
+        reporte_global = {} 
         
-        # Recolectar widgets activos
         current_pagos_widgets = []
         for i in range(self.pagos_container.count()):
             wrapper = self.pagos_container.itemAt(i).widget()
@@ -253,12 +254,18 @@ class FormPagoCredito(QWidget):
             tasa_mora_str = self.db.get_config_value("porcentaje_mora")
             tasa_mora = float(tasa_mora_str) if tasa_mora_str else 0.02
             
-            # Headers Recibo
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
+            
             fecha_actual = HOY_STR
             hoy_dt = HOY
+            
+            # Traemos saldos iniciales
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
+            total_admin = self.db.get_config_value_as_int("total_admin")
+            
+            # Acumuladores de la transacción
+            mora_total_transaccion = 0
 
             for combo, letras_container, _ in current_pagos_widgets:
                 socio_selected = combo.currentData()
@@ -271,7 +278,6 @@ class FormPagoCredito(QWidget):
                     letra_selected = w.findChild(NoScrollComboBox, "LetraCombo").currentData()
                     if not letra_selected: continue
 
-                    # Inputs
                     abono_text = w.findChild(QLineEdit, "AbonoInput").text()
                     cuotas_text = w.findChild(QLineEdit, "CuotasInput").text()
                     
@@ -283,16 +289,10 @@ class FormPagoCredito(QWidget):
 
                     letra_id = letra_selected['letra']
 
-                    # --- VALIDACIÓN DE EXCLUSIVIDAD ---
                     if dinero_abono > 0 and n_cuotas_manual > 0:
-                        show_error(self, "Campos Excluyentes", 
-                                   f"En el pago de {nombre_socio} (Letra {letra_id}):\n\n"
-                                   "No puede llenar 'Abono Capital' y '# Cuotas' al mismo tiempo.\n"
-                                   "• Use '# Cuotas' para pagar cuotas específicas.\n"
-                                   "• Use 'Abono Capital' para barrido automático o reducción de capital.")
-                        return # Detener todo
+                        show_error(self, "Campos Excluyentes", f"En el pago de {nombre_socio} (Letra {letra_id}) seleccione solo una opción.")
+                        return 
 
-                    # Preparar entrada recibo
                     key_recibo = f"{letra_id}_general"
                     if key_recibo not in pagos_consolidados_para_recibo:
                         saldo_ini = self.db.get_deuda_capital_actual(letra_id)
@@ -303,9 +303,7 @@ class FormPagoCredito(QWidget):
                             'saldo_capital_antes_pago': saldo_ini, 'saldo_capital_despues_pago': 0
                         }
                     
-                    # ==============================================================================
-                    # CASO A: PAGO POR NÚMERO DE CUOTAS
-                    # ==============================================================================
+                    # === CASO A: CUOTAS ===
                     if n_cuotas_manual > 0:
                         cursor.execute(
                             "SELECT nro_cuota, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_vencimiento "
@@ -313,113 +311,101 @@ class FormPagoCredito(QWidget):
                             "ORDER BY nro_cuota LIMIT ?", (letra_id, n_cuotas_manual)
                         )
                         filas = cursor.fetchall()
-                        
                         if len(filas) < n_cuotas_manual:
-                            show_error(self, "Error", f"No hay suficientes cuotas pendientes para pagar {n_cuotas_manual}.")
+                            show_error(self, "Error", f"No hay suficientes cuotas pendientes.")
                             return
 
                         cuotas_a_pagar = []
                         mensajes_accion = []
 
                         for fila in filas:
-                            mora_calculada = 0
-                            fecha_venc_dt = datetime.strptime(fila['fecha_vencimiento'], "%Y-%m-%d").date()
-                            fecha_limite_mora = fecha_venc_dt + relativedelta(months=+1)
+                            mora_val = 0
+                            f_venc = datetime.strptime(fila['fecha_vencimiento'], "%Y-%m-%d").date()
+                            f_limite = f_venc + relativedelta(months=+1)
                             
-                            info_mora = ""
-                            if hoy_dt > fecha_limite_mora:
-                                mora_calculada = int(fila['valor_cuota'] * tasa_mora)
-                                # Texto rojo para la mora
-                                info_mora = f" <span style='color:#d9534f'>(+Mora ${format_miles_colombian_int(mora_calculada)})</span>"
+                            # Info mensaje
+                            info_extra = ""
+                            costo_base = fila['valor_cuota'] + fila['interes_mes']
 
-                            costo_total = fila['valor_cuota'] + fila['interes_mes'] + mora_calculada
+                            if hoy_dt > f_limite:
+                                mora_val = int(fila['valor_cuota'] * tasa_mora)
+                                info_extra = f" <span style='color:#d9534f'>(+ Mora ${format_miles_colombian_int(mora_val)})</span>"
+
+                            costo_total = costo_base + mora_val
                             
                             cuotas_a_pagar.append({
-                                'nro': fila['nro_cuota'], 'monto': costo_total, 'mora': mora_calculada,
+                                'nro': fila['nro_cuota'], 'monto_total': costo_total, 'mora': mora_val,
+                                'monto_base': costo_base,
                                 'cap': fila['valor_cuota'], 'int': fila['interes_mes']
                             })
-                            # Mensaje formateado
-                            mensajes_accion.append(f"Cuota #{fila['nro_cuota']} (${format_miles_colombian_int(costo_total)}){info_mora}")
+                            # Mensaje corregido: Muestra el valor base de la cuota y aparte la mora
+                            mensajes_accion.append(f"Cuota #{fila['nro_cuota']} - ${format_miles_colombian_int(costo_base)}{info_extra}")
                         
                         ops_pendientes.append({
                             'tipo': 'CUOTAS_MANUAL',
                             'socio_data': socio_full, 'letra_id': letra_id,
-                            'items': cuotas_a_pagar,
-                            'mensajes': mensajes_accion
+                            'items': cuotas_a_pagar, 'mensajes': mensajes_accion
                         })
 
-                    # ==============================================================================
-                    # CASO B: ABONO (CASCADA AUTOMÁTICA)
-                    # ==============================================================================
+                    # === CASO B: ABONO ===
                     elif dinero_abono > 0:
                         pendientes = self.db.get_pending_installments(letra_id)
                         vencidas_a_pagar = [] 
                         
-                        # 1. Identificar Vencidas
                         for cuota in pendientes:
-                            fecha_venc_dt = datetime.strptime(cuota['fecha_vencimiento'], "%Y-%m-%d").date()
-                            if fecha_venc_dt < hoy_dt: 
+                            f_venc = datetime.strptime(cuota['fecha_vencimiento'], "%Y-%m-%d").date()
+                            if f_venc < hoy_dt: 
                                 cap = cuota['valor_cuota']
                                 ints = cuota['interes_mes']
                                 m_calc = 0
-                                fecha_limite = fecha_venc_dt + relativedelta(months=+1)
-                                if hoy_dt > fecha_limite:
+                                f_limite = f_venc + relativedelta(months=+1)
+                                if hoy_dt > f_limite:
                                     m_calc = int(cap * tasa_mora)
                                 
                                 total_row = cap + ints + m_calc
                                 vencidas_a_pagar.append({
-                                    'data': cuota, 'costo': total_row, 'mora': m_calc
+                                    'data': cuota, 
+                                    'costo_total': total_row, 
+                                    'monto_base': cap + ints, # Lo que va al auxiliar
+                                    'mora': m_calc
                                 })
                             else:
                                 break
                         
-                        # 2. Validación Estricta
                         temp_dinero = dinero_abono
                         pagables_count = 0
                         costo_acumulado = 0
                         
                         for v in vencidas_a_pagar:
-                            if temp_dinero >= v['costo']:
-                                temp_dinero -= v['costo']
-                                costo_acumulado += v['costo']
+                            if temp_dinero >= v['costo_total']:
+                                temp_dinero -= v['costo_total']
+                                costo_acumulado += v['costo_total']
                                 pagables_count += 1
                             else:
                                 if pagables_count == 0:
-                                    show_error(self, "Abono Insuficiente", 
-                                        f"El dinero (${format_miles_colombian_int(dinero_abono)}) no cubre la primera cuota vencida "
-                                        f"#{v['data']['nro_cuota']} (${format_miles_colombian_int(v['costo'])}).\n\n"
-                                        "Operación rechazada.")
+                                    show_error(self, "Abono Insuficiente", "No cubre la primera cuota vencida.")
                                     return
                                 else:
-                                    show_warning(self, "Monto Incompleto", 
-                                        f"El abono paga {pagables_count} cuotas vencidas, pero sobra un remanente de "
-                                        f"${format_miles_colombian_int(temp_dinero)} que no cubre la siguiente.\n\n"
-                                        f"Ajuste el abono a ${format_miles_colombian_int(costo_acumulado)} o complete el valor.")
+                                    show_warning(self, "Monto Incompleto", "El abono deja una cuota vencida incompleta. Ajuste el monto.")
                                     return
 
-                        # 3. Calcular Remanente Capital
                         remanente_capital = 0
                         if temp_dinero > 0:
                             deuda_actual = self.db.get_deuda_capital_actual(letra_id)
-                            # Restamos el capital de las vencidas que vamos a pagar
-                            capital_vencidas_pagadas = sum([v['data']['valor_cuota'] for v in vencidas_a_pagar[:pagables_count]])
-                            deuda_futura_real = deuda_actual - capital_vencidas_pagadas
+                            cap_vencidas = sum([v['data']['valor_cuota'] for v in vencidas_a_pagar[:pagables_count]])
+                            deuda_futura = deuda_actual - cap_vencidas
                             
-                            if temp_dinero > deuda_futura_real:
-                                show_warning(self, "Exceso de Pago", 
-                                             f"El saldo restante es ${format_miles_colombian_int(deuda_futura_real)}. "
-                                             f"Se cobrará solo eso. Devuelva el excedente: ${format_miles_colombian_int(temp_dinero - deuda_futura_real)}.")
-                                temp_dinero = deuda_futura_real
-                            
+                            if temp_dinero > deuda_futura:
+                                show_warning(self, "Exceso", f"El saldo es menor. Se ajustará el pago a ${format_miles_colombian_int(deuda_futura)}.")
+                                temp_dinero = deuda_futura
                             remanente_capital = temp_dinero
 
-                        # Preparar mensajes de reporte
                         mensajes_accion = []
                         for i in range(pagables_count):
                             v = vencidas_a_pagar[i]
-                            info = f"Vencida #{v['data']['nro_cuota']} (${format_miles_colombian_int(v['costo'])})"
+                            info = f"Vencida #{v['data']['nro_cuota']} - ${format_miles_colombian_int(v['monto_base'])}"
                             if v['mora'] > 0: 
-                                info += f" <span style='color:#d9534f'>(+Mora ${format_miles_colombian_int(v['mora'])})</span>"
+                                info += f" <span style='color:#d9534f'>(+ Mora ${format_miles_colombian_int(v['mora'])})</span>"
                             mensajes_accion.append(info)
                         
                         if remanente_capital > 0:
@@ -429,8 +415,7 @@ class FormPagoCredito(QWidget):
                             'tipo': 'ABONO_CASCADA',
                             'socio_data': socio_full, 'letra_id': letra_id,
                             'vencidas': vencidas_a_pagar[:pagables_count],
-                            'capital_puro': remanente_capital,
-                            'mensajes': mensajes_accion
+                            'capital_puro': remanente_capital, 'mensajes': mensajes_accion
                         })
 
             # --- FASE 2: EJECUCIÓN ---
@@ -438,15 +423,12 @@ class FormPagoCredito(QWidget):
 
             cursor = self.db.conn.cursor()
             
-            # Recorrer operaciones validadas
             for op in ops_pendientes:
                 letra_id = op['letra_id']
                 socio_data = op['socio_data']
                 nombre_socio = f"{socio_data['nombres']} {socio_data['apellidos']}"
                 
-                # Agrupar mensajes para el reporte final
-                if nombre_socio not in reporte_global:
-                    reporte_global[nombre_socio] = []
+                if nombre_socio not in reporte_global: reporte_global[nombre_socio] = []
                 reporte_global[nombre_socio].extend(op['mensajes'])
 
                 key_recibo = f"{letra_id}_general"
@@ -458,10 +440,11 @@ class FormPagoCredito(QWidget):
                     dict_recibo['nro_cuotas_pagadas_end'] = items[-1]['nro']
                     
                     for it in items:
+                        # 1. Recibo: Registramos TODO (Base + Mora) para que cuadre el voucher
                         cursor.execute("""
                             INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto, abono_mora)
                             VALUES (?, 'pago_credito', ?, ?, ?, ?, ?)
-                        """, (recibo_id, socio_data['id'], letra_id, it['nro'], it['monto'], it['mora']))
+                        """, (recibo_id, socio_data['id'], letra_id, it['nro'], it['monto_total'], it['mora']))
                         
                         m_flag = 1 if it['mora'] > 0 else 0
                         cursor.execute("""
@@ -469,49 +452,58 @@ class FormPagoCredito(QWidget):
                             WHERE credito_letra=? AND nro_cuota=?
                         """, (it['mora'], m_flag, letra_id, it['nro']))
                         
-                        saldo_caja += it['monto']
+                        # --- DISTRIBUCIÓN DE DINEROS ---
+                        # Caja y Auxiliar: SOLO Monto Base (Capital + Interés)
+                        saldo_caja += it['monto_base']
+                        
+                        # Admin: Recibe la Mora
+                        mora_total_transaccion += it['mora']
+                        
                         dict_recibo['valor_capital_consolidado'] += it['cap']
                         dict_recibo['interes_consolidado'] += it['int']
                         dict_recibo['mora_consolidada'] += it['mora']
                         
+                        # Auxiliar: Registramos solo la cuota limpia
                         self.db.add_to_auxiliar(
                             fecha=fecha_actual, tipo="Pago Credito", socio=nombre_socio,
-                            monto=it['monto'], saldo=saldo_caja, recibo=recibo_id, cuota=it['nro'], id_credito=str(letra_id)
+                            monto=it['monto_base'], # SIN MORA
+                            saldo=saldo_caja, 
+                            recibo=recibo_id, cuota=it['nro'], id_credito=str(letra_id)
                         )
 
                 elif op['tipo'] == 'ABONO_CASCADA':
                     vencidas = op['vencidas']
                     capital_puro = op['capital_puro']
                     
-                    # Pagar Vencidas
                     for v in vencidas:
                         nro = v['data']['nro_cuota']
-                        costo = v['costo']
-                        mora = v['mora']
                         
                         cursor.execute("""
                             INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto, abono_mora)
                             VALUES (?, 'pago_credito', ?, ?, ?, ?, ?)
-                        """, (recibo_id, socio_data['id'], letra_id, nro, costo, mora))
+                        """, (recibo_id, socio_data['id'], letra_id, nro, v['costo_total'], v['mora']))
                         
-                        m_flag = 1 if mora > 0 else 0
+                        m_flag = 1 if v['mora'] > 0 else 0
                         cursor.execute("""
                             UPDATE liquidaciones SET fecha_pago = DATE('now'), interes_mora = ?, mora_aplicada = ? 
                             WHERE credito_letra=? AND nro_cuota=?
-                        """, (mora, m_flag, letra_id, nro))
+                        """, (v['mora'], m_flag, letra_id, nro))
                         
-                        saldo_caja += costo
+                        # Distribución
+                        saldo_caja += v['monto_base']
+                        mora_total_transaccion += v['mora']
                         
                         dict_recibo['valor_capital_consolidado'] += v['data']['valor_cuota']
                         dict_recibo['interes_consolidado'] += v['data']['interes_mes']
-                        dict_recibo['mora_consolidada'] += mora
+                        dict_recibo['mora_consolidada'] += v['mora']
                         
                         self.db.add_to_auxiliar(
                             fecha=fecha_actual, tipo="Pago Credito", socio=nombre_socio,
-                            monto=costo, saldo=saldo_caja, recibo=recibo_id, cuota=nro, id_credito=str(letra_id)
+                            monto=v['monto_base'], # SIN MORA
+                            saldo=saldo_caja, 
+                            recibo=recibo_id, cuota=nro, id_credito=str(letra_id)
                         )
 
-                    # Pagar Capital Puro
                     if capital_puro > 0:
                         cursor.execute("""
                             INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto)
@@ -520,7 +512,6 @@ class FormPagoCredito(QWidget):
                         
                         saldo_caja += capital_puro
                         self.db.recalcular_tabla_amortizacion(letra_id, capital_puro)
-                        
                         dict_recibo['valor_capital_consolidado'] += capital_puro
                         
                         self.db.add_to_auxiliar(
@@ -528,7 +519,6 @@ class FormPagoCredito(QWidget):
                             monto=capital_puro, saldo=saldo_caja, recibo=recibo_id, cuota=0, id_credito=str(letra_id)
                         )
 
-                    # Etiquetas Recibo Cascada
                     if vencidas:
                         dict_recibo['nro_cuotas_pagadas_start'] = vencidas[0]['data']['nro_cuota']
                         dict_recibo['nro_cuotas_pagadas_end'] = "ABONO" if capital_puro > 0 else vencidas[-1]['data']['nro_cuota']
@@ -536,29 +526,28 @@ class FormPagoCredito(QWidget):
                         dict_recibo['nro_cuotas_pagadas_start'] = "ABONO"
                         dict_recibo['nro_cuotas_pagadas_end'] = "CAPITAL"
 
-                # Saldo final visual (aproximado)
                 deuda_aprox = dict_recibo['saldo_capital_antes_pago'] - dict_recibo['valor_capital_consolidado']
                 dict_recibo['saldo_capital_despues_pago'] = max(0, int(deuda_aprox))
 
             # 3. Finalizar
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
+            
+            # --- MORA A ADMINISTRACIÓN ---
+            if mora_total_transaccion > 0:
+                self.db.set_config_value("total_admin", str(total_admin + mora_total_transaccion))
+            # -----------------------------
+
             self.db.conn.commit()
 
-            # --- CONSTRUCCIÓN DEL REPORTE FINAL (HTML) ---
             if reporte_global:
                 msg_final = ""
                 for nombre, acciones in reporte_global.items():
-                    # Nombre en Negrita
                     msg_final += f"<b>{nombre}</b><br>"
                     for accion in acciones:
-                        # Sangría y salto de línea HTML
                         msg_final += f"&nbsp;&nbsp;• {accion}<br>"
-                    msg_final += "<br>" # Espacio entre socios
-                
-                # Eliminamos el último <br> extra si se desea, o lo dejamos para espacio
+                    msg_final += "<br>"
                 show_info(self, "Resumen de Transacción", msg_final)
 
-            # Generar Excel
             recibo_path = generar_recibo_solo_pagos(
                 db_manager=self.db,
                 recibo_id=recibo_id,
@@ -567,7 +556,7 @@ class FormPagoCredito(QWidget):
             )
             
             if recibo_path:
-                show_success(self, "Pago Registrado", f"Transacción exitosa. Recibo #{recibo_id}", file_path=recibo_path)
+                show_success(self, "Pago Registrado", f"Recibo #{recibo_id} generado.", file_path=recibo_path)
                 self.operation_registered.emit()
             
             self.clear_form()
