@@ -1,4 +1,4 @@
-/* ESTILOS FORMULARIO COMBINADO */
+
 
 #formTitle {
     font-size: 22px;
@@ -69,100 +69,29 @@ QLineEdit {
 /* Botones de Eliminar (X) */
 #DeleteButton {
     background: transparent;
-    border: none;
+    border: 1px solid #e56161;
+    border-radius: 5px;
 }
 #DeleteButton:hover {
     background-color: #fef2f2;
-    border-radius: 4px;
 }
 
-/* Popup de QComboBox */
-QComboBox QAbstractItemView {
-    font-size: 16px;
-    spacing: 6px;
-    outline: none;
-}
-QComboBox QAbstractItemView::item {
-    min-height: 30px;
-    padding: 4px 8px;
+#DeleteLetraButton {
+  background: transparent;
+  border: 1px solid #e56161;
+  border-radius: 4px;
+
 }
 
-/* ESTILOS FORMULARIO COMBINADO */
+#DeletePagoButton {
+  background: transparent;
+  border: 1px solid #e56161;
+  border-radius: 4px;
 
-#formTitle {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 14px;
 }
 
-#FormLabel {
-    font-size: 16px;
-    font-weight: bold;
-}
-
-/* Combos y Entradas */
-QComboBox {
-    height: 40px;
-    font-size: 15px;
-    padding: 4px 8px;
-    border : 1px solid #d2d2d2;
-    border-radius: 4px;
-}
-
-QComboBox:hover {
-    background-color: #f1f5f9;
-}
-
-QLineEdit {
-    font-size: 15px;
-    padding: 4px 8px;
-    background-color: #f1f5f9;
-    color: #647790;
-    font-weight: bold;
-    border: 1px solid #d2d2d2;
-    border-radius: 4px;
-}
-
-/* Botones de Agregar (Texto azul con linea abajo) */
-#AddAporteButton, #AddPagoButton, #AddLetraButton {
-    font-size: 15px;
-    padding: 2px 4px;
-    min-height: 26px;
-    color: %(PRIMARY_COLOR)s;
-    font-weight: bold;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    border-bottom: 1px solid transparent;
-    background: transparent;
-}
-
-#AddAporteButton:hover, #AddPagoButton:hover, #AddLetraButton:hover {
-    border-bottom: 2px solid %(PRIMARY_COLOR)s;
-}
-
-/* Boton Principal Registrar */
-#RegisterButton {
-    font-size: 16px;
-    padding: 8px 20px;
-    background-color: %(PRIMARY_COLOR)s;
-    color: white;
-    border-radius: 6px;
-    font-weight: bold;
-    border: none;
-}
-
-#RegisterButton:hover {
-    background-color: #2a4a80;
-}
-
-/* Botones de Eliminar (X) */
-#DeleteButton {
-    background: transparent;
-    border: none;
-}
-#DeleteButton:hover {
-    background-color: #fef2f2;
-    border-radius: 4px;
+#DeleteLetraButton:hover, #DeletePagoButton:hover {
+  background-color: #fef2f2;
 }
 
 /* Popup de QComboBox */
@@ -181,13 +110,12 @@ QCheckBox#ChkPapeleria {
     border: none;
     spacing: 0px;
     padding: 0px;
-    min-height: 34px; 
 }
 
 /* Cajita sin marcar (Gris suave) */
 QCheckBox#ChkPapeleria::indicator {
-    width: 24px;
-    height: 24px;
+    width: 27px;
+    height: 27px;
     subcontrol-position: center;
     
     background-color: white;

@@ -41,14 +41,22 @@
     border-bottom: 2px solid %(PRIMARY_COLOR)s; /* línea underscore del color primario */
 }
 
-#DeleteLetraButton, #DeletePagoButton {
+#DeleteLetraButton {
   background: transparent;
-  border: none;
-  min-height: 30px;
+  border: 1px solid #e56161;
+  border-radius: 4px;
+
 }
+
+#DeletePagoButton {
+  background: transparent;
+  border: 1px solid #e56161;
+  border-radius: 4px;
+
+}
+
 #DeleteLetraButton:hover, #DeletePagoButton:hover {
   background-color: #fef2f2;
-  border-radius: 4px;
 }
 
 #RegisterButton {

@@ -34,11 +34,11 @@ CREDITO_INTERES_COL = 'J'
 CREDITO_N_SDOCAP_COL = 'K'
 COL_TOTAL_CREDITOS = 'H'
 
-# Totales Finales (Columna K para todos los valores del pie de página)
+# Totales Finales
 COL_RESUMEN_VALORES = 'K'
 
 GASTO_POR_APORTE = 3000
-MAX_FILAS_PERMITIDAS = 6 # Límite tanto para aportes como para pagos
+MAX_FILAS_PERMITIDAS = 6 
 
 def generar_recibo_combinado(
     db_manager, 
@@ -52,6 +52,7 @@ def generar_recibo_combinado(
     Genera un recibo combinado seleccionando la plantilla exacta según la matriz:
     recibo_template_combinado{X}_{Y}.xlsx
     Donde X = num_aportes, Y = num_pagos.
+    Incluye lógica de Mora.
     """
     if aportes_info is None: aportes_info = []
     if pagos_credito_info is None: pagos_credito_info = []
@@ -60,12 +61,9 @@ def generar_recibo_combinado(
     num_aportes = len(aportes_info)
     num_pagos = len(pagos_credito_info)
 
-    # Validaciones
     if num_aportes == 0 and num_pagos == 0:
-        print("Error: No hay movimientos para generar recibo.")
         return None
     
-    # Truncar si exceden el máximo (por seguridad, aunque el form ya valida)
     if num_aportes > MAX_FILAS_PERMITIDAS:
         aportes_info = aportes_info[:MAX_FILAS_PERMITIDAS]
         num_aportes = MAX_FILAS_PERMITIDAS
@@ -79,9 +77,7 @@ def generar_recibo_combinado(
         file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
-        # 2. SELECCIÓN DE PLANTILLA MATRICIAL
-        # Carpeta: assets/templates/recibo_template_combinado/
-        # Archivo: recibo_template_combinado{X}_{Y}.xlsx
+        # 2. SELECCIÓN DE PLANTILLA
         template_name = f"recibo_template_combinado{num_aportes}_{num_pagos}.xlsx"
         template_rel_path = os.path.join("templates", "recibo_template_combinado", template_name)
         template_abs_path = os.path.join(ASSETS_DIR, template_rel_path)
@@ -101,7 +97,7 @@ def generar_recibo_combinado(
         ws[RECIBI_DE_CELL].alignment = Alignment(horizontal='center') 
 
         # ==========================================
-        # 3. SECCIÓN APORTES (Siempre inicia fila 9)
+        # 3. SECCIÓN APORTES
         # ==========================================
         start_row_aportes = 9
         total_aportes_monto = 0 
@@ -114,23 +110,22 @@ def generar_recibo_combinado(
             nombre = format_full_name_for_excel(socio['nombres'], socio['apellidos'])
             
             ws[f'{APORTE_NOMBRE_COL}{row}'] = nombre
-            ws[f'{APORTE_SALDO_COL}{row}'] = format_miles_colombian_int(detalle['saldo_anterior_aporte']) 
+            ws[f'{APORTE_SALDO_COL}{row}'] = format_miles_colombian_int(detalle['saldo_anterior']) 
             ws[f'{APORTE_MONTO_COL}{row}'] = format_miles_colombian_int(detalle['monto'])
-            ws[f'{APORTE_NUEVO_SALDO_COL}{row}'] = format_miles_colombian_int(detalle['nuevo_saldo_aporte']) 
+            ws[f'{APORTE_NUEVO_SALDO_COL}{row}'] = format_miles_colombian_int(detalle['saldo_nuevo']) 
             
             total_aportes_monto += detalle['monto']
 
-        # Total Aportes (Justo después de los datos)
         row_total_aportes = start_row_aportes + num_aportes
         ws[f'{COL_TOTAL_APORTES}{row_total_aportes}'] = format_miles_colombian_int(total_aportes_monto)
 
         # ==========================================
-        # 4. SECCIÓN CRÉDITOS (Posición Dinámica)
+        # 4. SECCIÓN CRÉDITOS
         # ==========================================
-        # Lógica: Fila Total Aportes + 3 filas de espacio (headers créditos) = Inicio Datos Créditos
         start_row_creditos = row_total_aportes + 3
         
         total_creditos_monto = 0 
+        total_mora_recibo = 0 # Acumulador Mora
         cuotas_cache = {}
 
         for i in range(num_pagos):
@@ -141,6 +136,9 @@ def generar_recibo_combinado(
             letra_id = detalle['letra_id']
             nombre = format_full_name_for_excel(socio['nombres'], socio['apellidos'])
             
+            # Sumar mora al total
+            total_mora_recibo += detalle.get('mora_consolidada', 0)
+
             # Datos básicos
             ws[f'{CREDITO_NOMBRE_COL}{row}'] = nombre
             ws[f'{CREDITO_LETRA_COL}{row}'] = letra_id
@@ -152,7 +150,7 @@ def generar_recibo_combinado(
             es_abono = isinstance(n_start, str) and "ABONO" in n_start
             
             if es_abono:
-                cuota_txt = "NA"
+                cuota_txt = "ABONO"
             else:
                 if letra_id not in cuotas_cache:
                     cuotas_cache[letra_id] = db_manager.get_total_cuotas_credito(letra_id)
@@ -173,19 +171,12 @@ def generar_recibo_combinado(
             
             total_creditos_monto += (detalle['valor_capital_consolidado'] + detalle['interes_consolidado'])
 
-        # Total Créditos (Justo después de los datos)
         row_total_creditos = start_row_creditos + num_pagos
         ws[f'{COL_TOTAL_CREDITOS}{row_total_creditos}'] = format_miles_colombian_int(total_creditos_monto)
 
         # ==========================================
         # 5. PIE DE PÁGINA (Totales Finales)
         # ==========================================
-        # Estructura geométrica asumida:
-        # Fila Total Créditos
-        # + 2 filas -> Gastos Admin
-        # + 1 fila  -> Interés Mora (NUEVO)
-        # + 1 fila  -> Total General
-        
         row_admin = row_total_creditos + 2
         row_mora = row_admin + 1
         row_general = row_mora + 1
@@ -194,22 +185,19 @@ def generar_recibo_combinado(
         if num_aportes_cobrables is not None:
             cant_cobrar = num_aportes_cobrables
         else:
-            cant_cobrar = num_aportes # Fallback
+            cant_cobrar = num_aportes
             
         val_admin = GASTO_POR_APORTE * cant_cobrar
         ws[f'{COL_RESUMEN_VALORES}{row_admin}'] = format_miles_colombian_int(val_admin) 
         
-        # 2. Interés Mora (0 por ahora)
-        val_mora = 0
-        ws[f'{COL_RESUMEN_VALORES}{row_mora}'] = format_miles_colombian_int(val_mora)
+        # 2. Interés Mora
+        ws[f'{COL_RESUMEN_VALORES}{row_mora}'] = format_miles_colombian_int(total_mora_recibo)
 
         # 3. Total General
-        val_general = total_aportes_monto + total_creditos_monto + val_admin + val_mora
+        val_general = total_aportes_monto + total_creditos_monto + val_admin + total_mora_recibo
         
-        # CORRECCIÓN AQUÍ: Usamos COL_RESUMEN_VALORES en lugar de la variable antigua
         ws[f'{COL_RESUMEN_VALORES}{row_general}'] = format_miles_colombian_int(val_general) 
     
-        # --- Guardar ---
         wb.save(output_path)
         return output_path
 
