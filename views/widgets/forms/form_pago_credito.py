@@ -175,7 +175,7 @@ class FormPagoCredito(QWidget):
             btn_delete_letra.setObjectName("DeleteLetraButton")
             btn_delete_letra.setIcon(load_svg_icon("icons/x.svg"))
             btn_delete_letra.setIconSize(QSize(16,16))  
-            btn_delete_letra.setFixedSize(28,28)
+            btn_delete_letra.setFixedSize(25,25)
             btn_delete_letra.setToolTip("Eliminar esta letra")
             btn_delete_letra.clicked.connect(lambda: letra_row_widget.setParent(None))
 
@@ -195,7 +195,7 @@ class FormPagoCredito(QWidget):
         btn_delete_pago.setObjectName("DeletePagoButton")
         btn_delete_pago.setIcon(load_svg_icon("icons/x.svg"))
         btn_delete_pago.setIconSize(QSize(20,20))
-        btn_delete_pago.setFixedSize(30,30)
+        btn_delete_pago.setFixedSize(28,28)
         btn_delete_pago.setToolTip("Eliminar este pago")
 
         # Layout socio + acciones

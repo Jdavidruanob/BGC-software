@@ -133,7 +133,7 @@ class FormAporte(QWidget):
         btn_eliminar.setIcon(load_svg_icon("icons/x.svg"))
         btn_eliminar.setIconSize(QSize(20, 20))
         btn_eliminar.setToolTip("Eliminar aporte")
-        btn_eliminar.setFixedSize(30, 30)
+        btn_eliminar.setFixedSize(28, 28)
 
         row_widget = QWidget()
         row_layout = QHBoxLayout(row_widget)

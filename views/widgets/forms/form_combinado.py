@@ -7,7 +7,8 @@ from PySide6.QtCore import Qt, QSize, Signal
 from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from utils.message_boxes import show_success, show_error, show_warning, show_info
 import os
-from datetime import date
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 # IMPORTAR AHORA DESDE EL NUEVO ARCHIVO ESPECÍFICO DE RECIBO COMBINADO
 from utils.recibo_generator_combinado import generar_recibo_combinado
 import traceback # Para ver errores completos en la consola
@@ -157,7 +158,8 @@ class FormCombinado(QWidget):
         btn_eliminar = QPushButton("")
         btn_eliminar.setObjectName("DeleteButton")
         btn_eliminar.setIcon(load_svg_icon("icons/x.svg"))
-        btn_eliminar.setFixedSize(30, 30)
+        btn_eliminar.setIconSize(QSize(20, 20))
+        btn_eliminar.setFixedSize(28, 28)
 
         row_widget = QWidget()
         row_layout = QHBoxLayout(row_widget)
@@ -265,7 +267,7 @@ class FormCombinado(QWidget):
             btn_delete_letra.setObjectName("DeleteLetraButton")
             btn_delete_letra.setIcon(load_svg_icon("icons/x.svg"))
             btn_delete_letra.setIconSize(QSize(16,16))  
-            btn_delete_letra.setFixedSize(28,28)
+            btn_delete_letra.setFixedSize(25,25)
             btn_delete_letra.setToolTip("Eliminar esta letra")
             btn_delete_letra.clicked.connect(lambda: letra_row_widget.setParent(None))
 
@@ -285,7 +287,7 @@ class FormCombinado(QWidget):
         btn_delete_pago.setObjectName("DeletePagoButton")
         btn_delete_pago.setIcon(load_svg_icon("icons/x.svg"))
         btn_delete_pago.setIconSize(QSize(20,20))
-        btn_delete_pago.setFixedSize(30,30)
+        btn_delete_pago.setFixedSize(28,28)
         btn_delete_pago.setToolTip("Eliminar este pago")
 
         # Layout socio + acciones
@@ -310,323 +312,402 @@ class FormCombinado(QWidget):
 
 
     def on_register_combinado(self):
+        """
+        Registra una transacción mixta (Aportes + Créditos) aplicando validaciones estrictas
+        y lógica de cascada para los abonos a capital.
+        """
         recibi = self.combo_recibi_de.currentData()
         if not recibi:
             show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
             return
 
-        # ---------------------------------------------------------------------
-        # 1. RECOPILAR APORTES (Con lógica de Checkbox Papelería)
-        # ---------------------------------------------------------------------
-        aportes_para_db_y_recibo = [] 
-        count_cobrables = 0 # <--- Contador para administración
+        # --- ESTRUCTURAS DE DATOS ---
+        aportes_validos = []      # Lista de diccionarios con datos de aportes listos
+        ops_creditos_validos = [] # Lista de operaciones de crédito validadas
+        pagos_consolidados = {}   # Para el generador de recibos (Créditos)
+        reporte_global = {}       # { "Nombre Socio": ["Acción 1", "Acción 2"] }
         
-        for combo, monto_input, chk_papeleria, _ in self.aportes_widgets:
-            socio_selected = combo.currentData()
-            if not socio_selected:
-                show_error(self, "", "Seleccione un socio para cada aporte.")
-                return
-            
-            try:
+        count_cobrables_admin = 0 # Contador para papelería
+
+        # ==============================================================================
+        # FASE 1: RECOLECCIÓN Y VALIDACIÓN (SIN TOCAR DB)
+        # ==============================================================================
+        
+        try:
+            # 1.1 PROCESAR APORTES
+            for combo, monto_input, chk_papeleria, _ in self.aportes_widgets:
+                socio = combo.currentData()
+                if not socio:
+                    show_error(self, "", "Seleccione un socio para cada aporte.")
+                    return
+                
                 monto = parse_miles_colombian(monto_input.text())
                 if monto <= 0:
                     show_error(self, "", "El monto del aporte debe ser mayor a cero.")
                     return
-            except ValueError:
-                show_error(self, "", "Monto de aporte inválido.")
-                return
-            
-            # Verificar si paga administración
-            if chk_papeleria.isChecked():
-                count_cobrables += 1
-            
-            socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
-            if not socio_data_full:
-                show_error(self, "", f"No se encontraron datos completos para el socio ID: {socio_selected['id']}")
-                return
-            
-            current_socio_db_saldo = self.db.get_member_balance(socio_selected['id']) 
-
-            aportes_para_db_y_recibo.append({
-                'socio_id': socio_selected['id'],
-                'monto': monto,
-                'socio_data': socio_data_full, 
-                'saldo_anterior_aporte': current_socio_db_saldo,
-                'nuevo_saldo_aporte': current_socio_db_saldo + monto
-            })
-
-        if len(aportes_para_db_y_recibo) > MAX_APORTE_ROWS_IN_TEMPLATE:
-            show_warning(self, "", f"Se excede el límite de {MAX_APORTE_ROWS_IN_TEMPLATE} aportes por recibo combinado.")
-            return
-
-        # ---------------------------------------------------------------------
-        # 2. RECOPILAR PAGOS CRÉDITO Y ABONOS (Lógica centralizada)
-        # ---------------------------------------------------------------------
-        pagos_cuotas_para_db = [] 
-        abonos_para_db = [] 
-        pagos_consolidados_para_recibo = {} 
-
-        # Recolectar widgets dinámicamente
-        current_pagos_widgets = []
-        for i in range(self.pagos_container.count()):
-            wrapper_widget = self.pagos_container.itemAt(i).widget()
-            if wrapper_widget:
-                combo = wrapper_widget.findChild(NoScrollComboBox, "ComboSocioPago")
                 
-                # Buscar el layout de letras
-                wrapper_layout = wrapper_widget.layout()
-                letras_container = None
-                if wrapper_layout and wrapper_layout.count() > 1:
-                    item = wrapper_layout.itemAt(1)
-                    if item.layout():
-                        letras_container = item.layout()
-                    elif item.widget():
-                         letras_container = item.widget().layout()
-                    if isinstance(item, QVBoxLayout): letras_container = item
+                # Datos completos del socio
+                socio_full = next((s for s in self.socios_data if s["id"] == socio['id']), None)
+                saldo_actual = self.db.get_member_balance(socio['id'])
+                
+                if chk_papeleria.isChecked():
+                    count_cobrables_admin += 1
+                
+                # Guardar para ejecución
+                aportes_validos.append({
+                    'socio_data': socio_full,
+                    'monto': monto,
+                    'saldo_anterior': saldo_actual,
+                    'saldo_nuevo': saldo_actual + monto
+                })
+                
+                # Agregar al reporte
+                nombre = f"{socio_full['nombres']} {socio_full['apellidos']}"
+                if nombre not in reporte_global: reporte_global[nombre] = []
+                reporte_global[nombre].append(f"Aporte: <b>${format_miles_colombian_int(monto)}</b>")
 
-                if combo and letras_container:
-                    current_pagos_widgets.append((combo, letras_container, wrapper_widget))
-
-        # Iterar sobre socios pagadores
-        for combo_socio_pago, letras_container, _ in current_pagos_widgets:
-            socio_selected = combo_socio_pago.currentData()
-            if not socio_selected:
-                show_error(self, "", "Seleccione un socio para cada pago de crédito.")
+            if len(aportes_validos) > MAX_APORTE_ROWS_IN_TEMPLATE:
+                show_warning(self, "Límite Excedido", f"Máximo {MAX_APORTE_ROWS_IN_TEMPLATE} aportes por recibo.")
                 return
 
-            socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
-            
-            # Recolectar widgets de letras/abonos de este socio
-            letras_en_este_pago = []
-            for i in range(letras_container.count()):
-                letra_row_widget = letras_container.itemAt(i).widget()
-                if letra_row_widget:
-                    letra_combo = letra_row_widget.findChild(NoScrollComboBox, "LetraCombo")
-                    cuotas_input = letra_row_widget.findChild(QLineEdit, "CuotasInput")
-                    abono_input = letra_row_widget.findChild(QLineEdit, "AbonoInput")
-                    
-                    if letra_combo and cuotas_input:
-                        letras_en_este_pago.append((letra_combo, cuotas_input, abono_input, letra_row_widget))
+            # 1.2 PROCESAR CRÉDITOS (Con lógica Cascada)
+            # Recolectar widgets dinámicos
+            current_pagos_widgets = []
+            for i in range(self.pagos_container.count()):
+                wrapper = self.pagos_container.itemAt(i).widget()
+                if wrapper:
+                    combo = wrapper.findChild(NoScrollComboBox, "ComboSocioPago")
+                    wrapper_layout = wrapper.layout()
+                    if wrapper_layout.count() > 1:
+                        letras_container = wrapper_layout.itemAt(1)
+                        current_pagos_widgets.append((combo, letras_container, wrapper))
 
-            if not letras_en_este_pago:
-                show_warning(self, "", f"El socio {socio_selected['nombres']} no tiene cuotas seleccionadas.")
-                return
+            # Configuración Global
+            tasa_mora_str = self.db.get_config_value("porcentaje_mora")
+            tasa_mora = float(tasa_mora_str) if tasa_mora_str else 0.02
+            hoy_dt = HOY
 
-            for letra_combo, cuotas_input, abono_input, _ in letras_en_este_pago:
-                letra_selected = letra_combo.currentData()
-                if not letra_selected:
-                    show_error(self, "", "Seleccione una letra para cada cuota.")
+            for combo, letras_container, _ in current_pagos_widgets:
+                socio_selected = combo.currentData()
+                if not socio_selected: 
+                    show_error(self, "", "Seleccione un socio para cada pago de crédito.")
                     return
                 
-                letra_id = letra_selected['letra']
-                
-                # Valores Inputs
-                try:
-                    c_txt = cuotas_input.text()
-                    n_cuotas_input = int(c_txt) if c_txt else 0
-                except: n_cuotas_input = 0
-                
-                a_txt = abono_input.text() if abono_input else ""
-                valor_abono = parse_miles_colombian(a_txt) if a_txt else 0
+                socio_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
+                nombre_socio = f"{socio_full['nombres']} {socio_full['apellidos']}"
 
-                if n_cuotas_input <= 0 and valor_abono <= 0:
-                    continue 
-
-                # --- A) CUOTAS NORMALES ---
-                if n_cuotas_input > 0:
-                    cursor_temp = self.db.conn.cursor()
-                    cursor_temp.execute(
-                        "SELECT nro_cuota, valor_cuota, interes_mes, saldo_capital FROM liquidaciones "
-                        "WHERE credito_letra = ? AND fecha_pago IS NULL ORDER BY nro_cuota LIMIT ?", 
-                        (letra_id, n_cuotas_input)
-                    )
-                    cuotas_db = cursor_temp.fetchall() 
-
-                    if len(cuotas_db) < n_cuotas_input:
-                        show_error(self, "Error", f"No hay suficientes cuotas pendientes en letra {letra_id}.")
+                for i in range(letras_container.count()):
+                    w = letras_container.itemAt(i).widget()
+                    letra_selected = w.findChild(NoScrollComboBox, "LetraCombo").currentData()
+                    if not letra_selected: 
+                        show_error(self, "", "Seleccione una letra de crédito válida.")
                         return
+
+                    # Inputs
+                    abono_txt = w.findChild(QLineEdit, "AbonoInput").text()
+                    cuotas_txt = w.findChild(QLineEdit, "CuotasInput").text()
                     
-                    # Saldo inicial para recibo
-                    saldo_antes = self.db.get_deuda_capital_actual(letra_id)
-                    # Consolidar
-                    if letra_id not in pagos_consolidados_para_recibo:
-                        pagos_consolidados_para_recibo[letra_id] = {
-                            'socio_data': socio_data_full, 'letra_id': letra_id,
-                            'nro_cuotas_pagadas_start': cuotas_db[0]['nro_cuota'],
-                            'nro_cuotas_pagadas_end': 0, 'valor_capital_consolidado': 0,
-                            'interes_consolidado': 0, 'saldo_capital_antes_pago': saldo_antes,
-                            'saldo_capital_despues_pago': 0
+                    dinero_abono = parse_miles_colombian(abono_txt) if abono_txt else 0
+                    try: n_cuotas = int(cuotas_txt) if cuotas_txt else 0
+                    except: n_cuotas = 0
+
+                    if dinero_abono == 0 and n_cuotas == 0: continue
+
+                    letra_id = letra_selected['letra']
+
+                    # VALIDACIÓN EXCLUSIVIDAD
+                    if dinero_abono > 0 and n_cuotas > 0:
+                        show_error(self, "Campos Excluyentes", 
+                                   f"En el pago de {nombre_socio} (Letra {letra_id}):\n\n"
+                                   "No puede llenar 'Abono Capital' y '# Cuotas' al mismo tiempo.")
+                        return
+
+                    # Inicializar Consolidado para Excel
+                    if letra_id not in pagos_consolidados:
+                        saldo_ini = self.db.get_deuda_capital_actual(letra_id)
+                        pagos_consolidados[letra_id] = {
+                            'socio_data': socio_full, 'letra_id': letra_id,
+                            'nro_cuotas_pagadas_start': 0, 'nro_cuotas_pagadas_end': 0,
+                            'valor_capital_consolidado': 0, 'interes_consolidado': 0, 'mora_consolidada': 0,
+                            'saldo_capital_antes_pago': saldo_ini, 'saldo_capital_despues_pago': 0
                         }
-                    
-                    entry = pagos_consolidados_para_recibo[letra_id]
-                    for c in cuotas_db:
-                        entry['valor_capital_consolidado'] += c['valor_cuota']
-                        entry['interes_consolidado'] += c['interes_mes']
-                        entry['nro_cuotas_pagadas_end'] = c['nro_cuota']
-                        entry['saldo_capital_despues_pago'] = c['saldo_capital']
 
-                    pagos_cuotas_para_db.append((socio_selected['id'], letra_id, n_cuotas_input))
+                    # --- LÓGICA A: CUOTAS MANUALES ---
+                    if n_cuotas > 0:
+                        cursor = self.db.conn.cursor()
+                        cursor.execute(
+                            "SELECT nro_cuota, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_vencimiento "
+                            "FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL "
+                            "ORDER BY nro_cuota LIMIT ?", (letra_id, n_cuotas)
+                        )
+                        filas = cursor.fetchall()
+                        if len(filas) < n_cuotas:
+                            show_error(self, "Error", f"No hay suficientes cuotas pendientes en letra {letra_id}.")
+                            return
 
-                # --- B) ABONO CAPITAL ---
-                if valor_abono > 0:
-                    # 1. Validar saldo real actual
-                    deuda_real = self.db.get_deuda_capital_actual(letra_id)
-                    
-                    if valor_abono > deuda_real:
-                        show_error(self, "Monto Inválido", 
-                                 f"El abono de ${format_miles_colombian_int(valor_abono)} para la letra {letra_id} supera el saldo capital actual (${format_miles_colombian_int(deuda_real)}).")
-                        return
+                        cuotas_a_pagar = []
+                        msgs = []
+                        for fila in filas:
+                            mora_calc = 0
+                            f_venc = datetime.strptime(fila['fecha_vencimiento'], "%Y-%m-%d").date()
+                            f_limite = f_venc + relativedelta(months=+1)
+                            
+                            info_mora = ""
+                            if hoy_dt > f_limite:
+                                mora_calc = int(fila['valor_cuota'] * tasa_mora)
+                                info_mora = f" <span style='color:#d9534f'>(+Mora ${format_miles_colombian_int(mora_calc)})</span>"
+                            
+                            total = fila['valor_cuota'] + fila['interes_mes'] + mora_calc
+                            cuotas_a_pagar.append({
+                                'nro': fila['nro_cuota'], 'monto': total, 'mora': mora_calc,
+                                'cap': fila['valor_cuota'], 'int': fila['interes_mes']
+                            })
+                            msgs.append(f"Cuota #{fila['nro_cuota']} (${format_miles_colombian_int(total)}){info_mora}")
 
-                    # 2. Lógica Visual para el Recibo (Excel)
-                    key_abono = f"{letra_id}_abono"
-                    saldo_final = deuda_real - valor_abono
-                    
-                    # Si en este mismo recibo también pagó cuotas normales de esa letra,
-                    # debemos restar ese capital primero para que el recibo tenga sentido visual.
-                    if letra_id in pagos_consolidados_para_recibo:
-                        cap_cuotas = pagos_consolidados_para_recibo[letra_id]['valor_capital_consolidado']
-                        saldo_final = (deuda_real - cap_cuotas) - valor_abono
+                        ops_creditos_validos.append({
+                            'tipo': 'CUOTAS_MANUAL', 'letra_id': letra_id, 'items': cuotas_a_pagar,
+                            'socio_data': socio_full, 'mensajes': msgs
+                        })
 
-                    pagos_consolidados_para_recibo[key_abono] = {
-                        'socio_data': socio_data_full, 
-                        'letra_id': letra_id,
-                        'nro_cuotas_pagadas_start': "ABONO", 
-                        'nro_cuotas_pagadas_end': "CAPITAL",
-                        'valor_capital_consolidado': valor_abono, 
-                        'interes_consolidado': 0,
-                        'saldo_capital_antes_pago': int(deuda_real),
-                        'saldo_capital_despues_pago': int(max(0, saldo_final))
-                    }
+                    # --- LÓGICA B: ABONO CASCADA ---
+                    elif dinero_abono > 0:
+                        pendientes = self.db.get_pending_installments(letra_id)
+                        vencidas_a_pagar = []
+                        
+                        # 1. Identificar Vencidas
+                        for cuota in pendientes:
+                            f_venc = datetime.strptime(cuota['fecha_vencimiento'], "%Y-%m-%d").date()
+                            if f_venc < hoy_dt:
+                                cap = cuota['valor_cuota']
+                                ints = cuota['interes_mes']
+                                m_calc = 0
+                                f_limite = f_venc + relativedelta(months=+1)
+                                if hoy_dt > f_limite:
+                                    m_calc = int(cap * tasa_mora)
+                                
+                                total_row = cap + ints + m_calc
+                                vencidas_a_pagar.append({'data': cuota, 'costo': total_row, 'mora': m_calc})
+                            else:
+                                break
+                        
+                        # 2. Validar Suficiencia
+                        temp_dinero = dinero_abono
+                        pagables_count = 0
+                        costo_acum = 0
+                        
+                        for v in vencidas_a_pagar:
+                            if temp_dinero >= v['costo']:
+                                temp_dinero -= v['costo']
+                                costo_acum += v['costo']
+                                pagables_count += 1
+                            else:
+                                if pagables_count == 0:
+                                    show_error(self, "Abono Insuficiente", 
+                                        f"El dinero (${format_miles_colombian_int(dinero_abono)}) no cubre la primera cuota vencida "
+                                        f"#{v['data']['nro_cuota']} de la letra {letra_id} (${format_miles_colombian_int(v['costo'])}).")
+                                    return
+                                else:
+                                    show_warning(self, "Monto Incompleto", 
+                                        f"En la letra {letra_id}, el abono paga {pagables_count} vencidas, pero sobra un remanente de "
+                                        f"${format_miles_colombian_int(temp_dinero)} que no cubre la siguiente.\n"
+                                        f"Ajuste a ${format_miles_colombian_int(costo_acum)} o complete.")
+                                    return
 
-                    # 3. Guardar en lista para procesar en Base de Datos al final
-                    abonos_para_db.append({
-                        'socio_id': socio_selected['id'], 
-                        'letra_id': letra_id,
-                        'monto': valor_abono, 
-                        'socio_name': f"{socio_data_full['nombres']} {socio_data_full['apellidos']}"
-                    })
+                        # 3. Capital Puro
+                        rem_capital = 0
+                        if temp_dinero > 0:
+                            deuda_actual = self.db.get_deuda_capital_actual(letra_id)
+                            cap_vencidas = sum([v['data']['valor_cuota'] for v in vencidas_a_pagar[:pagables_count]])
+                            deuda_futura = deuda_actual - cap_vencidas
+                            
+                            if temp_dinero > deuda_futura:
+                                show_warning(self, "Exceso de Pago", 
+                                             f"En letra {letra_id}, el saldo capital restante es ${format_miles_colombian_int(deuda_futura)}. "
+                                             f"Se cobrará solo eso. Devuelva: ${format_miles_colombian_int(temp_dinero - deuda_futura)}.")
+                                temp_dinero = deuda_futura
+                            rem_capital = temp_dinero
 
-        pagos_consolidados_lista = list(pagos_consolidados_para_recibo.values())
+                        # Mensajes
+                        msgs = []
+                        for i in range(pagables_count):
+                            v = vencidas_a_pagar[i]
+                            info = f"Vencida #{v['data']['nro_cuota']} (${format_miles_colombian_int(v['costo'])})"
+                            if v['mora'] > 0: info += f" <span style='color:#d9534f'>(+Mora ${format_miles_colombian_int(v['mora'])})</span>"
+                            msgs.append(info)
+                        
+                        if rem_capital > 0:
+                            msgs.append(f"Abono Capital: <b>${format_miles_colombian_int(rem_capital)}</b>")
 
-        if not aportes_para_db_y_recibo and not pagos_consolidados_lista:
-            show_warning(self, "", "Agregue al menos un movimiento.")
-            return
+                        ops_creditos_validos.append({
+                            'tipo': 'ABONO_CASCADA', 'letra_id': letra_id, 'socio_data': socio_full,
+                            'vencidas': vencidas_a_pagar[:pagables_count], 'capital_puro': rem_capital,
+                            'mensajes': msgs
+                        })
 
-        if len(pagos_consolidados_lista) > MAX_CREDITO_ROWS_IN_TEMPLATE:
-            show_warning(self, "", "Excede límite de filas de crédito en recibo.")
-            return
+            if not aportes_validos and not ops_creditos_validos:
+                show_warning(self, "", "No hay operaciones válidas para registrar.")
+                return
 
-        # ---------------------------------------------------------------------
-        # 3. EJECUCIÓN EN BASE DE DATOS
-        # ---------------------------------------------------------------------
-        try:
+            # ==============================================================================
+            # FASE 2: EJECUCIÓN (ESCRITURA EN DB)
+            # ==============================================================================
+            
             cursor = self.db.conn.cursor()
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
-            fecha_actual = HOY_STR
-
-            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
-            saldo_admin = self.db.get_config_value_as_int("total_admin")
             
-            # --- A. APORTES ---
-            for ap in aportes_para_db_y_recibo:
-                cursor.execute("INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto) VALUES (?, 'aporte', ?, ?)", 
-                               (recibo_id, ap['socio_id'], ap['monto']))
-                cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (ap['monto'], ap['socio_id']))
+            fecha_str = HOY_STR
+            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
+            total_admin = self.db.get_config_value_as_int("total_admin")
+
+            # 2.1 Ejecutar Aportes
+            for ap in aportes_validos:
+                cursor.execute("""
+                    INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto) 
+                    VALUES (?, 'aporte', ?, ?)
+                """, (recibo_id, ap['socio_data']['id'], ap['monto']))
+                
+                cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (ap['monto'], ap['socio_data']['id']))
                 saldo_caja += ap['monto']
                 
-                n_socio = f"{ap['socio_data']['nombres']} {ap['socio_data']['apellidos']}"
-                self.db.add_to_auxiliar(fecha_actual, "Aporte", n_socio, ap['monto'], saldo_caja, recibo=recibo_id)
-                
-                if self.assistant_page:
-                    self.assistant_page.add_operation({"fecha": fecha_actual, "tipo": "Aporte", "socio": n_socio, "recibo": recibo_id, "monto": ap['monto'], "saldo": saldo_caja})
-
-            # --- B. CUOTAS ---
-            for socio_id, letra_id, n_c in pagos_cuotas_para_db:
-                cursor.execute("SELECT nro_cuota, valor_cuota, interes_mes FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL ORDER BY nro_cuota LIMIT ?", (letra_id, n_c))
-                filas = cursor.fetchall()
-                for f in filas:
-                    monto_tot = f['valor_cuota'] + f['interes_mes']
-                    cursor.execute("INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) VALUES (?, 'pago_credito', ?, ?, ?, ?)",
-                                   (recibo_id, socio_id, letra_id, f['nro_cuota'], monto_tot))
-                    cursor.execute("UPDATE liquidaciones SET fecha_pago = DATE('now') WHERE credito_letra = ? AND nro_cuota = ?", (letra_id, f['nro_cuota']))
-                    
-                    saldo_caja += monto_tot
-                    
-                    s_inf = next((s for s in self.socios_data if s["id"] == socio_id), None)
-                    n_socio = f"{s_inf['nombres']} {s_inf['apellidos']}" if s_inf else "Socio"
-                    
-                    self.db.add_to_auxiliar(fecha_actual, "Pago Credito", n_socio, monto_tot, saldo_caja, recibo=recibo_id, cuota=f['nro_cuota'], id_credito=letra_id)
-                    
-                    if self.assistant_page:
-                        self.assistant_page.add_operation({"fecha": fecha_actual, "tipo": "Pago Credito", "socio": n_socio, "recibo": recibo_id, "cuota": f['nro_cuota'], "monto": monto_tot, "saldo": saldo_caja, "id_credito": letra_id})
-
-            # --- C. ABONOS A CAPITAL (Ejecución Real) ---
-            for ab in abonos_para_db:
-                # 1. Insertar en detalle_recibo
-                # IMPORTANTE: Usamos 'abono_capital' y nro_cuota=0 para que el DB Manager lo encuentre
-                cursor.execute("""
-                    INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto) 
-                    VALUES (?, 'abono_capital', ?, ?, 0, ?)
-                """, (recibo_id, ab['socio_id'], ab['letra_id'], ab['monto']))
-                
-                saldo_caja += ab['monto']
-
-                # 2. Recalcular la Tabla de Amortización (Liquidaciones)
-                # Al hacer esto DESPUÉS del insert, la función sumará el abono nuevo + los anteriores correctamente
-                self.db.recalcular_tabla_amortizacion(ab['letra_id'], ab['monto'])
-
-                # 3. Registrar en Auxiliar
                 self.db.add_to_auxiliar(
-                    fecha=fecha_actual,
-                    tipo="Abono Capital",
-                    socio=ab['socio_name'],
-                    recibo=recibo_id,
-                    id_credito=ab['letra_id'],
-                    monto=ab['monto'],
-                    saldo=saldo_caja,
-                    cuota=0
+                    fecha=fecha_str, tipo="Aporte", socio=f"{ap['socio_data']['nombres']} {ap['socio_data']['apellidos']}",
+                    monto=ap['monto'], saldo=saldo_caja, recibo=recibo_id
                 )
-                
-                if self.assistant_page:
-                    self.assistant_page.add_operation({
-                        "fecha": fecha_actual, 
-                        "tipo": "Abono Capital", 
-                        "socio": ab['socio_name'], 
-                        "recibo": recibo_id, 
-                        "monto": ab['monto'], 
-                        "saldo": saldo_caja, 
-                        "id_credito": ab['letra_id']
-                    })
 
-            # --- FINALIZAR ---
+            # 2.2 Ejecutar Créditos
+            for op in ops_creditos_validos:
+                letra_id = op['letra_id']
+                socio_data = op['socio_data']
+                nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
+                dict_recibo = pagos_consolidados[letra_id]
+                
+                if nombre not in reporte_global: reporte_global[nombre] = []
+                reporte_global[nombre].extend(op['mensajes'])
+
+                if op['tipo'] == 'CUOTAS_MANUAL':
+                    items = op['items']
+                    dict_recibo['nro_cuotas_pagadas_start'] = items[0]['nro']
+                    dict_recibo['nro_cuotas_pagadas_end'] = items[-1]['nro']
+                    
+                    for it in items:
+                        cursor.execute("""
+                            INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto, abono_mora)
+                            VALUES (?, 'pago_credito', ?, ?, ?, ?, ?)
+                        """, (recibo_id, socio_data['id'], letra_id, it['nro'], it['monto'], it['mora']))
+                        
+                        m_flag = 1 if it['mora'] > 0 else 0
+                        cursor.execute("""
+                            UPDATE liquidaciones SET fecha_pago = DATE('now'), interes_mora = ?, mora_aplicada = ? 
+                            WHERE credito_letra=? AND nro_cuota=?
+                        """, (it['mora'], m_flag, letra_id, it['nro']))
+                        
+                        saldo_caja += it['monto']
+                        dict_recibo['valor_capital_consolidado'] += it['cap']
+                        dict_recibo['interes_consolidado'] += it['int']
+                        dict_recibo['mora_consolidada'] += it['mora']
+                        
+                        self.db.add_to_auxiliar(
+                            fecha=fecha_str, tipo="Pago Credito", socio=nombre,
+                            monto=it['monto'], saldo=saldo_caja, recibo=recibo_id, cuota=it['nro'], id_credito=str(letra_id)
+                        )
+
+                elif op['tipo'] == 'ABONO_CASCADA':
+                    vencidas = op['vencidas']
+                    capital_puro = op['capital_puro']
+                    
+                    # Vencidas
+                    for v in vencidas:
+                        nro = v['data']['nro_cuota']
+                        costo = v['costo']
+                        mora = v['mora']
+                        
+                        cursor.execute("""
+                            INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto, abono_mora)
+                            VALUES (?, 'pago_credito', ?, ?, ?, ?, ?)
+                        """, (recibo_id, socio_data['id'], letra_id, nro, costo, mora))
+                        
+                        m_flag = 1 if mora > 0 else 0
+                        cursor.execute("""
+                            UPDATE liquidaciones SET fecha_pago = DATE('now'), interes_mora = ?, mora_aplicada = ? 
+                            WHERE credito_letra=? AND nro_cuota=?
+                        """, (mora, m_flag, letra_id, nro))
+                        
+                        saldo_caja += costo
+                        
+                        dict_recibo['valor_capital_consolidado'] += v['data']['valor_cuota']
+                        dict_recibo['interes_consolidado'] += v['data']['interes_mes']
+                        dict_recibo['mora_consolidada'] += mora
+                        
+                        self.db.add_to_auxiliar(
+                            fecha=fecha_str, tipo="Pago Credito", socio=nombre,
+                            monto=costo, saldo=saldo_caja, recibo=recibo_id, cuota=nro, id_credito=str(letra_id)
+                        )
+
+                    # Capital Puro
+                    if capital_puro > 0:
+                        cursor.execute("""
+                            INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto)
+                            VALUES (?, 'pago_credito', ?, ?, 0, ?)
+                        """, (recibo_id, socio_data['id'], letra_id, capital_puro))
+                        
+                        saldo_caja += capital_puro
+                        self.db.recalcular_tabla_amortizacion(letra_id, capital_puro)
+                        
+                        dict_recibo['valor_capital_consolidado'] += capital_puro
+                        self.db.add_to_auxiliar(
+                            fecha=fecha_str, tipo="Abono Capital", socio=nombre,
+                            monto=capital_puro, saldo=saldo_caja, recibo=recibo_id, cuota=0, id_credito=str(letra_id)
+                        )
+
+                    # Etiquetas
+                    if vencidas:
+                        dict_recibo['nro_cuotas_pagadas_start'] = vencidas[0]['data']['nro_cuota']
+                        dict_recibo['nro_cuotas_pagadas_end'] = "ABONO" if capital_puro > 0 else vencidas[-1]['data']['nro_cuota']
+                    else:
+                        dict_recibo['nro_cuotas_pagadas_start'] = "ABONO"
+                        dict_recibo['nro_cuotas_pagadas_end'] = "CAPITAL"
+
+                # Saldo Final Visual
+                deuda_aprox = dict_recibo['saldo_capital_antes_pago'] - dict_recibo['valor_capital_consolidado']
+                dict_recibo['saldo_capital_despues_pago'] = max(0, int(deuda_aprox))
+
+            # 2.3 Actualizar Caja y Admin
             self.db.set_config_value("saldo_en_caja", str(saldo_caja))
-            
-            gastos_admin_nuevos = 3000 * count_cobrables
-            self.db.set_config_value("total_admin", str(saldo_admin + gastos_admin_nuevos))
-            
+            if count_cobrables_admin > 0:
+                nuevo_admin = total_admin + (3000 * count_cobrables_admin)
+                self.db.set_config_value("total_admin", str(nuevo_admin))
+
             self.db.conn.commit()
-            
+
+            # 2.4 Generar Reporte y Excel
+            if reporte_global:
+                msg_final = ""
+                for nombre, acciones in reporte_global.items():
+                    msg_final += f"<b>{nombre}</b><br>"
+                    for accion in acciones:
+                        msg_final += f"&nbsp;&nbsp;• {accion}<br>"
+                    msg_final += "<br>"
+                show_info(self, "Resumen Transacción", msg_final)
+
             recibo_path = generar_recibo_combinado(
-                db_manager=self.db, 
+                db_manager=self.db,
                 recibo_id=recibo_id,
-                recibi_de_data=recibi, 
-                aportes_info=aportes_para_db_y_recibo, 
-                pagos_credito_info=pagos_consolidados_lista,
-                num_aportes_cobrables=count_cobrables
+                recibi_de_data=recibi,
+                aportes_info=aportes_validos,
+                pagos_credito_info=list(pagos_consolidados.values()),
+                num_aportes_cobrables=count_cobrables_admin
             )
-            
+
             if recibo_path:
-                show_success(self, "", f"Recibo combinado #{recibo_id} creado exitosamente.", file_path = recibo_path)
+                show_success(self, "", f"Recibo combinado #{recibo_id} creado.", file_path=recibo_path)
                 self.operation_registered.emit()
-            else:
-                show_warning(self, "", "Recibo combinado registrado, pero hubo un error al generar el archivo Excel.")
             
             self.limpiar_formulario()
 
         except Exception as e:
             self.db.conn.rollback()
-            show_error(self, "", f"Error al crear recibo combinado:\n{e}")
+            show_error(self, "Error", f"Error crítico al registrar: {e}")
             import traceback
             traceback.print_exc()
 
