@@ -5,7 +5,7 @@ from datetime import date
 from config import (
     format_miles_colombian_int, 
     format_full_name_for_excel, 
-    ASSETS_DIR, RECIBOS_OUTPUT_DIR
+    ASSETS_DIR, RECIBOS_OUTPUT_DIR, HOY, HOY_STR
 )
 
 # Renombrado y ajustado para tu estructura deseada
@@ -42,6 +42,7 @@ def generar_recibo_solo_aportes(
 ):
     """
     Genera un recibo seleccionando la plantilla exacta según el número de aportes (1 a 6).
+    Usa la fecha global HOY para permitir viajes en el tiempo.
     """
     if aportes_info is None:
         aportes_info = []
@@ -61,18 +62,18 @@ def generar_recibo_solo_aportes(
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
-        file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        
+        # --- CAMBIO DE FECHA 1: Nombre del archivo (YYYYMMDD) ---
+        file_name = f"Recibo_{recibo_id}_{HOY.strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         # 2. SELECCIÓN DE PLANTILLA SEGÚN CANTIDAD (Switch lógico)
-        # Construimos el nombre: recibo_template_aporte1.xlsx, recibo_template_aporte2.xlsx, etc.
         template_name = f"recibo_template_aporte{num_aportes}.xlsx"
         template_rel_path = os.path.join("templates", "recibo_template_aporte", template_name)
         template_abs_path = os.path.join(ASSETS_DIR, template_rel_path)
 
         if not os.path.exists(template_abs_path):
             print(f"❌ Error CRÍTICO: No se encontró la plantilla {template_name}")
-            print(f"Buscado en: {template_abs_path}")
             return None
 
         wb = load_workbook(template_abs_path)
@@ -80,7 +81,9 @@ def generar_recibo_solo_aportes(
 
         # --- CABECERA ---
         ws[RECIBO_ID_CELL] = recibo_id
-        ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
+        
+        # --- CAMBIO DE FECHA 2: Celda Excel (DD/MM/YYYY) ---
+        ws[FECHA_CELL] = HOY.strftime("%d/%m/%Y")
         
         recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name
@@ -109,19 +112,7 @@ def generar_recibo_solo_aportes(
             total_aportes_acumulado += monto_aporte
 
         # --- PIE DE PÁGINA (Cálculo dinámico de posiciones) ---
-        # Asumiendo que en tus plantillas manuales, la fila de "Total Aportes" 
-        # está INMEDIATAMENTE después de la última fila de datos.
-        
-        # Fila de datos final = 9 + num_aportes - 1
-        # Fila Total = 9 + num_aportes
         row_total_aportes = APORTE_DATA_START_ROW + num_aportes
-        
-        # En tu diseño anterior, había un espacio de 2 filas entre el Total y los Gastos Admin
-        # Si al crear las plantillas manuales mantienes esa proporción:
-        # Fila Gastos Admin = Fila Total + 2
-        # Fila Total General = Fila Total + 3
-        
-        # AJUSTE ESTOS NÚMEROS SI TUS PLANTILLAS TIENEN MÁS/MENOS ESPACIO
         row_gastos_admin = row_total_aportes + 2 
         row_total_general = row_total_aportes + 3
 
