@@ -5,7 +5,7 @@ from datetime import date
 from config import (
     format_miles_colombian_int, 
     format_full_name_for_excel, 
-    ASSETS_DIR, RECIBOS_OUTPUT_DIR, HOY, HOY_STR
+    ASSETS_DIR, RECIBOS_OUTPUT_DIR, get_hoy
 )
 
 # Renombrado y ajustado para tu estructura deseada
@@ -64,7 +64,7 @@ def generar_recibo_solo_aportes(
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
         
         # --- CAMBIO DE FECHA 1: Nombre del archivo (YYYYMMDD) ---
-        file_name = f"Recibo_{recibo_id}_{HOY.strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{get_hoy().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         # 2. SELECCIÓN DE PLANTILLA SEGÚN CANTIDAD (Switch lógico)
@@ -83,7 +83,7 @@ def generar_recibo_solo_aportes(
         ws[RECIBO_ID_CELL] = recibo_id
         
         # --- CAMBIO DE FECHA 2: Celda Excel (DD/MM/YYYY) ---
-        ws[FECHA_CELL] = HOY.strftime("%d/%m/%Y")
+        ws[FECHA_CELL] = get_hoy().strftime("%d/%m/%Y")
         
         recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name

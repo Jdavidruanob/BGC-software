@@ -4,7 +4,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize, Signal
 
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import(
+     load_styles, load_svg_icon, format_miles_colombian_int, 
+     parse_miles_colombian, get_hoy_str, get_hoy, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+)
 from utils.message_boxes import show_success, show_error, show_warning, show_info
 import os
 from datetime import datetime
@@ -12,7 +15,6 @@ from dateutil.relativedelta import relativedelta
 # IMPORTAR AHORA DESDE EL NUEVO ARCHIVO ESPECÍFICO DE RECIBO COMBINADO
 from utils.recibo_generator_combinado import generar_recibo_combinado
 import traceback # Para ver errores completos en la consola
-from config import HOY, HOY_STR 
 
 MAX_APORTE_ROWS_IN_TEMPLATE = 6
 MAX_CREDITO_ROWS_IN_TEMPLATE= 6
@@ -381,7 +383,7 @@ class FormCombinado(QWidget):
 
             tasa_mora_str = self.db.get_config_value("porcentaje_mora")
             tasa_mora = float(tasa_mora_str) if tasa_mora_str else 0.02
-            hoy_dt = HOY
+            hoy_dt = get_hoy()
 
             for combo, letras_container, _ in current_pagos_widgets:
                 socio_selected = combo.currentData()
@@ -547,7 +549,7 @@ class FormCombinado(QWidget):
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
             
-            fecha_str = HOY_STR
+            fecha_str = get_hoy_str()
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
             total_admin = self.db.get_config_value_as_int("total_admin")
             

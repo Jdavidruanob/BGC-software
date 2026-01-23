@@ -5,7 +5,7 @@ from datetime import date
 from config import (
     format_miles_colombian_int, 
     format_full_name_for_excel, 
-    ASSETS_DIR, RECIBOS_OUTPUT_DIR
+    ASSETS_DIR, RECIBOS_OUTPUT_DIR, get_hoy, get_hoy_str
 )
 
 # --- Rutas y Constantes ---
@@ -41,7 +41,7 @@ def generar_recibo_retiro(
         # Asegúrate de que la carpeta de salida exista
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
 
-        file_name = f"Recibo_{recibo_id}_{date.today().strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{get_hoy().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         wb = load_workbook(TEMPLATE_RETIRO_PATH)
@@ -50,7 +50,7 @@ def generar_recibo_retiro(
         # --- Reemplazar datos en el recibo ---
         ws[RECIBO_ID_CELL] = recibo_id
         ws[MONTO_RETIRA_CELL] = format_miles_colombian_int(monto_retiro)
-        ws[FECHA_CELL] = date.today().strftime("%d/%m/%Y")
+        ws[FECHA_CELL] = get_hoy().strftime("%d/%m/%Y")
 
         # C14: "DEVOLUCION PARCIAL DE APORTES DE {nombres socio} solo los nombres y en mayusculas"
         nombres_socio_upper = socio_data['nombres'].upper()

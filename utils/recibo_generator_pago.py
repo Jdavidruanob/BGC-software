@@ -5,7 +5,7 @@ from datetime import date
 from config import (
     format_miles_colombian_int, 
     format_full_name_for_excel, 
-    ASSETS_DIR, RECIBOS_OUTPUT_DIR, HOY
+    ASSETS_DIR, RECIBOS_OUTPUT_DIR, get_hoy 
 )
 
 # Carpeta de Salida
@@ -61,7 +61,7 @@ def generar_recibo_solo_pagos(
 
     try:
         os.makedirs(OUTPUT_FOLDER_PATH, exist_ok=True)
-        file_name = f"Recibo_{recibo_id}_{HOY.strftime('%Y%m%d')}.xlsx"
+        file_name = f"Recibo_{recibo_id}_{get_hoy().strftime('%Y%m%d')}.xlsx"
         output_path = os.path.join(OUTPUT_FOLDER_PATH, file_name)
 
         # 2. SELECCIÓN DE PLANTILLA SEGÚN CANTIDAD
@@ -80,7 +80,7 @@ def generar_recibo_solo_pagos(
 
         # --- CABECERA ---
         ws[RECIBO_ID_CELL] = recibo_id
-        ws[FECHA_CELL] = HOY.strftime("%d/%m/%Y")
+        ws[FECHA_CELL] = get_hoy().strftime("%d/%m/%Y")
         
         recibi_de_full_name = f"{recibi_de_data['nombres']} {recibi_de_data['apellidos']}".upper()
         ws[RECIBI_DE_CELL] = recibi_de_full_name

@@ -8,8 +8,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 import os
 from datetime import datetime
-from config import load_styles, format_miles_colombian_int, STYLES_DIR
-from config import HOY, HOY_STR 
+from config import load_styles, format_miles_colombian_int, get_hoy_str, STYLES_DIR
+ 
 
 class CreditLiquidationPage(QWidget):
     def __init__(self, credit, member_id, main_window, db_manager):
@@ -120,7 +120,7 @@ class CreditLiquidationPage(QWidget):
             cuotas = cursor.fetchall()
             self.table.setRowCount(len(cuotas))
             
-            hoy_str = HOY_STR
+            hoy_str = get_hoy_str()
 
             for i, c in enumerate(cuotas):
                 # Datos básicos

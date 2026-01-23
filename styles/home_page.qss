@@ -140,3 +140,124 @@ QPushButton#btnCambiarBD:hover {
 #createReceipt:hover {
   background-color: #2a4a80;
 }
+
+
+
+/* QCalendarWidget: Diseño moderno y limpio */
+QCalendarWidget {
+    background: #ffffff;
+    color: #1e293b;
+    border-radius: 10px;
+    border: 2px solid #2563eb;
+    padding: 12px;
+    margin: 0px;
+}
+
+/* Navegación del calendario (mes/año y flechas) */
+QCalendarWidget QToolButton {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: bold;
+    font-size: 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 8px;
+    margin: 2px;
+}
+
+QCalendarWidget QToolButton:hover {
+    background: #e0e7f1;
+    border: 1px solid #2563eb;
+    color: #2563eb;
+}
+
+/* Selectores de mes y año (spinbox) */
+QCalendarWidget QSpinBox {
+    background: #f8fafc;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 6px;
+    font-weight: 600;
+}
+
+QCalendarWidget QSpinBox:focus {
+    border: 1px solid #2563eb;
+    background: #f1f5f9;
+}
+
+/* Cabecera del calendario (dias de la semana) */
+QCalendarWidget QHeaderView {
+    background: transparent;
+}
+
+QCalendarWidget QHeaderView::section {
+    background: #f1f5f9;
+    color: #2563eb;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 6px 0px;
+    text-align: center;
+}
+
+/* Tabla de dias del calendario */
+QCalendarWidget QAbstractItemView {
+    background: #ffffff;
+    color: #1e293b;
+    selection-background-color: #2563eb;
+    selection-color: #ffffff;
+    border: none;
+}
+
+/* Dias individuales */
+QCalendarWidget QAbstractItemView::item {
+    padding: 6px;
+    border-radius: 6px;
+    margin: 2px;
+    font-size: 14px;
+}
+
+/* Dia seleccionado */
+QCalendarWidget QAbstractItemView::item:selected {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: bold;
+    border-radius: 6px;
+}
+
+/* Dia actual (hoy) */
+QCalendarWidget QAbstractItemView::item:hover {
+    background: #e0e7f1;
+    color: #1e293b;
+    border-radius: 6px;
+}
+
+/* Dias deshabilitados (otros meses) */
+QCalendarWidget QAbstractItemView::item:disabled {
+    color: #cbd5e1;
+}
+
+/* Esquina superior izquierda (boton de selección de todo) */
+QCalendarWidget QTableCornerButton::section {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px 0px 0px 0px;
+}
+
+/* AGREGA ESTO EN assistant_page.qss */
+QCalendarWidget QMenu {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px;
+}
+QCalendarWidget QMenu::item {
+    padding: 4px 20px 4px 10px;
+    border-radius: 4px;
+}
+QCalendarWidget QMenu::item:selected {
+    background-color: #2563eb;
+    color: #ffffff;
+}
