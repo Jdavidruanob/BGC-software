@@ -8,11 +8,14 @@ import os
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
-from config import load_styles, load_svg_icon, parse_miles_colombian, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import (
+    load_styles, load_svg_icon, parse_miles_colombian, 
+    format_miles_colombian_int, get_hoy_str, get_hoy, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+)
 from utils.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
 from utils.credit_liquidation_generator import generar_liquidacion_credito
-from config import HOY, HOY_STR 
+
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -174,7 +177,7 @@ class FormNuevoCredito(QWidget):
             else:
                 cuota_base = capital // cuotas
 
-            fecha_inicio = HOY
+            fecha_inicio = get_hoy()
             fecha_final = fecha_inicio + relativedelta(months=+cuotas) # <-- Esto es lo que necesitas
 
             self.label_monto_cuota.setText(f"${format_miles_colombian_int(cuota_base)}")
@@ -271,7 +274,7 @@ class FormNuevoCredito(QWidget):
             
             if letra:
                 # Actualizar UI auxiliar (solo visual)
-                fecha_actual_str = HOY_STR
+                fecha_actual_str = get_hoy_str()
                 nombres_str = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
 
                 self.db.add_to_auxiliar(

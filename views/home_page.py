@@ -1,10 +1,15 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QFrame,
-    QScrollArea, QStackedWidget, QSizePolicy, QInputDialog
+    QScrollArea, QStackedWidget, QSizePolicy, QInputDialog,
+    QRadioButton, QDateEdit, QButtonGroup  # <--- IMPORTANTE: Faltaban estos
 )
-from PySide6.QtCore import Qt, QSize
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from PySide6.QtCore import Qt, QSize, QDate # <--- IMPORTANTE: Faltaba QDate
+from config import (
+    load_styles, load_svg_icon, format_miles_colombian_int, 
+    STYLES_DIR, DYNAMIC_DATA_BASE_DIR,
+    get_hoy, get_hoy_str, set_fecha_simulada, reset_fecha_normal # <--- Funciones de tiempo
+)
 from views.widgets.forms.form_aporte import FormAporte
 from views.widgets.forms.form_pago_credito import FormPagoCredito
 from views.widgets.forms.form_combinado import FormCombinado
@@ -12,7 +17,6 @@ from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
 from views.widgets.edit_admin_dialog import EditAdminDialog 
-from config import HOY, HOY_STR 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
 
 
@@ -25,10 +29,12 @@ class HomePage(QWidget):
         self.main_window = window
 
         main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(80, 40, 80, 20) # right up left bottom
+        main_layout.setContentsMargins(80, 40, 80, 20)
         main_layout.setSpacing(30)
 
-        # PANEL IZQUIERDO
+        # =================================================
+        # 1. PANEL IZQUIERDO (Formularios)
+        # =================================================
         self.left_panel = QWidget()
         left_layout = QVBoxLayout()
         left_layout.setAlignment(Qt.AlignTop)
@@ -40,7 +46,7 @@ class HomePage(QWidget):
         container_layout.setAlignment(Qt.AlignTop)
         container_layout.setContentsMargins(0, 0, 0, 0)
 
-        # HEADER
+        # --- Header ---
         header = QFrame()
         header.setObjectName("HomeCardHeader")
         header_layout = QVBoxLayout()
@@ -55,7 +61,7 @@ class HomePage(QWidget):
         header_layout.addWidget(subtitle)
         header.setLayout(header_layout)
 
-        # BOTONES
+        # --- Botones de Operación ---
         button_row = QHBoxLayout()
         button_row.setContentsMargins(20, 20, 20, 20)
         button_row.setSpacing(0)
@@ -93,7 +99,7 @@ class HomePage(QWidget):
         button_row.addWidget(self.btn_nuevo_credito)
         button_row.addWidget(self.btn_retiro)
 
-        # FORMULARIOS: STACK + SCROLL
+        # --- Stack de Formularios ---
         self.form_container = QFrame()
         self.form_container.setObjectName("DynamicForm")
         self.form_layout = QVBoxLayout()
@@ -111,7 +117,7 @@ class HomePage(QWidget):
         self.form_retiro = FormRetiro(self.db_manager)
         self.form_aporte_pago = FormCombinado(self.db_manager, self.assistant_page)
 
-         # 🎯 CONNECT SIGNALS TO REFRESH
+        # Conectar señales de actualización
         self.form_aporte.operation_registered.connect(self.refresh_view)
         self.page_pago.operation_registered.connect(self.refresh_view)
         self.form_nuevo_credito.operation_registered.connect(self.refresh_view)
@@ -128,7 +134,7 @@ class HomePage(QWidget):
         self.form_layout.addWidget(scroll_area)
         self.form_container.setVisible(False)
 
-        # ARMADO
+        # --- Armado del Panel Izquierdo ---
         container_layout.addWidget(header)
         container_layout.addLayout(button_row)
         container_layout.addWidget(self.form_container)
@@ -137,73 +143,142 @@ class HomePage(QWidget):
         left_layout.addWidget(self.container)
         self.left_panel.setLayout(left_layout)
 
-        # --- PANEL DERECHO: ahora con Resumen de Caja ---
+        # =================================================
+        # 2. PANEL DERECHO (Resumen + Admin + Fecha)
+        # =================================================
         self.right_panel = QWidget()
         right_layout = QVBoxLayout()
         right_layout.setAlignment(Qt.AlignTop)
         right_layout.setSpacing(20)
 
-        # 1) Widget de resumen
+        # 1) Resumen Widget
         resumen = self.create_resumen_widget()
         right_layout.addWidget(resumen)
 
-        # --- Layout agrupador para los botones de administración ---
-        admin_buttons_widget = QWidget()
-        admin_buttons_layout = QVBoxLayout()
-        admin_buttons_layout.setContentsMargins(0, 16, 0, 0)
-        admin_buttons_layout.setSpacing(8)
+        # --- Panel de Administración ---
+        self.admin_panel = QWidget()
+        admin_layout = QVBoxLayout()
+        admin_layout.setContentsMargins(0, 16, 0, 0)
+        admin_layout.setSpacing(12)
 
-        # 1. FILA SUPERIOR (Saldo + Admin)
+        # Fila 1: Editar Saldo y Admin
         row_admin_actions = QHBoxLayout()
-        row_admin_actions.setSpacing(10) # Espacio entre los dos botones
-        row_admin_actions.setContentsMargins(0, 0, 0, 0)
-
-        # Botón Editar Saldo
-        btn_editar_saldo = QPushButton(" Editar Saldo")
+        row_admin_actions.setSpacing(10)
+        
+        btn_editar_saldo = QPushButton(" Ajuste Caja")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
         btn_editar_saldo.setIcon(load_svg_icon("icons/edit.svg"))
-        btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
-        # Expandir para que ocupen mitad y mitad
         btn_editar_saldo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
-        # Botón Editar Admin (NUEVO)
         btn_editar_admin = QPushButton(" Editar Admin")
-        btn_editar_admin.setObjectName("btnEditarAdmin") # ID para el CSS
-        # Usamos un icono de configuración o herramientas (puedes reutilizar edit.svg si no tienes otro)
-        btn_editar_admin.setIcon(load_svg_icon("icons/edit.svg")) 
-        btn_editar_admin.setIconSize(QSize(18, 18))
+        btn_editar_admin.setObjectName("btnEditarAdmin")
+        btn_editar_admin.setIcon(load_svg_icon("icons/edit.svg"))
         btn_editar_admin.clicked.connect(self.editar_gastos_admin)
         btn_editar_admin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         row_admin_actions.addWidget(btn_editar_saldo)
         row_admin_actions.addWidget(btn_editar_admin)
-        
-        admin_buttons_layout.addLayout(row_admin_actions)
+        admin_layout.addLayout(row_admin_actions)
 
-        # 2. BOTÓN CAMBIAR BD (Debajo)
+        # Fila 2: Cambiar Base de Datos
         btn_cambiar_bd = QPushButton("  Cambiar Base de Datos")
         btn_cambiar_bd.setObjectName("btnCambiarBD")
         btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
-        btn_cambiar_bd.setIconSize(QSize(16, 16))
         btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)
-        admin_buttons_layout.addWidget(btn_cambiar_bd)
+        admin_layout.addWidget(btn_cambiar_bd)
 
-        admin_buttons_widget.setLayout(admin_buttons_layout)
-        right_layout.addWidget(admin_buttons_widget)
+        # --- SECCIÓN DE FECHA (NUEVO) ---
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("color: #CCC; margin-top: 10px; margin-bottom: 5px;")
+        admin_layout.addWidget(sep)
 
+        lbl_fecha = QLabel("Configuración de Fecha")
+        lbl_fecha.setStyleSheet("font-weight: bold; color: #555;")
+        admin_layout.addWidget(lbl_fecha)
+
+        # Radio Buttons
+        self.rb_normal = QRadioButton("Fecha Normal (Hoy)")
+        self.rb_simulada = QRadioButton("Modo Simulación")
+        self.rb_normal.setChecked(True) # Por defecto
+
+        self.bg_fecha = QButtonGroup(self)
+        self.bg_fecha.addButton(self.rb_normal)
+        self.bg_fecha.addButton(self.rb_simulada)
+
+        # Conectar cambios
+        self.bg_fecha.buttonClicked.connect(self.on_date_mode_changed)
+
+        row_radios = QHBoxLayout()
+        row_radios.addWidget(self.rb_normal)
+        row_radios.addWidget(self.rb_simulada)
+        admin_layout.addLayout(row_radios)
+
+        # Widget oculto para elegir fecha
+        self.widget_simulacion = QWidget()
+        layout_sim = QVBoxLayout(self.widget_simulacion)
+        layout_sim.setContentsMargins(0, 5, 0, 0)
+        
+        row_picker = QHBoxLayout()
+        self.date_edit = QDateEdit()
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDisplayFormat("yyyy-MM-dd")
+        self.date_edit.setDate(QDate.currentDate())
+        self.date_edit.setMinimumHeight(32)
+        
+        btn_confirmar_fecha = QPushButton("Confirmar Fecha")
+        btn_confirmar_fecha.setCursor(Qt.PointingHandCursor)
+        btn_confirmar_fecha.setStyleSheet("""
+            QPushButton { background-color: #8C5B2F; color: white; border: none; }
+            QPushButton:hover { background-color: #6e4623; }
+        """)
+        btn_confirmar_fecha.clicked.connect(self.aplicar_fecha_simulada)
+
+        row_picker.addWidget(self.date_edit)
+        row_picker.addWidget(btn_confirmar_fecha)
+        
+        layout_sim.addLayout(row_picker)
+        
+        # Inicialmente oculto
+        self.widget_simulacion.setVisible(False)
+        admin_layout.addWidget(self.widget_simulacion)
+
+        # -------------------------------
+
+        self.admin_panel.setLayout(admin_layout)
+        right_layout.addWidget(self.admin_panel)
+
+        # =================================================
+        # 3. ARMADO PRINCIPAL
+        # =================================================
         self.right_panel.setLayout(right_layout)
         main_layout.addWidget(self.left_panel, 2.5)
         main_layout.addWidget(self.right_panel, 1.5)
+        
         self.setLayout(main_layout)
-
         qss_path = os.path.join(STYLES_DIR , "home_page.qss")
         load_styles(self, qss_path)
 
-        """ show_error(self, "puerba error", "mensaje de error de prueba")
-        show_success(self, "prueba éxito", "mensaje de éxito de prueba")
-        show_warning(self, "prueba advertencia", "mensaje de advertencia de prueba")
-        show_info(self, "prueba info", "mensaje de info de prueba") """
+    # --- LÓGICA DE FECHA NUEVA ---
+
+    def on_date_mode_changed(self, button):
+        if button == self.rb_normal:
+            self.widget_simulacion.setVisible(False)
+            reset_fecha_normal()
+            show_success(self, "Modo Normal", f"Fecha reestablecida a hoy: {get_hoy()}")
+            self.refresh_forms() # Refrescar formularios para que tomen la nueva fecha
+        else:
+            self.widget_simulacion.setVisible(True)
+            # No aplicamos nada aún, esperamos al botón confirmar
+
+    def aplicar_fecha_simulada(self):
+        qdate = self.date_edit.date()
+        fecha_py = qdate.toPython() # Convertir a datetime.date
+        set_fecha_simulada(fecha_py)
+        
+        show_success(self, "Viaje en el Tiempo", f"Sistema configurado al: {fecha_py}")
+        self.refresh_forms() # IMPORTANTE: Refrescar formularios
 
     def create_resumen_widget(self):
         """Construye el widget 'Resumen de Caja' con desglose de Administración."""
@@ -308,7 +383,7 @@ class HomePage(QWidget):
             
             # 2. Registrar en Auxiliar
             # Nota: 'motivo' se guarda en la columna 'tipo' para que salga con color café (custom)
-            fecha_actual = HOY_STR
+            fecha_actual = get_hoy_str()
 
             self.db_manager.add_to_auxiliar(
                 fecha=fecha_actual,
@@ -484,7 +559,6 @@ class HomePage(QWidget):
             if widget is not None:
                 widget.deleteLater()
             else:
-                # Si hay layouts anidados, limpiar recursivamente (seguridad)
                 child_layout = item.layout()
                 if child_layout is not None:
                     while child_layout.count():
@@ -496,45 +570,104 @@ class HomePage(QWidget):
         resumen_widget = self.create_resumen_widget()
         layout.addWidget(resumen_widget)
 
-        # 🔄 3. RE-CREAR LOS BOTONES DE ADMIN (¡Aquí está el cambio!)
-        admin_buttons_widget = QWidget()
-        admin_buttons_layout = QVBoxLayout()
-        admin_buttons_layout.setContentsMargins(0, 16, 0, 0)
-        admin_buttons_layout.setSpacing(8)
+        # 🔄 3. RE-CREAR EL PANEL DE ADMINISTRACIÓN COMPLETO
+        # (Incluye Botones y Configuración de Fecha)
+        self.admin_panel = QWidget()
+        admin_layout = QVBoxLayout()
+        admin_layout.setContentsMargins(0, 16, 0, 0)
+        admin_layout.setSpacing(12)
 
-        # Fila Horizontal: [Editar Saldo] [Editar Admin]
+        # --- A. BOTONES DE ACCIÓN ---
         row_admin_actions = QHBoxLayout()
         row_admin_actions.setSpacing(10)
-        row_admin_actions.setContentsMargins(0, 0, 0, 0)
-
-        # Botón Saldo
+        
         btn_editar_saldo = QPushButton(" Ajuste Caja")
         btn_editar_saldo.setObjectName("btnEditarSaldo")
         btn_editar_saldo.setIcon(load_svg_icon("icons/edit.svg"))
-        btn_editar_saldo.setIconSize(QSize(18, 18))
         btn_editar_saldo.clicked.connect(self.editar_saldo_en_caja)
         btn_editar_saldo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         
-        # Botón Admin (NUEVO)
         btn_editar_admin = QPushButton(" Editar Admin")
         btn_editar_admin.setObjectName("btnEditarAdmin")
         btn_editar_admin.setIcon(load_svg_icon("icons/edit.svg"))
-        btn_editar_admin.setIconSize(QSize(18, 18))
         btn_editar_admin.clicked.connect(self.editar_gastos_admin)
         btn_editar_admin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         row_admin_actions.addWidget(btn_editar_saldo)
         row_admin_actions.addWidget(btn_editar_admin)
-        
-        admin_buttons_layout.addLayout(row_admin_actions)
+        admin_layout.addLayout(row_admin_actions)
 
-        # Botón Cambiar BD (Debajo)
+        # Botón BD
         btn_cambiar_bd = QPushButton("  Cambiar Base de Datos")
         btn_cambiar_bd.setObjectName("btnCambiarBD")
         btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
-        btn_cambiar_bd.setIconSize(QSize(16, 16))
         btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)
-        admin_buttons_layout.addWidget(btn_cambiar_bd)
+        admin_layout.addWidget(btn_cambiar_bd)
 
-        admin_buttons_widget.setLayout(admin_buttons_layout)
-        layout.addWidget(admin_buttons_widget)
+        # --- B. SECCIÓN DE FECHA ---
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("color: #CCC; margin-top: 10px; margin-bottom: 5px;")
+        admin_layout.addWidget(sep)
+
+        lbl_fecha = QLabel("Configuración de Fecha")
+        lbl_fecha.setStyleSheet("font-weight: bold; color: #555;")
+        admin_layout.addWidget(lbl_fecha)
+
+        # Radio Buttons
+        self.rb_normal = QRadioButton("Fecha Normal (Hoy)")
+        self.rb_simulada = QRadioButton("Modo Simulación")
+        
+        # Verificar estado actual para marcar el correcto
+        from datetime import date
+        if get_hoy() != date.today():
+            self.rb_simulada.setChecked(True)
+            mostrar_selector = True
+        else:
+            self.rb_normal.setChecked(True)
+            mostrar_selector = False
+
+        self.bg_fecha = QButtonGroup(self)
+        self.bg_fecha.addButton(self.rb_normal)
+        self.bg_fecha.addButton(self.rb_simulada)
+        self.bg_fecha.buttonClicked.connect(self.on_date_mode_changed)
+
+        row_radios = QHBoxLayout()
+        row_radios.addWidget(self.rb_normal)
+        row_radios.addWidget(self.rb_simulada)
+        admin_layout.addLayout(row_radios)
+
+        # Widget selector de fecha
+        self.widget_simulacion = QWidget()
+        layout_sim = QVBoxLayout(self.widget_simulacion)
+        layout_sim.setContentsMargins(0, 5, 0, 0)
+        
+        row_picker = QHBoxLayout()
+        self.date_edit = QDateEdit()
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDisplayFormat("yyyy-MM-dd")
+        
+        # Poner la fecha que esté configurada actualmente (real o simulada)
+        fecha_actual_config = get_hoy()
+        self.date_edit.setDate(QDate(fecha_actual_config.year, fecha_actual_config.month, fecha_actual_config.day))
+        self.date_edit.setMinimumHeight(32)
+        
+        btn_confirmar_fecha = QPushButton("Confirmar Fecha")
+        btn_confirmar_fecha.setCursor(Qt.PointingHandCursor)
+        btn_confirmar_fecha.setStyleSheet("""
+            QPushButton { background-color: #8C5B2F; color: white; border: none; }
+            QPushButton:hover { background-color: #6e4623; }
+        """)
+        btn_confirmar_fecha.clicked.connect(self.aplicar_fecha_simulada)
+
+        row_picker.addWidget(self.date_edit)
+        row_picker.addWidget(btn_confirmar_fecha)
+        layout_sim.addLayout(row_picker)
+        
+        # Visibilidad según estado
+        self.widget_simulacion.setVisible(mostrar_selector)
+        admin_layout.addWidget(self.widget_simulacion)
+
+        # -------------------------------
+        self.admin_panel.setLayout(admin_layout)
+        layout.addWidget(self.admin_panel)

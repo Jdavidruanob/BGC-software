@@ -7,9 +7,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize, Signal
 from datetime import date
-from config import load_styles, load_svg_icon, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import (
+    load_styles, load_svg_icon, format_miles_colombian_int, 
+    parse_miles_colombian, get_hoy, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR 
+)
 from utils.message_boxes import show_success, show_error, show_warning
-from config import HOY, HOY_STR 
+
 # Importar la función generar_recibo_general
 from utils.recibo_generator_aporte import generar_recibo_solo_aportes # Importamos también la constante si la usamos
 
@@ -216,7 +219,7 @@ class FormAporte(QWidget):
             cursor = self.db.conn.cursor()
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
             recibo_id = cursor.lastrowid
-            fecha_actual_db_format = HOY_STR
+            fecha_actual_db_format = get_hoy_str()
 
             saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
             saldo_admin = self.db.get_config_value_as_int("total_admin") # Si se necesita para algo

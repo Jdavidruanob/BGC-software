@@ -9,21 +9,42 @@ from datetime import date
 
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
 
-# --- MÁQUINA DEL TIEMPO ---
-# Cambia a True para viajar en el tiempo, False para usar la fecha real
-MODO_VIAJE_TIEMPO = False 
-FECHA_FUTURA = date(2026, 11, 14) # <-- CONFIGURA AQUÍ TU FECHA DESTINO
+# ==========================================
+# 🕒 SISTEMA DE GESTIÓN DE TIEMPO DINÁMICO
+# ==========================================
 
-def obtener_hoy():
-    if MODO_VIAJE_TIEMPO:
-        return FECHA_FUTURA
+# Variable interna (Privada) para almacenar la fecha simulada
+_FECHA_SIMULADA = None 
+
+def get_hoy():
+    """
+    Retorna la fecha actual del sistema O la fecha simulada si se configuró.
+    Usa esta función en lugar de date.today() en toda la app.
+    """
+    if _FECHA_SIMULADA:
+        return _FECHA_SIMULADA
     return date.today()
 
-# --- CONSTANTES GLOBALES DE FECHA ---
-# Úsalas en todo tu programa en lugar de date.today()
+def get_hoy_str():
+    """Retorna la fecha actual en formato string 'YYYY-MM-DD'."""
+    return get_hoy().strftime("%Y-%m-%d")
 
-HOY = obtener_hoy()                  # Objeto date (Para cálculos, sumas, restas)
-HOY_STR = HOY.strftime("%Y-%m-%d")   # Texto "YYYY-MM-DD" (Para guardar en DB, comparar con textos, Imprimir)
+def set_fecha_simulada(nueva_fecha):
+    """Establece una fecha fija para simulación."""
+    global _FECHA_SIMULADA
+    _FECHA_SIMULADA = nueva_fecha
+    print(f"🕒 MODO VIAJE EN EL TIEMPO ACTIVO: {_FECHA_SIMULADA}")
+
+def reset_fecha_normal():
+    """Vuelve al modo normal (fecha real)."""
+    global _FECHA_SIMULADA
+    _FECHA_SIMULADA = None
+    print(f"🕒 MODO NORMAL ACTIVO: {date.today()}")
+
+# Mantenemos estas constantes por compatibilidad, pero 
+# RECOMENDACIÓN: Usar get_hoy() dentro de las funciones.
+HOY = get_hoy() 
+HOY_STR = get_hoy_str()
 
 
 # 1. Base para archivos empaquetados (Assets, Styles)

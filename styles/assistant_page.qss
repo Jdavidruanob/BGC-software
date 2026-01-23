@@ -37,7 +37,7 @@ QHeaderView::section:last {
 QTableWidget#operationsTable::item {
     background-color: white;
     padding: 10px 10px;
-    font-size: 14px; /* <--- CAMBIO: Fuente de los ítems un poco más pequeña */
+    font-size: 14px; /* <--- CAMBIO: Fuente de los items un poco más pequeña */
     color: #333333;
     border-bottom: 1px solid #EEEEEE;
     border-right: 1px solid #EEEEEE;
@@ -62,7 +62,7 @@ QTableWidget#operationsTable::item:last-child {
     color: white;
 }
 
-/* Colores específicos por tipo */
+/* Colores especificos por tipo */
 #opTipo_aporte { background-color: #28a745; border-radius: 10px}
 #opTipo_pago_credito { background-color: #fd7e14; border-radius: 10px }
 #opTipo_nuevo_credito { background-color: #007bff; border-radius: 10px}
@@ -90,7 +90,7 @@ QLabel#opSaldo {
     font-weight: bold;
 }
 
-/* Colores específicos para Monto basado en propiedad */
+/* Colores especificos para Monto basado en propiedad */
 QLabel#opMonto[montoTipo="positivo"] {
     color: #28a745;
 }
@@ -100,7 +100,7 @@ QLabel#opMonto[montoTipo="negativo"] {
 
 
 
-/* Ejemplo de reglas que podrían causar el problema */
+/* Ejemplo de reglas que podrian causar el problema */
 
 /* Revisa si el color del texto es igual al fondo */
 QDateEdit {
@@ -110,7 +110,7 @@ QDateEdit {
 
 /* O si el calendario tiene un estilo que oculta los números */
 QCalendarWidget QAbstractItemView {
-    color: #333; /* Color de los días del calendario */
+    color: #333; /* Color de los dias del calendario */
     selection-background-color: #aaddff;
 }
 
@@ -120,7 +120,7 @@ QCalendarWidget QSpinBox { /* Los selectores de mes/año */
 }
 
 QCalendarWidget QToolButton { /* Botones de navegación (flechas, mes/año) */
-    color: #333; /* El color del texto del mes/año suele estar aquí */
+    color: #333; /* El color del texto del mes/año suele estar aqui */
     background-color: transparent;
 }
 
@@ -133,7 +133,7 @@ QCalendarWidget QToolButton { /* Botones de navegación (flechas, mes/año) */
     
 }
 
-/* Títulos y etiquetas dentro del área azul */
+/* Titulos y etiquetas dentro del área azul */
 #filtersFrame QLabel,
 #filtersFrame QComboBox,
 #filtersFrame QLineEdit {
@@ -177,7 +177,7 @@ QPushButton#clearFiltersButton:hover {
     color: #1e293b;
 }
 
-/* (Opcional) Título de filtros si lo usas */
+/* (Opcional) Titulo de filtros si lo usas */
 #filtersTitle {
     font-size: 18px;
     font-weight: bold;
@@ -251,7 +251,7 @@ QCalendarWidget QSpinBox:focus {
     background: #f1f5f9;
 }
 
-/* Cabecera del calendario (días de la semana) */
+/* Cabecera del calendario (dias de la semana) */
 QCalendarWidget QHeaderView {
     background: transparent;
 }
@@ -266,7 +266,7 @@ QCalendarWidget QHeaderView::section {
     text-align: center;
 }
 
-/* Tabla de días del calendario */
+/* Tabla de dias del calendario */
 QCalendarWidget QAbstractItemView {
     background: #ffffff;
     color: #1e293b;
@@ -275,7 +275,7 @@ QCalendarWidget QAbstractItemView {
     border: none;
 }
 
-/* Días individuales */
+/* Dias individuales */
 QCalendarWidget QAbstractItemView::item {
     padding: 6px;
     border-radius: 6px;
@@ -283,7 +283,7 @@ QCalendarWidget QAbstractItemView::item {
     font-size: 14px;
 }
 
-/* Día seleccionado */
+/* Dia seleccionado */
 QCalendarWidget QAbstractItemView::item:selected {
     background: #2563eb;
     color: #ffffff;
@@ -291,21 +291,38 @@ QCalendarWidget QAbstractItemView::item:selected {
     border-radius: 6px;
 }
 
-/* Día actual (hoy) */
+/* Dia actual (hoy) */
 QCalendarWidget QAbstractItemView::item:hover {
     background: #e0e7f1;
     color: #1e293b;
     border-radius: 6px;
 }
 
-/* Días deshabilitados (otros meses) */
+/* Dias deshabilitados (otros meses) */
 QCalendarWidget QAbstractItemView::item:disabled {
     color: #cbd5e1;
 }
 
-/* Esquina superior izquierda (botón de selección de todo) */
+/* Esquina superior izquierda (boton de selección de todo) */
 QCalendarWidget QTableCornerButton::section {
     background: #f1f5f9;
     border: 1px solid #e2e8f0;
     border-radius: 5px 0px 0px 0px;
+}
+
+/* AGREGA ESTO EN assistant_page.qss */
+QCalendarWidget QMenu {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px;
+}
+QCalendarWidget QMenu::item {
+    padding: 4px 20px 4px 10px;
+    border-radius: 4px;
+}
+QCalendarWidget QMenu::item:selected {
+    background-color: #2563eb;
+    color: #ffffff;
 }
