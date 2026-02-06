@@ -10,7 +10,7 @@ from views.home_page import HomePage
 from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
-from db.db_manager import DBManager 
+from db.db_manager import DBManager
 # Importar configuraciones
 from config import (
     DYNAMIC_DATA_BASE_DIR, 
@@ -94,58 +94,10 @@ def main():
         
         db_manager.set_sequence_start_value("creditos", 445)
 
-    credits_list = [
-        {
-            'letra': 369,
-            'capital': 10000000,
-            'interes': 0.01,  # 1.00% según el documento
-            'no_cuotas': 36,
-            'fecha_inicio': '2023-11-08',
-            'socios_ids': [3],  # Agregar IDs de Nathalia Burbano P. / David Montilla
-            'cuotas': [
-                {'nro_cuota': 1, 'fecha_vencimiento': '2023-12-08', 'valor_cuota': 280000, 'interes_mes': 100000, 'cuota_mensual': 380000, 'saldo_capital': 9720000, 'fecha_pago': '2023-12-10'},
-                {'nro_cuota': 2, 'fecha_vencimiento': '2024-01-08', 'valor_cuota': 280000, 'interes_mes': 97200, 'cuota_mensual': 377200, 'saldo_capital': 9440000, 'fecha_pago': '2024-01-07'},
-                {'nro_cuota': 3, 'fecha_vencimiento': '2024-02-08', 'valor_cuota': 280000, 'interes_mes': 94400, 'cuota_mensual': 374400, 'saldo_capital': 9160000, 'fecha_pago': '2024-02-05'},
-                {'nro_cuota': 4, 'fecha_vencimiento': '2024-03-08', 'valor_cuota': 280000, 'interes_mes': 91600, 'cuota_mensual': 371600, 'saldo_capital': 8880000, 'fecha_pago': '2024-03-06'},
-                {'nro_cuota': 5, 'fecha_vencimiento': '2024-04-08', 'valor_cuota': 280000, 'interes_mes': 88800, 'cuota_mensual': 368800, 'saldo_capital': 8600000, 'fecha_pago': '2024-04-02'},
-                {'nro_cuota': 6, 'fecha_vencimiento': '2024-05-08', 'valor_cuota': 280000, 'interes_mes': 86000, 'cuota_mensual': 366000, 'saldo_capital': 8320000, 'fecha_pago': '2024-05-06'},
-                {'nro_cuota': 7, 'fecha_vencimiento': '2024-06-08', 'valor_cuota': 280000, 'interes_mes': 83200, 'cuota_mensual': 363200, 'saldo_capital': 8040000, 'fecha_pago': '2024-06-09'},
-                {'nro_cuota': 8, 'fecha_vencimiento': '2024-07-08', 'valor_cuota': 280000, 'interes_mes': 80400, 'cuota_mensual': 360400, 'saldo_capital': 7760000, 'fecha_pago': '2024-07-10'},
-                {'nro_cuota': 9, 'fecha_vencimiento': '2024-08-08', 'valor_cuota': 280000, 'interes_mes': 77600, 'cuota_mensual': 357600, 'saldo_capital': 7480000, 'fecha_pago': '2024-08-08'},
-                {'nro_cuota': 10, 'fecha_vencimiento': '2024-09-08', 'valor_cuota': 280000, 'interes_mes': 74800, 'cuota_mensual': 354800, 'saldo_capital': 7200000, 'fecha_pago': '2024-09-03'},
-                {'nro_cuota': 11, 'fecha_vencimiento': '2024-10-08', 'valor_cuota': 280000, 'interes_mes': 72000, 'cuota_mensual': 352000, 'saldo_capital': 6920000, 'fecha_pago': '2024-10-07'},
-                {'nro_cuota': 12, 'fecha_vencimiento': '2024-11-08', 'valor_cuota': 280000, 'interes_mes': 69200, 'cuota_mensual': 349200, 'saldo_capital': 6640000, 'fecha_pago': '2024-11-02'},
-                {'nro_cuota': 13, 'fecha_vencimiento': '2024-12-08', 'valor_cuota': 280000, 'interes_mes': 66400, 'cuota_mensual': 346400, 'saldo_capital': 6360000, 'fecha_pago': '2024-12-05'},
-                {'nro_cuota': 14, 'fecha_vencimiento': '2025-01-08', 'valor_cuota': 280000, 'interes_mes': 63600, 'cuota_mensual': 343600, 'saldo_capital': 6080000, 'fecha_pago': '2025-01-03'},
-                {'nro_cuota': 15, 'fecha_vencimiento': '2025-02-08', 'valor_cuota': 280000, 'interes_mes': 60800, 'cuota_mensual': 340800, 'saldo_capital': 5800000, 'fecha_pago': '2025-02-01'},
-                {'nro_cuota': 16, 'fecha_vencimiento': '2025-03-08', 'valor_cuota': 280000, 'interes_mes': 58000, 'cuota_mensual': 338000, 'saldo_capital': 5520000, 'fecha_pago': '2025-03-11'},
-                {'nro_cuota': 17, 'fecha_vencimiento': '2025-04-08', 'valor_cuota': 280000, 'interes_mes': 55200, 'cuota_mensual': 335200, 'saldo_capital': 5240000, 'fecha_pago': '2025-04-13'},
-                {'nro_cuota': 18, 'fecha_vencimiento': '2025-05-08', 'valor_cuota': 280000, 'interes_mes': 52400, 'cuota_mensual': 332400, 'saldo_capital': 4960000, 'fecha_pago': '2025-05-14'},
-                {'nro_cuota': 19, 'fecha_vencimiento': '2025-06-08', 'valor_cuota': 280000, 'interes_mes': 49600, 'cuota_mensual': 329600, 'saldo_capital': 4680000, 'fecha_pago': '2025-06-09'},
-                {'nro_cuota': 20, 'fecha_vencimiento': '2025-07-08', 'valor_cuota': 280000, 'interes_mes': 46800, 'cuota_mensual': 326800, 'saldo_capital': 4400000, 'fecha_pago': '2025-07-09'},
-                {'nro_cuota': 21, 'fecha_vencimiento': '2025-08-08', 'valor_cuota': 280000, 'interes_mes': 44000, 'cuota_mensual': 324000, 'saldo_capital': 4120000, 'fecha_pago': '2025-08-14'},
-                {'nro_cuota': 22, 'fecha_vencimiento': '2025-09-08', 'valor_cuota': 280000, 'interes_mes': 41200, 'cuota_mensual': 321200, 'saldo_capital': 3840000, 'fecha_pago': '2025-09-04'},
-                {'nro_cuota': 23, 'fecha_vencimiento': '2025-10-08', 'valor_cuota': 280000, 'interes_mes': 38400, 'cuota_mensual': 318400, 'saldo_capital': 3560000, 'fecha_pago': '2025-10-08'},
-                {'nro_cuota': 24, 'fecha_vencimiento': '2025-11-08', 'valor_cuota': 280000, 'interes_mes': 35600, 'cuota_mensual': 315600, 'saldo_capital': 3280000, 'fecha_pago': '2025-11-11'},
-                {'nro_cuota': 25, 'fecha_vencimiento': None, 'valor_cuota': 280000, 'interes_mes': 32800, 'cuota_mensual': 312800, 'saldo_capital': 3000000, 'fecha_pago': None},
-                {'nro_cuota': 26, 'fecha_vencimiento': '2026-01-08', 'valor_cuota': 280000, 'interes_mes': 30000, 'cuota_mensual': 310000, 'saldo_capital': 2720000, 'fecha_pago': None},
-                {'nro_cuota': 27, 'fecha_vencimiento': '2026-02-08', 'valor_cuota': 280000, 'interes_mes': 27200, 'cuota_mensual': 307200, 'saldo_capital': 2440000, 'fecha_pago': None},
-                {'nro_cuota': 28, 'fecha_vencimiento': '2026-03-08', 'valor_cuota': 280000, 'interes_mes': 24400, 'cuota_mensual': 304400, 'saldo_capital': 2160000, 'fecha_pago': None},
-                {'nro_cuota': 29, 'fecha_vencimiento': '2026-04-08', 'valor_cuota': 280000, 'interes_mes': 21600, 'cuota_mensual': 301600, 'saldo_capital': 1880000, 'fecha_pago': None},
-                {'nro_cuota': 30, 'fecha_vencimiento': '2026-05-08', 'valor_cuota': 280000, 'interes_mes': 18800, 'cuota_mensual': 298800, 'saldo_capital': 1600000, 'fecha_pago': None},
-                {'nro_cuota': 31, 'fecha_vencimiento': '2026-06-08', 'valor_cuota': 280000, 'interes_mes': 16000, 'cuota_mensual': 296000, 'saldo_capital': 1320000, 'fecha_pago': None},
-                {'nro_cuota': 32, 'fecha_vencimiento': '2026-07-08', 'valor_cuota': 280000, 'interes_mes': 13200, 'cuota_mensual': 293200, 'saldo_capital': 1040000, 'fecha_pago': None},
-                {'nro_cuota': 33, 'fecha_vencimiento': '2026-08-08', 'valor_cuota': 280000, 'interes_mes': 10400, 'cuota_mensual': 290400, 'saldo_capital': 760000, 'fecha_pago': None},
-                {'nro_cuota': 34, 'fecha_vencimiento': '2026-09-08', 'valor_cuota': 280000, 'interes_mes': 7600, 'cuota_mensual': 287600, 'saldo_capital': 480000, 'fecha_pago': None},
-                {'nro_cuota': 35, 'fecha_vencimiento': '2026-10-08', 'valor_cuota': 280000, 'interes_mes': 4800, 'cuota_mensual': 284800, 'saldo_capital': 200000, 'fecha_pago': None},
-                {'nro_cuota': 36, 'fecha_vencimiento': '2026-11-08', 'valor_cuota': 200000, 'interes_mes': 2000, 'cuota_mensual': 202000, 'saldo_capital': 0, 'fecha_pago': None}
-            ]
-        },
-    ]
-    #db_manager.add_multiple_historical_credits(credits_list)
+    db_manager.populate_initial_members()
     
 
-    """ # Datos de créditos históricos a agregar
+    # Datos de créditos históricos a agregar
     credits_list = [
         {
             'letra': 425,
@@ -162,7 +114,7 @@ def main():
                 {'nro_cuota': 5, 'fecha_vencimiento': '2025-09-17', 'valor_cuota': 560000, 'interes_mes': 177600, 'cuota_mensual': 737600, 'saldo_capital': 17200000, 'fecha_pago': '2025-09-24'},
                 {'nro_cuota': 6, 'fecha_vencimiento': '2025-10-17', 'valor_cuota': 560000, 'interes_mes': 172000, 'cuota_mensual': 732000, 'saldo_capital': 16640000, 'fecha_pago': '2025-10-16'},
                 {'nro_cuota': 7, 'fecha_vencimiento': '2025-11-17', 'valor_cuota': 560000, 'interes_mes': 166400, 'cuota_mensual': 726400, 'saldo_capital': 16080000, 'fecha_pago': '2025-11-28'},
-                {'nro_cuota': 8, 'fecha_vencimiento': None, 'valor_cuota': 560000, 'interes_mes': 160800, 'cuota_mensual': 720800, 'saldo_capital': 15520000, 'fecha_pago': None},
+                {'nro_cuota': 8, 'fecha_vencimiento': '2025-12-17', 'valor_cuota': 560000, 'interes_mes': 160800, 'cuota_mensual': 720800, 'saldo_capital': 15520000, 'fecha_pago': None},
                 {'nro_cuota': 9, 'fecha_vencimiento': '2026-01-17', 'valor_cuota': 560000, 'interes_mes': 155200, 'cuota_mensual': 715200, 'saldo_capital': 14960000, 'fecha_pago': None},
                 {'nro_cuota': 10, 'fecha_vencimiento': '2026-02-17', 'valor_cuota': 560000, 'interes_mes': 149600, 'cuota_mensual': 709600, 'saldo_capital': 14400000, 'fecha_pago': None},
                 {'nro_cuota': 11, 'fecha_vencimiento': '2026-03-17', 'valor_cuota': 560000, 'interes_mes': 144000, 'cuota_mensual': 704000, 'saldo_capital': 13840000, 'fecha_pago': None},
@@ -252,7 +204,7 @@ def main():
                 {'nro_cuota': 22, 'fecha_vencimiento': '2025-09-08', 'valor_cuota': 280000, 'interes_mes': 41200, 'cuota_mensual': 321200, 'saldo_capital': 3840000, 'fecha_pago': '2025-09-04'},
                 {'nro_cuota': 23, 'fecha_vencimiento': '2025-10-08', 'valor_cuota': 280000, 'interes_mes': 38400, 'cuota_mensual': 318400, 'saldo_capital': 3560000, 'fecha_pago': '2025-10-08'},
                 {'nro_cuota': 24, 'fecha_vencimiento': '2025-11-08', 'valor_cuota': 280000, 'interes_mes': 35600, 'cuota_mensual': 315600, 'saldo_capital': 3280000, 'fecha_pago': '2025-11-11'},
-                {'nro_cuota': 25, 'fecha_vencimiento': None, 'valor_cuota': 280000, 'interes_mes': 32800, 'cuota_mensual': 312800, 'saldo_capital': 3000000, 'fecha_pago': None},
+                {'nro_cuota': 25, 'fecha_vencimiento': '2025-12-08', 'valor_cuota': 280000, 'interes_mes': 32800, 'cuota_mensual': 312800, 'saldo_capital': 3000000, 'fecha_pago': None},
                 {'nro_cuota': 26, 'fecha_vencimiento': '2026-01-08', 'valor_cuota': 280000, 'interes_mes': 30000, 'cuota_mensual': 310000, 'saldo_capital': 2720000, 'fecha_pago': None},
                 {'nro_cuota': 27, 'fecha_vencimiento': '2026-02-08', 'valor_cuota': 280000, 'interes_mes': 27200, 'cuota_mensual': 307200, 'saldo_capital': 2440000, 'fecha_pago': None},
                 {'nro_cuota': 28, 'fecha_vencimiento': '2026-03-08', 'valor_cuota': 280000, 'interes_mes': 24400, 'cuota_mensual': 304400, 'saldo_capital': 2160000, 'fecha_pago': None},
@@ -425,7 +377,7 @@ def main():
             'interes': 0.01,  # 1,00% mensual
             'no_cuotas': 36,
             'fecha_inicio': '2025-10-03',
-            'socios': [25],
+            'socios_ids': [25],
             'cuotas': [
                 {'nro_cuota': 1, 'fecha_vencimiento': '2026-11-03', 'valor_cuota': 695000, 'interes_mes': 250000, 'cuota_mensual': 945000, 'saldo_capital': 24305000, 'fecha_pago': '2025-11-11'},
                 {'nro_cuota': 2, 'fecha_vencimiento': '2026-12-03', 'valor_cuota': 695000, 'interes_mes': 243050, 'cuota_mensual': 938050, 'saldo_capital': 23610000, 'fecha_pago': None},
@@ -489,8 +441,6 @@ def main():
                 {'nro_cuota': 13, 'fecha_vencimiento': '2026-05-07', 'valor_cuota': 800000, 'interes_mes': 8000, 'cuota_mensual': 808000, 'saldo_capital': 0, 'fecha_pago': None}
             ]
         },
-
-        AURA
 
         {
             'letra': 409,
@@ -894,7 +844,7 @@ def main():
             'socios_ids': [31],  # RODRIGO GARCIA CASTRO / ANGELA MARIA GARCIA DELGADO
             'cuotas': [
                 {'nro_cuota': 1, 'fecha_vencimiento': '2025-11-01', 'valor_cuota': 420000, 'interes_mes': 50000, 'cuota_mensual': 470000, 'saldo_capital': 4580000, 'fecha_pago': '2025-11-02'},
-                {'nro_cuota': 2, 'fecha_vencimiento': '2025-12-01', 'valor_cuota': 420000, 'interes_mes': 45800, 'cuota_mensual': 465800, 'saldo_capital': 4160000, 'fecha_pago': None'},
+                {'nro_cuota': 2, 'fecha_vencimiento': '2025-12-01', 'valor_cuota': 420000, 'interes_mes': 45800, 'cuota_mensual': 465800, 'saldo_capital': 4160000, 'fecha_pago': None},
                 {'nro_cuota': 3, 'fecha_vencimiento': '2026-01-01', 'valor_cuota': 420000, 'interes_mes': 41600, 'cuota_mensual': 461600, 'saldo_capital': 3740000, 'fecha_pago': None},
                 {'nro_cuota': 4, 'fecha_vencimiento': '2026-02-01', 'valor_cuota': 420000, 'interes_mes': 37400, 'cuota_mensual': 457400, 'saldo_capital': 3320000, 'fecha_pago': None},
                 {'nro_cuota': 5, 'fecha_vencimiento': '2026-03-01', 'valor_cuota': 420000, 'interes_mes': 33200, 'cuota_mensual': 453200, 'saldo_capital': 2900000, 'fecha_pago': None},
@@ -1088,8 +1038,8 @@ def main():
             'cuotas': [
                 {'nro_cuota': 1, 'fecha_vencimiento': '2025-10-08', 'valor_cuota': 250000, 'interes_mes': 10000, 'cuota_mensual': 260000, 'saldo_capital': 750000, 'fecha_pago': '2025-09-26'},
                 {'nro_cuota': 2, 'fecha_vencimiento': '2025-11-08', 'valor_cuota': 250000, 'interes_mes': 7500, 'cuota_mensual': 257500, 'saldo_capital': 500000, 'fecha_pago': '2025-10-24'},
-                {'nro_cuota': 3, 'fecha_vencimiento': None, 'valor_cuota': 250000, 'interes_mes': 5000, 'cuota_mensual': 255000, 'saldo_capital': 250000, 'fecha_pago': '2025-11-24'},
-                {'nro_cuota': 4, 'fecha_vencimiento': '2026-01-08', 'valor_cuota': 250000, 'interes_mes': 2500, 'cuota_mensual': 252500, 'saldo_capital': 0, 'fecha_pago': None'}
+                {'nro_cuota': 3, 'fecha_vencimiento': '2025-12-08', 'valor_cuota': 250000, 'interes_mes': 5000, 'cuota_mensual': 255000, 'saldo_capital': 250000, 'fecha_pago': '2025-11-24'},
+                {'nro_cuota': 4, 'fecha_vencimiento': '2026-01-08', 'valor_cuota': 250000, 'interes_mes': 2500, 'cuota_mensual': 252500, 'saldo_capital': 0, 'fecha_pago': None}
             ]
         },
 
@@ -1505,7 +1455,7 @@ def main():
             'interes': 0.01,  # 1.00% mensual
             'no_cuotas': 24,
             'fecha_inicio': '2024-08-19',
-            'socios_ids': [12,13,  # FANNY PADILLA JOJOA Y/O MABEL PADILLA JOJOA
+            'socios_ids': [12,13],  # FANNY PADILLA JOJOA Y/O MABEL PADILLA JOJOA
             'cuotas': [
                 {'nro_cuota': 1, 'fecha_vencimiento': '2024-09-19', 'valor_cuota': 210000, 'interes_mes': 50000, 'cuota_mensual': 260000, 'saldo_capital': 4790000, 'fecha_pago': '2024-10-07'},
                 {'nro_cuota': 2, 'fecha_vencimiento': '2024-10-19', 'valor_cuota': 210000, 'interes_mes': 47900, 'cuota_mensual': 257900, 'saldo_capital': 4580000, 'fecha_pago': '2024-11-02'},
@@ -1638,7 +1588,7 @@ def main():
         },
 
         {
-            'letra': 426,
+            'letra': 427,
             'capital': 2625000,
             'interes': 0.01,  # 1.00% mensual
             'no_cuotas': 14,
@@ -1865,9 +1815,7 @@ def main():
         
     ]
 
-
-    db_manager.add_multiple_historical_credits(credits_list) """
-
+    db_manager.add_multiple_historical_credits(credits_list)
     # Create main window
     window = MainWindow()
     assistant_page = AssistantPage(db_manager)
@@ -1883,6 +1831,8 @@ def main():
     window.show() # Mostrar la ventana principal
 
     print("✅ Aplicación iniciada correctamente.")
+
+    
     sys.exit(app.exec())
 
 if __name__ == "__main__":

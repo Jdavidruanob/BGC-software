@@ -261,3 +261,19 @@ QCalendarWidget QMenu::item:selected {
     background-color: #2563eb;
     color: #ffffff;
 }
+
+
+#confirmDate {
+    font-size: 16px;
+    padding: 8px 10px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 4px;
+    font-weight: bold;
+    border: transparent;
+}
+
+#confirmDate:hover {
+    background-color: #2a4a80;
+    border: 2px solid #2a4a80;
+}
