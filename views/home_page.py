@@ -229,10 +229,7 @@ class HomePage(QWidget):
         
         btn_confirmar_fecha = QPushButton("Confirmar Fecha")
         btn_confirmar_fecha.setCursor(Qt.PointingHandCursor)
-        btn_confirmar_fecha.setStyleSheet("""
-            QPushButton { background-color: #8C5B2F; color: white; border: none; }
-            QPushButton:hover { background-color: #6e4623; }
-        """)
+        btn_confirmar_fecha.setObjectName("confirmDate")
         btn_confirmar_fecha.clicked.connect(self.aplicar_fecha_simulada)
 
         row_picker.addWidget(self.date_edit)
@@ -654,10 +651,7 @@ class HomePage(QWidget):
         
         btn_confirmar_fecha = QPushButton("Confirmar Fecha")
         btn_confirmar_fecha.setCursor(Qt.PointingHandCursor)
-        btn_confirmar_fecha.setStyleSheet("""
-            QPushButton { background-color: #8C5B2F; color: white; border: none; }
-            QPushButton:hover { background-color: #6e4623; }
-        """)
+        btn_confirmar_fecha.setObjectName("confirmDate")
         btn_confirmar_fecha.clicked.connect(self.aplicar_fecha_simulada)
 
         row_picker.addWidget(self.date_edit)

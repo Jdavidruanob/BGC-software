@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtSvgWidgets import QSvgWidget  # <--- Agregar esta importación
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from config import load_styles, load_svg_icon, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
@@ -27,14 +28,35 @@ class MainWindow(QMainWindow):
         top_bar = QWidget()
         top_bar.setObjectName("TopBar")
         top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(10, 17.5, 80, 17.5) # Margen Topbar, right, top, left, bottom
+        top_layout.setContentsMargins(80, 17.5, 80, 17.5) # Margen Topbar, right, top, left, bottom
 
-        # Logo
-        logo_label = QLabel("🔷 BGC")
-        logo_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
-        logo_label.setObjectName("logoLabel")
+       # ----- Logo con QSvgWidget (Vectorial y Nítido) -----
+        logo_relative_path = "logo/BGC_logo_noche.svg"
+        logo_absolute_path = os.path.join(ASSETS_DIR, logo_relative_path)
+
+        if os.path.exists(logo_absolute_path):
+            # 1. Crear el Widget SVG directamente con el archivo
+            self.logo_widget = QSvgWidget(logo_absolute_path)
+            
+            # 2. Configurar el tamaño deseado (80x80)
+            # Al ser un QSvgWidget, el vector se redibuja a este tamaño exacto sin pixelarse
+            self.logo_widget.setFixedSize(60, 60)
+            
+            # 3. FONDO TRANSPARENTE (Crucial)
+            # QSvgWidget a veces pinta un fondo negro o blanco por defecto.
+            # Esto fuerza a que el fondo del widget sea transparente.
+            self.logo_widget.setStyleSheet("background-color: transparent;")
+            self.logo_widget.setAttribute(Qt.WA_TranslucentBackground)
+            
+            top_layout.addWidget(self.logo_widget, alignment=Qt.AlignLeft)
         
-        top_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
+        else:
+            # Fallback por si no encuentra el archivo
+            print(f"⚠️ No se encontró el logo en: {logo_absolute_path}")
+            logo_label = QLabel("🔷 BGC")
+            logo_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
+            top_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
+
         top_layout.addStretch()
 
         # Botones con íconos PNG
