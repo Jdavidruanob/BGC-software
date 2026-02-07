@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
     QScrollArea, QStackedWidget, QSizePolicy, QInputDialog,
     QRadioButton, QDateEdit, QButtonGroup  # <--- IMPORTANTE: Faltaban estos
 )
-from PySide6.QtCore import Qt, QSize, QDate # <--- IMPORTANTE: Faltaba QDate
+from PySide6.QtCore import Qt, QSize, QDate, QUrl # <--- IMPORTANTE: Faltaba QDate
+from PySide6.QtGui import QDesktopServices
 from config import (
     load_styles, load_svg_icon, format_miles_colombian_int, 
     STYLES_DIR, DYNAMIC_DATA_BASE_DIR,
@@ -181,12 +182,13 @@ class HomePage(QWidget):
         row_admin_actions.addWidget(btn_editar_admin)
         admin_layout.addLayout(row_admin_actions)
 
-        # Fila 2: Cambiar Base de Datos
-        btn_cambiar_bd = QPushButton("  Cambiar Base de Datos")
-        btn_cambiar_bd.setObjectName("btnCambiarBD")
-        btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
-        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)
-        admin_layout.addWidget(btn_cambiar_bd)
+        # Antes: btn_cambiar_bd
+        self.btn_abrir_archivos = QPushButton("  Abrir Carpeta de Archivos")
+        self.btn_abrir_archivos.setObjectName("btnCambiarBD") # Mantenemos ID para estilo (o crea uno nuevo)
+        # Usamos icono de carpeta si tienes 'folder.svg', sino mantenemos 'database.svg' o cambias a otro
+        self.btn_abrir_archivos.setIcon(load_svg_icon("icons/folder.svg")) 
+        self.btn_abrir_archivos.clicked.connect(self.abrir_carpeta_archivos)
+        admin_layout.addWidget(self.btn_abrir_archivos)
 
         # --- SECCIÓN DE FECHA (NUEVO) ---
         sep = QFrame()
@@ -426,6 +428,16 @@ class HomePage(QWidget):
             # 3. Refrescar el resumen (para ver el cambio en papelería)
             self.refresh_view()
 
+    # --- NUEVA FUNCIÓN: ABRIR CARPETA ---
+    def abrir_carpeta_archivos(self):
+        """Abre la carpeta donde se almacenan los datos (Recibos, DB, etc.) en el explorador de Windows."""
+        folder_path = DYNAMIC_DATA_BASE_DIR
+        
+        # QUrl.fromLocalFile crea una URL compatible con el SO
+        # QDesktopServices.openUrl abre esa URL con el programa predeterminado (Explorador de archivos)
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(folder_path)):
+            show_error(self, "Error", f"No se pudo abrir la carpeta:\n{folder_path}")
+
     def cambiar_base_datos(self):
         """Abre el explorador de archivos para seleccionar una BD de año anterior."""
         from PySide6.QtWidgets import QFileDialog
@@ -594,12 +606,12 @@ class HomePage(QWidget):
         row_admin_actions.addWidget(btn_editar_admin)
         admin_layout.addLayout(row_admin_actions)
 
-        # Botón BD
-        btn_cambiar_bd = QPushButton("  Cambiar Base de Datos")
-        btn_cambiar_bd.setObjectName("btnCambiarBD")
-        btn_cambiar_bd.setIcon(load_svg_icon("icons/database.svg"))
-        btn_cambiar_bd.clicked.connect(self.cambiar_base_datos)
-        admin_layout.addWidget(btn_cambiar_bd)
+        # Botón Abrir Archivos (Reemplaza a Cambiar BD)
+        self.btn_abrir_archivos = QPushButton("  Abrir Carpeta de Archivos")
+        self.btn_abrir_archivos.setObjectName("btnCambiarBD")
+        self.btn_abrir_archivos.setIcon(load_svg_icon("icons/folder.svg")) 
+        self.btn_abrir_archivos.clicked.connect(self.abrir_carpeta_archivos)
+        admin_layout.addWidget(self.btn_abrir_archivos)
 
         # --- B. SECCIÓN DE FECHA ---
         sep = QFrame()
