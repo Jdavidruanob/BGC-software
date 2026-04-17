@@ -94,7 +94,7 @@ def main():
         
         db_manager.set_sequence_start_value("creditos", 445)
 
-    db_manager.populate_initial_members()
+    #db_manager.populate_initial_members()
     
 
     # Datos de créditos históricos a agregar
@@ -1815,7 +1815,7 @@ def main():
         
     ]
 
-    db_manager.add_multiple_historical_credits(credits_list)
+    #db_manager.add_multiple_historical_credits(credits_list)
     # Create main window
     window = MainWindow()
     assistant_page = AssistantPage(db_manager)
