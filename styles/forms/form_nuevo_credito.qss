@@ -1,25 +1,15 @@
-#formTitle {
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 14px;
-}
-
-#FormLabel {
-    font-size: 16px;
-    font-weight: bold;
-}
-
+/* Combo del formulario */
 #ComboSocio {
     height: 40px;
     font-size: 15px;
     padding: 4px 8px;
-    border : 1px solid #d2d2d2;
+    border: 1px solid #d2d2d2;
     border-radius: 4px;
 }
-
 #ComboSocio:hover {
     background-color: #f1f5f9;
 }
+
 #MontoInput, QLineEdit {
     font-size: 15px;
     padding: 4px 8px;
@@ -27,65 +17,37 @@
     color: #647790;
     font-weight: bold;
     border: 1px solid #d2d2d2;
-    border-radius: 4px
+    border-radius: 4px;
 }
 
-#RegisterButton {
-    font-size: 16px;
-    padding: 8px 20px;
-    background-color: %(PRIMARY_COLOR)s;
-    color: white;
-    border-radius: 6px;
-    font-weight: bold;
-}
-
-#RegisterButton:hover {
-    background-color: #2a4a80;
-}
-QLabel#tag-label-socio{
+/* Tags de socios seleccionados */
+QLabel#tag-label-socio {
     font-size: 16px;
     background: transparent;
-    color:  %(PRIMARY_COLOR)s;
+    color: %(PRIMARY_COLOR)s;
     margin-left: 0px;
 }
-
 QFrame#tag-socio {
-    border: 1px solid %(PRIMARY_COLOR)s;         /* borde base transparente */
+    border: 1px solid %(PRIMARY_COLOR)s;
     border-radius: 12px;
     padding: 2px 1px;
-    background-color: #f0f8ff
-    
+    background-color: #f0f8ff;
 }
 
+/* Botón eliminar tag (distinto al delete genérico — sin borde) */
 QPushButton#DeleteButton {
     border: none;
     border-radius: 10px;
-    background: transparent
+    background: transparent;
 }
-
 QPushButton#DeleteButton:hover {
     background: #fef2f2;
-    
 }
 
 QPushButton#user-btn {
     border: none;
     background: transparent;
     margin-right: 0px;
-}
-
-
-/* Estilo consistente para listas desplegables */
-QComboBox QAbstractItemView {
-    font-size: 16px;
-    spacing: 6px;
-    outline: none;
-}
-
-QComboBox QAbstractItemView::item {
-    min-height: 30px;
-    padding: 4px 8px;
-    
 }
 
 /* Tarjeta de Cuota Mensual Estimada */
@@ -95,37 +57,29 @@ QFrame#CardCuotaMensual {
     background-color: #f8f9fa;
     padding: 16px 20px;
 }
-
 QLabel#TituloCuotaMensual {
     font-size: 13px;
     font-weight: 600;
     color: #5a7a96;
     letter-spacing: 0.5px;
     background: transparent;
-
 }
-
 QLabel#MontoCuotaMensual {
     font-size: 32px;
     font-weight: bold;
     color: %(PRIMARY_COLOR)s;
     margin: 8px 0px;
     background: transparent;
-
 }
-
 QLabel#LabelFechaFinalizacion {
     font-size: 12px;
     color: #999999;
     font-weight: 500;
     background: transparent;
-
 }
-
 QLabel#FechaFinalizacionValor {
     font-size: 14px;
     color: #2d2d2d;
     font-weight: bold;
     background: transparent;
 }
-
