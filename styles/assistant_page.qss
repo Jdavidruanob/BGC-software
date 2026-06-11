@@ -1,7 +1,3 @@
-/* Archivo: styles/assistant_page.qss */
-
-
-
 /* Estilos para el QTableWidget */
 QTableWidget#operationsTable {
     background-color: white;
@@ -12,18 +8,15 @@ QTableWidget#operationsTable {
     selection-color: #333333;
 }
 
-/* Estilo para CADA SECCIÓN (columna) individual del encabezado */
 QHeaderView::section {
     background-color: #f1f5f9;
     font-weight: bold;
-    font-size: 15px; /* <--- CAMBIO: Fuente del encabezado un poco más pequeña */
+    font-size: 15px;
     color: #333;
     border: 1px solid #DADDE1;
     padding: 10px 10px;
     text-align: center;
 }
-
-/* Redondeo de esquinas para la primera y última sección del encabezado */
 QHeaderView::section:first {
     border-top-left-radius: 8px;
 }
@@ -32,116 +25,59 @@ QHeaderView::section:last {
     border-right: 1px solid #DADDE1;
 }
 
-
-/* Estilos para los QTableWidgetItem (texto simple en celdas: Fecha, Socio, Número, Cuota) */
 QTableWidget#operationsTable::item {
     background-color: white;
     padding: 10px 10px;
-    font-size: 14px; /* <--- CAMBIO: Fuente de los items un poco más pequeña */
+    font-size: 14px;
     color: #333333;
     border-bottom: 1px solid #EEEEEE;
     border-right: 1px solid #EEEEEE;
 }
-
-/* Quitar el borde derecho de la última columna de la tabla */
 QTableWidget#operationsTable::item:last-child {
     border-right: none;
 }
 
-
-/* Etiquetas tipo operación (insertadas como widgets) */
+/* Badges de tipo de operación */
 #opTipo_aporte,
 #opTipo_pago_credito,
 #opTipo_nuevo_credito,
 #opTipo_retiro,
-#opTipo_abono_capital,  /* NUEVO: Abono Capital */
+#opTipo_abono_capital,
 #opTipo_custom {
-    font-size: 14px; /* <--- CAMBIO: Fuente del badge un poco más pequeña */
+    font-size: 14px;
     padding: 6px 14px;
     font-weight: bold;
     color: white;
 }
+#opTipo_aporte        { background-color: #28a745; border-radius: 10px; }
+#opTipo_pago_credito  { background-color: #fd7e14; border-radius: 10px; }
+#opTipo_nuevo_credito { background-color: #007bff; border-radius: 10px; }
+#opTipo_retiro        { background-color: #dc3545; border-radius: 10px; }
+#opTipo_abono_capital { background-color: #ffca1a; border-radius: 10px; }
+#opTipo_custom        { background-color: #795548; border-radius: 10px; }
 
-/* Colores especificos por tipo */
-#opTipo_aporte { background-color: #28a745; border-radius: 10px}
-#opTipo_pago_credito { background-color: #fd7e14; border-radius: 10px }
-#opTipo_nuevo_credito { background-color: #007bff; border-radius: 10px}
-#opTipo_retiro { background-color: #dc3545; border-radius: 10px }
-
-/* NUEVO: Abono a Capital -> Amarillo (Ocre para que se lea el texto blanco) */
-#opTipo_abono_capital { 
-    background-color: #ffca1a; /* Amarillo intenso */
-    border-radius: 10px;           
-}
-
-/* NUEVO: Custom (Edición Saldo/Motivo) -> Café */
-#opTipo_custom { 
-    background-color: #795548; /* Café Material Design */
-    border-radius: 10px 
-}
-
-/* Estilos para los QLabel de Monto y Saldo (insertados como widgets) */
 QLabel#opMonto, QLabel#opSaldo {
-    font-size: 15px; /* <--- CAMBIO: Fuente de Monto/Saldo un poco más pequeña */
+    font-size: 15px;
     font-weight: 600;
 }
-
 QLabel#opSaldo {
     font-weight: bold;
 }
+QLabel#opMonto[montoTipo="positivo"] { color: #28a745; }
+QLabel#opMonto[montoTipo="negativo"] { color: #dc3545; }
 
-/* Colores especificos para Monto basado en propiedad */
-QLabel#opMonto[montoTipo="positivo"] {
-    color: #28a745;
-}
-QLabel#opMonto[montoTipo="negativo"] {
-    color: #dc3545;
-}
-
-
-
-/* Ejemplo de reglas que podrian causar el problema */
-
-/* Revisa si el color del texto es igual al fondo */
-QDateEdit {
-    color: #333; /* Asegúrate de que no sea igual al background */
-    background-color: white;
-}
-
-/* O si el calendario tiene un estilo que oculta los números */
-QCalendarWidget QAbstractItemView {
-    color: #333; /* Color de los dias del calendario */
-    selection-background-color: #aaddff;
-}
-
-QCalendarWidget QSpinBox { /* Los selectores de mes/año */
-    color: #333; /* Asegúrate de que el texto del spinbox sea visible */
-    background-color: transparent; /* O un color claro */
-}
-
-QCalendarWidget QToolButton { /* Botones de navegación (flechas, mes/año) */
-    color: #333; /* El color del texto del mes/año suele estar aqui */
-    background-color: transparent;
-}
-
-/* Fondo azul para los filtros */
+/* Área de filtros */
 #filtersFrame {
     background-color: %(PRIMARY_COLOR)s;
     border-radius: 12px;
     margin-bottom: 18px;
-    /* Opcional: sombra sutil */
-    
 }
-
-/* Titulos y etiquetas dentro del área azul */
 #filtersFrame QLabel,
 #filtersFrame QComboBox,
 #filtersFrame QLineEdit {
     color: white;
     font-size: 15px;
 }
-
-/* Inputs modernos */
 #filtersFrame QLineEdit,
 #filtersFrame QComboBox {
     background: rgba(255,255,255,0.10);
@@ -151,14 +87,33 @@ QCalendarWidget QToolButton { /* Botones de navegación (flechas, mes/año) */
     color: #fff;
     font-size: 15px;
 }
-
 #filtersFrame QLineEdit:focus,
 #filtersFrame QComboBox:focus {
     border: 1.5px solid #60a5fa;
     background: rgba(255,255,255,0.18);
 }
-
-/* Botones de filtros */
+#filtersFrame QDateEdit {
+    background: rgba(255,255,255,0.10);
+    border: 1.5px solid #fff;
+    border-radius: 7px;
+    padding: 7px 12px;
+    color: #fff;
+    font-size: 15px;
+    selection-background-color: #2563eb;
+    selection-color: #fff;
+}
+#filtersFrame QLabel {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    background: transparent;
+}
+#filtersTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 10px;
+}
 QPushButton#applyFiltersButton,
 QPushButton#clearFiltersButton {
     background: #fff;
@@ -170,159 +125,8 @@ QPushButton#clearFiltersButton {
     border: none;
     margin-left: 8px;
 }
-
 QPushButton#applyFiltersButton:hover,
 QPushButton#clearFiltersButton:hover {
     background: #e0e7ef;
     color: #1e293b;
-}
-
-/* (Opcional) Titulo de filtros si lo usas */
-#filtersTitle {
-    font-size: 18px;
-    font-weight: bold;
-    color: #fff;
-    margin-bottom: 10px;
-}
-
-#filtersFrame QLabel {
-    color: #fff;
-    font-size: 15px;
-    font-weight: 500;
-    background: transparent;
-}
-
-
-/* QDateEdit en filtros: fondo y bordes modernos */
-#filtersFrame QDateEdit {
-    background: rgba(255,255,255,0.10);
-    border: 1.5px solid #fff;
-    border-radius: 7px;
-    padding: 7px 12px;
-    color: #fff;
-    font-size: 15px;
-    selection-background-color: #2563eb;
-    selection-color: #fff;
-}
-
-
-
-
-/* QCalendarWidget: Diseño moderno y limpio */
-QCalendarWidget {
-    background: #ffffff;
-    color: #1e293b;
-    border-radius: 10px;
-    border: 2px solid #2563eb;
-    padding: 12px;
-    margin: 0px;
-}
-
-/* Navegación del calendario (mes/año y flechas) */
-QCalendarWidget QToolButton {
-    background: #f1f5f9;
-    color: #1e293b;
-    font-weight: bold;
-    font-size: 13px;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 4px 8px;
-    margin: 2px;
-}
-
-QCalendarWidget QToolButton:hover {
-    background: #e0e7f1;
-    border: 1px solid #2563eb;
-    color: #2563eb;
-}
-
-/* Selectores de mes y año (spinbox) */
-QCalendarWidget QSpinBox {
-    background: #f8fafc;
-    color: #1e293b;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 4px 6px;
-    font-weight: 600;
-}
-
-QCalendarWidget QSpinBox:focus {
-    border: 1px solid #2563eb;
-    background: #f1f5f9;
-}
-
-/* Cabecera del calendario (dias de la semana) */
-QCalendarWidget QHeaderView {
-    background: transparent;
-}
-
-QCalendarWidget QHeaderView::section {
-    background: #f1f5f9;
-    color: #2563eb;
-    font-weight: bold;
-    font-size: 13px;
-    border: none;
-    padding: 6px 0px;
-    text-align: center;
-}
-
-/* Tabla de dias del calendario */
-QCalendarWidget QAbstractItemView {
-    background: #ffffff;
-    color: #1e293b;
-    selection-background-color: #2563eb;
-    selection-color: #ffffff;
-    border: none;
-}
-
-/* Dias individuales */
-QCalendarWidget QAbstractItemView::item {
-    padding: 6px;
-    border-radius: 6px;
-    margin: 2px;
-    font-size: 14px;
-}
-
-/* Dia seleccionado */
-QCalendarWidget QAbstractItemView::item:selected {
-    background: #2563eb;
-    color: #ffffff;
-    font-weight: bold;
-    border-radius: 6px;
-}
-
-/* Dia actual (hoy) */
-QCalendarWidget QAbstractItemView::item:hover {
-    background: #e0e7f1;
-    color: #1e293b;
-    border-radius: 6px;
-}
-
-/* Dias deshabilitados (otros meses) */
-QCalendarWidget QAbstractItemView::item:disabled {
-    color: #cbd5e1;
-}
-
-/* Esquina superior izquierda (boton de selección de todo) */
-QCalendarWidget QTableCornerButton::section {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px 0px 0px 0px;
-}
-
-/* AGREGA ESTO EN assistant_page.qss */
-QCalendarWidget QMenu {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 4px;
-}
-QCalendarWidget QMenu::item {
-    padding: 4px 20px 4px 10px;
-    border-radius: 4px;
-}
-QCalendarWidget QMenu::item:selected {
-    background-color: #2563eb;
-    color: #ffffff;
 }

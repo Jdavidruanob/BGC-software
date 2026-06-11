@@ -46,7 +46,7 @@ QHeaderView::section {
 
 /* Top bar */
 #liqTopBar {
-    background-color: #153A66;
+    background-color: %(PRIMARY_COLOR)s;
 }
 
 #liqBackButton {

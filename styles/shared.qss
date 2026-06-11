@@ -1,0 +1,203 @@
+/* =====================================================
+   ESTILOS COMPARTIDOS — aplica a todos los componentes
+   ===================================================== */
+
+/* Título de formulario */
+#formTitle {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+/* Etiqueta de campo */
+#FormLabel {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Input de texto genérico */
+#InputField {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 14px;
+    background-color: #f9f9f9;
+}
+#InputField:focus {
+    border: 1px solid %(PRIMARY_COLOR)s;
+    background-color: white;
+}
+
+/* Botón principal de registro */
+#RegisterButton {
+    font-size: 16px;
+    padding: 8px 20px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+}
+#RegisterButton:hover {
+    background-color: %(PRIMARY_HOVER_COLOR)s;
+}
+
+/* Botones "Agregar" (texto azul con underline) */
+#AddAporteButton, #AddPagoButton, #AddLetraButton {
+    font-size: 15px;
+    padding: 2px 4px;
+    min-height: 26px;
+    color: %(PRIMARY_COLOR)s;
+    font-weight: bold;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+}
+#AddAporteButton:hover, #AddPagoButton:hover, #AddLetraButton:hover {
+    border-bottom: 2px solid %(PRIMARY_COLOR)s;
+}
+
+/* Botones "Eliminar" (borde rojo) */
+#DeleteButton, #DeleteLetraButton, #DeletePagoButton {
+    background: transparent;
+    border: 1px solid #e56161;
+    border-radius: 5px;
+}
+#DeleteButton:hover, #DeleteLetraButton:hover, #DeletePagoButton:hover {
+    background-color: #fef2f2;
+}
+
+/* Checkbox de papelería */
+QCheckBox#ChkPapeleria {
+    background: transparent;
+    border: none;
+    spacing: 0px;
+    padding: 0px;
+    min-height: 34px;
+}
+QCheckBox#ChkPapeleria::indicator {
+    width: 27px;
+    height: 27px;
+    background-color: white;
+    border: 2px solid #d1d5db;
+    border-radius: 5px;
+}
+QCheckBox#ChkPapeleria:hover,
+QCheckBox#ChkPapeleria::indicator:hover {
+    background: transparent;
+    border-color: #d1d5db;
+}
+QCheckBox#ChkPapeleria::indicator:checked {
+    background-color: white;
+    border: 1px solid #3b82f6;
+    image: url(%(ASSETS_DIR)s/icons/check.svg);
+}
+
+/* Dropdown de QComboBox */
+QComboBox QAbstractItemView {
+    font-size: 16px;
+    spacing: 6px;
+    outline: none;
+}
+QComboBox QAbstractItemView::item {
+    min-height: 30px;
+    padding: 4px 8px;
+}
+
+/* =====================================================
+   CALENDARIO — QCalendarWidget
+   ===================================================== */
+QCalendarWidget {
+    background: #ffffff;
+    color: #1e293b;
+    border-radius: 10px;
+    border: 2px solid #2563eb;
+    padding: 12px;
+    margin: 0px;
+}
+QCalendarWidget QToolButton {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-weight: bold;
+    font-size: 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 8px;
+    margin: 2px;
+}
+QCalendarWidget QToolButton:hover {
+    background: #e0e7f1;
+    border: 1px solid #2563eb;
+    color: #2563eb;
+}
+QCalendarWidget QSpinBox {
+    background: #f8fafc;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 4px 6px;
+    font-weight: 600;
+}
+QCalendarWidget QSpinBox:focus {
+    border: 1px solid #2563eb;
+    background: #f1f5f9;
+}
+QCalendarWidget QHeaderView {
+    background: transparent;
+}
+QCalendarWidget QHeaderView::section {
+    background: #f1f5f9;
+    color: #2563eb;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    padding: 6px 0px;
+    text-align: center;
+}
+QCalendarWidget QAbstractItemView {
+    background: #ffffff;
+    color: #1e293b;
+    selection-background-color: #2563eb;
+    selection-color: #ffffff;
+    border: none;
+}
+QCalendarWidget QAbstractItemView::item {
+    padding: 6px;
+    border-radius: 6px;
+    margin: 2px;
+    font-size: 14px;
+}
+QCalendarWidget QAbstractItemView::item:selected {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: bold;
+    border-radius: 6px;
+}
+QCalendarWidget QAbstractItemView::item:hover {
+    background: #e0e7f1;
+    color: #1e293b;
+    border-radius: 6px;
+}
+QCalendarWidget QAbstractItemView::item:disabled {
+    color: #cbd5e1;
+}
+QCalendarWidget QTableCornerButton::section {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px 0px 0px 0px;
+}
+QCalendarWidget QMenu {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px;
+}
+QCalendarWidget QMenu::item {
+    padding: 4px 20px 4px 10px;
+    border-radius: 4px;
+}
+QCalendarWidget QMenu::item:selected {
+    background-color: #2563eb;
+    color: #ffffff;
+}

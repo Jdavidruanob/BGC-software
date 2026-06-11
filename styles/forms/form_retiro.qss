@@ -1,21 +1,11 @@
-#formTitle {
-    font-size: 22px;
-    font-weight: 600;
-}
-
-#FormLabel {
-    font-size: 16px;
-    font-weight: bold;
-}
-
+/* Combo del formulario */
 #ComboSocio {
     height: 40px;
     font-size: 15px;
     padding: 4px 8px;
-    border : 1px solid #d2d2d2;
+    border: 1px solid #d2d2d2;
     border-radius: 4px;
 }
-
 #ComboSocio:hover {
     background-color: #f1f5f9;
 }
@@ -36,21 +26,18 @@ QFrame#CardSaldoDisponible {
     border-radius: 8px;
     background-color: #ecfdf5;
 }
-
 QLabel#TituloSaldoDisponible {
     font-size: 16px;
     font-weight: 700;
     color: #2e7d32;
     background: transparent;
 }
-
 QLabel#SubtituloSaldoDisponible {
     font-size: 14px;
     color: #558b2f;
     font-weight: 400;
     background: transparent;
 }
-
 QLabel#MontoSaldoDisponible {
     font-size: 20px;
     font-weight: bold;
@@ -66,14 +53,12 @@ QFrame#CardSaldoFinal {
     background-color: #f9fafb;
     padding: 2px 12px;
 }
-
 QLabel#LabelQuedan {
     font-size: 14px;
     font-weight: 500;
     color: #666;
     background: transparent;
 }
-
 QLabel#MontoSaldoFinal {
     font-size: 16px;
     font-weight: bold;
@@ -81,28 +66,8 @@ QLabel#MontoSaldoFinal {
     background: transparent;
 }
 
+/* RegisterButton con min-width específico de este form */
 #RegisterButton {
-    font-size: 16px;
-    padding: 10px 18px;
-    background-color: %(PRIMARY_COLOR)s;
-    color: white;
-    border-radius: 6px;
-    font-weight: bold;
-    border: none;
     min-width: 120px;
-}
-
-#RegisterButton:hover {
-    background-color: #2a4a80;
-}
-
-/* Popup de QComboBox */
-QComboBox QAbstractItemView {
-  font-size: 16px;
-  spacing: 6px;
-  outline: none;
-}
-QComboBox QAbstractItemView::item {
-  min-height: 30px;
-  padding: 4px 8px;
+    padding: 10px 18px;
 }

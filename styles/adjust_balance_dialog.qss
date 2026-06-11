@@ -21,7 +21,7 @@
     background-color: #f9f9f9;
 }
 #InputField:focus {
-    border: 1px solid #153A66;
+    border: 1px solid %(PRIMARY_COLOR)s;
     background-color: white;
 }
 
@@ -63,7 +63,7 @@ QPushButton[class="modeButton"][active="true"][mode="egreso"] {
 
 /* Boton Guardar */
 #ActionSaveButton {
-    background-color: #153A66;
+    background-color: %(PRIMARY_COLOR)s;
     color: white;
     border-radius: 6px;
     padding: 10px 20px;

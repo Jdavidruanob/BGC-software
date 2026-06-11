@@ -29,7 +29,7 @@
 }
 
 #PhotoButton:hover{
-    background-color: #2a4a80;
+    background-color: %(PRIMARY_HOVER_COLOR)s;
 }
 
 #CreateMemberButton {
@@ -41,5 +41,5 @@
     border-radius: 8px;
 }
 #CreateMemberButton:hover {
-    background-color: #2a4a80;
+    background-color: %(PRIMARY_HOVER_COLOR)s;
 }

@@ -94,28 +94,32 @@ DB_PATH_FINAL = os.path.join(YEAR_DATA_DIR, DB_FILE_NAME)  # RUTA FINAL: Apunta 
 
 # --- Colores globales ---
 
-PRIMARY_COLOR = "#1a365d"     # Azul oscuro (fondo navbar)
-SECONDARY_COLOR = "#8C5B2F"   # Marrón (hover y botón activo)
-TEXT_COLOR = "#FFFFFF"        # Texto blanco
-#e3e9f1 bordes
+PRIMARY_COLOR = "#1a365d"        # Azul oscuro (fondo navbar)
+PRIMARY_HOVER_COLOR = "#2a4a80"  # Azul hover (botones primarios)
+SECONDARY_COLOR = "#8C5B2F"      # Marrón (hover y botón activo)
+TEXT_COLOR = "#FFFFFF"           # Texto blanco
 
 
-# --- Metodos Globlales ---
+# --- Metodos Globales ---
 
-def load_styles(self, qss_path):
-    """ Carga un archivo QSS y aplica los colores y rutas globales."""
+def load_styles(widget, qss_path):
+    """Carga shared.qss + el QSS del componente y aplica los colores y rutas globales."""
+    substitutions = {
+        "PRIMARY_COLOR": PRIMARY_COLOR,
+        "PRIMARY_HOVER_COLOR": PRIMARY_HOVER_COLOR,
+        "SECONDARY_COLOR": SECONDARY_COLOR,
+        "TEXT_COLOR": TEXT_COLOR,
+        "ASSETS_DIR": ASSETS_DIR.replace("\\", "/")
+    }
     try:
+        combined = ""
+        shared_path = os.path.join(STYLES_DIR, "shared.qss")
+        if os.path.exists(shared_path):
+            with open(shared_path, "r") as f:
+                combined = f.read() % substitutions
         with open(qss_path, "r") as f:
-            # Preparamos la ruta de assets para CSS (reemplazando \ por / para que Qt la entienda)
-            assets_path_css = ASSETS_DIR.replace("\\", "/")
-            
-            qss = f.read() % {
-                "PRIMARY_COLOR": PRIMARY_COLOR,
-                "SECONDARY_COLOR": SECONDARY_COLOR,
-                "TEXT_COLOR": TEXT_COLOR,
-                "ASSETS_DIR": assets_path_css  # <--- AGREGAMOS ESTA VARIABLE
-            }
-            self.setStyleSheet(qss)
+            combined += "\n" + f.read() % substitutions
+        widget.setStyleSheet(combined)
     except Exception as e:
         print(f"❌ Error cargando estilos de {qss_path}: {e}")
 

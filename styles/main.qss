@@ -13,9 +13,8 @@ QPushButton#NavBarButton {
     margin-left: 10px; /* Espacio entre botones */
 }
 
-/* Hover: más oscuro */
-QPushButton#NavBarButton:hover {     
-    background-color: #2a4a80;
+QPushButton#NavBarButton:hover {
+    background-color: %(PRIMARY_HOVER_COLOR)s;
 }
 
 /* Activo (la página actual) */
