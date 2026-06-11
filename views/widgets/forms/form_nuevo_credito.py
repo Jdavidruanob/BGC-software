@@ -14,7 +14,7 @@ from config import (
 )
 from utils.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
-from utils.credit_liquidation_generator import generar_liquidacion_credito
+from services.credito_service import CreditoService
 
 
 class NoScrollComboBox(QComboBox):
@@ -30,6 +30,7 @@ class FormNuevoCredito(QWidget):
         self.main_window = window
         self.socios_data = []
         self.socios_seleccionados = []
+        self._service = CreditoService(db_manager)
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignTop)
@@ -246,82 +247,51 @@ class FormNuevoCredito(QWidget):
 
 
     def on_register_credito(self):
+        if not self.socios_seleccionados:
+            show_warning(self, "", "Debes seleccionar al menos un socio.")
+            return
+
         try:
-            if not self.socios_seleccionados:
-                show_warning(self, "", "Debes seleccionar al menos un socio.")
-                return
+            capital = parse_miles_colombian(self.capital_input.text())
+            interes_tasa = float(self.interes_input.text())
+            n_cuotas = int(self.cuotas_input.text())
+        except ValueError:
+            show_error(self, "", "Datos inválidos. Verifique capital, interés y cuotas.")
+            return
 
-            # Validaciones de input
-            try:
-                capital = parse_miles_colombian(self.capital_input.text())
-                interes_tasa = float(self.interes_input.text())
-                n_cuotas = int(self.cuotas_input.text())
-            except ValueError:
-                show_error(self, "", "Datos inválidos. Verifique capital, interés y cuotas.")
-                return
+        if capital <= 0 or interes_tasa <= 0 or n_cuotas <= 0:
+            show_error(self, "", "Revisa que todos los valores sean válidos y positivos.")
+            return
 
-            if capital <= 0 or interes_tasa <= 0 or n_cuotas <= 0:
-                show_error(self, "", "Revisa que todos los valores sean válidos y positivos.")
-                return
+        socio_ids = [s['id'] for s in self.socios_seleccionados]
 
-            socio_ids = [s['id'] for s in self.socios_seleccionados]
-            
-            # --- LLAMADA MAESTRA AL DB MANAGER ---
-            # Toda la lógica pesada ocurre aquí adentro
-            letra, nuevo_saldo_caja = self.db.registrar_credito_completo(
-                socio_ids, capital, interes_tasa, n_cuotas
+        try:
+            letra, excel_path = self._service.create(
+                socio_ids, capital, interes_tasa, n_cuotas, self.socios_seleccionados
             )
-            
-            if letra:
-                # Actualizar UI auxiliar (solo visual)
-                fecha_actual_str = get_hoy_str()
-                nombres_str = ", ".join([f"{s['nombres']} {s['apellidos']}" for s in self.socios_seleccionados])
 
-                self.db.add_to_auxiliar(
-                    fecha=fecha_actual_str,
-                    tipo="Nuevo Credito",
-                    socio=nombres_str,
-                    recibo=None,           # <--- CAMBIO: Nuevo crédito no suele tener recibo de caja
-                        id_credito=letra,      # <--- CORRECTO: La letra va aquí
-                        monto=-capital,
-                        saldo=nuevo_saldo_caja,
-                        cuota=None
-                    )
-                
-                self.db.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
-                self.db.conn.commit()
-
-                # Generar Excel (Usando datos frescos de la BD)
-                credit_data_from_db = self.db.get_credit_by_letra(letra) 
-                
-                generated_liq_path = generar_liquidacion_credito(
-                    credit_data=credit_data_from_db,
-                    socios_list=self.socios_seleccionados
+            credit_data_from_db = self.db.get_credit_by_letra(letra)
+            for id_socio in socio_ids:
+                liquidation_view = CreditLiquidationPage(
+                    credit_data_from_db,
+                    member_id=id_socio,
+                    main_window=self.main_window,
+                    db_manager=self.db
                 )
-                
-                # Crear vistas
-                for id_socio in socio_ids:
-                    liquidation_view = CreditLiquidationPage(
-                        credit_data_from_db, 
-                        member_id=id_socio, 
-                        main_window=self.main_window, 
-                        db_manager=self.db
-                    )
-                    self.main_window.add_view(f"liquidation_credit_{letra}_{id_socio}", liquidation_view)
+                self.main_window.add_view(f"liquidation_credit_{letra}_{id_socio}", liquidation_view)
 
-                show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}.", file_path=generated_liq_path)
-                
-                # Limpiar formulario
-                self.capital_input.clear()
-                self.interes_input.setText("0.01")
-                self.cuotas_input.clear()
-                self.socios_seleccionados.clear()
-                while self.selected_container.count():
-                    item = self.selected_container.takeAt(0)
-                    if item.widget(): item.widget().deleteLater()
-                self.load_socios()
-                self.actualizar_resumen_credito()
-                self.operation_registered.emit()
+            show_success(self, "", f"Crédito creado exitosamente. Letra: {letra}.", file_path=excel_path)
+
+            self.capital_input.clear()
+            self.interes_input.setText("0.01")
+            self.cuotas_input.clear()
+            self.socios_seleccionados.clear()
+            while self.selected_container.count():
+                item = self.selected_container.takeAt(0)
+                if item.widget(): item.widget().deleteLater()
+            self.load_socios()
+            self.actualizar_resumen_credito()
+            self.operation_registered.emit()
 
         except Exception as e:
             show_error(self, "Error BD", f"Error al registrar crédito:\n{e}")

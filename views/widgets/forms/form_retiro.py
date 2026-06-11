@@ -11,7 +11,7 @@ from config import  (
     format_miles_colombian_int, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 )
 from utils.message_boxes import show_success, show_error, show_warning
-from utils.recibo_generator_retiro import generar_recibo_retiro
+from services.retiro_service import RetiroService
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -25,6 +25,7 @@ class FormRetiro(QWidget):
         self.assistant_page = assistant_page
         self.socios_data = []
         self.saldo_actual_socio = 0
+        self._service = RetiroService(db_manager)
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignTop)
@@ -211,75 +212,17 @@ class FormRetiro(QWidget):
             show_warning(self, "", "El monto debe ser mayor que cero.")
             return
 
-        if monto > socio['saldo']:
-            show_error(self, "", "El socio no tiene saldo suficiente para este retiro.")
-            return
-
         try:
-            cursor = self.db.conn.cursor()
-
-            # 1. Insertar recibo
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (socio['id'],))
-            recibo_id = cursor.lastrowid
-
-            # 2. Insertar detalle
-            cursor.execute("""
-                INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                VALUES (?, 'retiro', ?, ?)
-            """, (recibo_id, socio['id'], monto))
-
-            # 3. Actualizar saldo socio
-            cursor.execute("UPDATE socios SET saldo = saldo - ? WHERE id = ?", (monto, socio['id']))
-
-            # 4. Actualizar saldo caja global
-            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
-            nuevo_saldo_caja = saldo_caja - monto
-            self.db.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
-
-            # 5. Guardar en auxiliar
-            fecha_actual = get_hoy_str()
-            nombre_completo_socio = f"{socio['nombres']} {socio['apellidos']}"
-
-            self.db.add_to_auxiliar(
-                fecha=fecha_actual,
-                tipo="Retiro",
-                socio=nombre_completo_socio,
-                recibo=recibo_id,
-                monto=-monto,
-                saldo=nuevo_saldo_caja
-            )
-
-            # 6. Generar el recibo de retiro en Excel
-            generated_receipt_path = generar_recibo_retiro(
-                recibo_id=recibo_id,
-                socio_data={'nombres': socio['nombres'], 'apellidos': socio['apellidos']},
-                monto_retiro=monto
-            )
-
-            # 7. Agregar visual en AssistantPage
-            if self.assistant_page:
-                self.assistant_page.add_operation({
-                    "fecha": fecha_actual,
-                    "tipo": "Retiro",
-                    "socio": nombre_completo_socio,
-                    "numero": recibo_id,
-                    "monto": -monto,
-                    "saldo": nuevo_saldo_caja
-                })
-
-            self.db.conn.commit()
-
-            if generated_receipt_path:
-                show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}", file_path=generated_receipt_path)
-                self.operation_registered.emit()
-
+            recibo_id, excel_path, _ = self._service.register(socio['id'], socio, monto)
+            if excel_path:
+                show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}", file_path=excel_path)
             else:
                 show_success(self, "", f"Retiro registrado exitosamente. Recibo #{recibo_id}")
-
+            self.operation_registered.emit()
             self.refresh()
-
+        except ValueError as e:
+            show_error(self, "", str(e))
         except Exception as e:
-            self.db.conn.rollback()
             show_error(self, "", f"Error al registrar retiro:\n{e}")
 
     def refresh(self):

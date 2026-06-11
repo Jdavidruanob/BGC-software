@@ -12,9 +12,7 @@ from config import (
     parse_miles_colombian, get_hoy, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR 
 )
 from utils.message_boxes import show_success, show_error, show_warning
-
-# Importar la función generar_recibo_general
-from utils.recibo_generator_aporte import generar_recibo_solo_aportes # Importamos también la constante si la usamos
+from services.aporte_service import AporteService
 
 class NoScrollComboBox(QComboBox): 
     def wheelEvent(self, event):
@@ -26,6 +24,7 @@ class FormAporte(QWidget):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
+        self._service = AporteService(db_manager)
         self.socios_data = [] # Esta lista debe contener los dicts completos de los socios con su 'saldo' actual
         self.aportes_widgets = []
 
@@ -169,118 +168,43 @@ class FormAporte(QWidget):
             show_warning(self, "", "Debe seleccionar quién entrega el dinero.")
             return
 
-        # Lista para los datos que se guardarán en la DB
-        aportes_for_db = [] 
-        # Lista para los datos que se pasarán al generador de recibos Excel
-        aportes_for_recibo = [] 
-        count_cobrables = 0 # <--- Contador para administración
-
-        # Iteramos con la nueva estructura
+        aportes = []
+        count_cobrables = 0
         for combo, monto_input, chk_papeleria, _ in self.aportes_widgets:
             socio_selected = combo.currentData()
             raw_monto = parse_miles_colombian(monto_input.text())
-            
             if not socio_selected or raw_monto <= 0:
                 show_error(self, "", "Revisa que todos los aportes tengan socio y monto válido.")
                 return
-            
-            # Contar si este aporte paga administración
             if chk_papeleria.isChecked():
                 count_cobrables += 1
-
-            # Es CRUCIAL obtener el saldo actual del socio ANTES de aplicar el aporte.
             socio_data_full = next((s for s in self.socios_data if s["id"] == socio_selected['id']), None)
             if not socio_data_full:
                 show_error(self, "", f"No se encontraron datos completos para el socio ID: {socio_selected['id']}")
                 return
+            aportes.append((socio_data_full, raw_monto))
 
-            saldo_antes_aporte = socio_data_full['saldo'] 
-            
-            aportes_for_db.append((socio_data_full['id'], raw_monto))
-            # Para el recibo, necesitamos: (socio_data_dict, monto_aporte_int, saldo_socio_antes, saldo_socio_despues)
-            aportes_for_recibo.append((
-                socio_data_full, 
-                raw_monto, 
-                saldo_antes_aporte, 
-                saldo_antes_aporte + raw_monto # Nuevo saldo para mostrar en el recibo
-            ))
-
-        if not aportes_for_db:
+        if not aportes:
             show_warning(self, "", "Debes agregar al menos un aporte.")
             return
-        
-        # Validar si se excede el límite de 6 aportes para el template
-        if len(aportes_for_db) > 6:
+
+        if len(aportes) > 6:
             show_warning(self, "", "El programa solo puede generar 6 aportes por recibo. Por favor, genere un segundo recibo si es necesario.")
             return
 
-
         try:
-            cursor = self.db.conn.cursor()
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi['id'],))
-            recibo_id = cursor.lastrowid
-            fecha_actual_db_format = get_hoy_str()
-
-            saldo_caja = self.db.get_config_value_as_int("saldo_en_caja")
-            saldo_admin = self.db.get_config_value_as_int("total_admin") # Si se necesita para algo
-            
-            # Recorrer los aportes para actualizar la DB y el log
-            for socio_id, monto_aporte_db in aportes_for_db:
-                cursor.execute("""
-                    INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                    VALUES (?, 'aporte', ?, ?)""", (recibo_id, socio_id, monto_aporte_db))
-
-                cursor.execute("UPDATE socios SET saldo = saldo + ? WHERE id = ?", (monto_aporte_db, socio_id))
-
-                saldo_caja += monto_aporte_db # Acumular el saldo en caja
-
-                socio_info_for_log = next((s for s in self.socios_data if s["id"] == socio_id), None)
-                nombre_socio_log = f"{socio_info_for_log['nombres']} {socio_info_for_log['apellidos']}" if socio_info_for_log else "Desconocido"
-
-                self.db.add_to_auxiliar(
-                    fecha=fecha_actual_db_format,
-                    tipo="Aporte",
-                    socio=nombre_socio_log,
-                    recibo=recibo_id,
-                    monto=monto_aporte_db,
-                    saldo=saldo_caja
-                )
-
-            
-            # Finalmente, actualizar el saldo en caja en la configuración global
-            self.db.set_config_value("saldo_en_caja", str(saldo_caja))
-            gastos_admin = 3000 * count_cobrables
-            self.db.set_config_value("total_admin", str(saldo_admin + gastos_admin))
-
-            self.db.conn.commit()
-
-            # Obtener los gastos de administración.
-
-            # Llamar a la función generar_recibo_solo_aportes para crear el recibo Excel
-            # YA NO SE PASA pagos_credito_info
-            # GENERAR EXCEL CON EL NUEVO PARÁMETRO
-            recibo_path = generar_recibo_solo_aportes(
-                db_manager=self.db, 
-                recibo_id=recibo_id,
-                recibi_de_data=recibi, 
-                aportes_info=aportes_for_recibo,
-                num_aportes_cobrables=count_cobrables # <--- Pasamos el dato aquí
-            )
-            
-            if recibo_path:
-                show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.", file_path=recibo_path)
-                self.operation_registered.emit()  # 🎯 Emit after success
+            recibo_id, excel_path = self._service.register(recibi['id'], recibi, aportes, count_cobrables)
+            if excel_path:
+                show_success(self, "", f"Recibo #{recibo_id} creado y saldos actualizados.", file_path=excel_path)
             else:
                 show_warning(self, "", "Recibo creado y saldos actualizados, pero hubo un error al generar el archivo Excel.")
-            
-            self.clear_form() # Limpia el formulario y recarga socios
-            self.load_socios() # Asegura que los saldos de los socios en los combos se actualicen
-
+            self.operation_registered.emit()
+            self.clear_form()
+            self.load_socios()
+        except ValueError as e:
+            show_error(self, "", str(e))
         except Exception as e:
-            self.db.conn.rollback()
             show_error(self, "", f"Error al registrar aporte:\n{e}")
-            import traceback
-            traceback.print_exc() # Para depuración
 
 
     def refresh(self):

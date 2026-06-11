@@ -19,6 +19,7 @@ from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
 from views.widgets.edit_admin_dialog import EditAdminDialog 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
+from services.caja_service import CajaService
 
 
 class HomePage(QWidget):
@@ -28,6 +29,7 @@ class HomePage(QWidget):
         self.db_manager = db_manager
         self.assistant_page = assistant_page
         self.main_window = window
+        self._caja_service = CajaService(db_manager)
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(80, 40, 80, 20)
@@ -366,66 +368,27 @@ class HomePage(QWidget):
         return frame
 
     def editar_saldo_en_caja(self):
-        from datetime import date # Asegúrate de importar date si no está
-        
-        saldo_actual = self.db_manager.get_config_value_as_int("saldo_en_caja")
-        
-        # Usamos el nuevo diálogo (el archivo se llama igual edit_saldo_dialog, pero la clase cambió internamente)
+        saldo_actual = self._caja_service.get_saldo_caja()
         dlg = EditSaldoDialog(saldo_actual, self)
-        
         if dlg.exec():
-            # Obtener datos del diálogo: (monto +/- , motivo, saldo final)
             monto_ajuste, motivo, nuevo_saldo = dlg.get_data()
-            
-            # 1. Actualizar Config (Saldo en Caja)
-            self.db_manager.set_config_value("saldo_en_caja", str(nuevo_saldo))
-            
-            # 2. Registrar en Auxiliar
-            # Nota: 'motivo' se guarda en la columna 'tipo' para que salga con color café (custom)
-            fecha_actual = get_hoy_str()
-
-            self.db_manager.add_to_auxiliar(
-                fecha=fecha_actual,
-                tipo=motivo,           # El motivo será el "Tipo" (se verá Café si no es estándar)
-                socio="Administracion",# Socio genérico para ajustes internos
-                recibo=None,           # No hay recibo físico
-                monto=monto_ajuste,    # Puede ser positivo o negativo
-                saldo=nuevo_saldo,
-                cuota=None,
-                id_credito=None
-            )
-            
-            show_success(self, "Ajuste Realizado", 
+            self._caja_service.adjust_caja(monto_ajuste, motivo, nuevo_saldo)
+            show_success(self, "Ajuste Realizado",
                          f"Se registró un ajuste de: {format_miles_colombian_int(monto_ajuste)}\n"
                          f"Nuevo saldo: $ {format_miles_colombian_int(nuevo_saldo)}")
-            
             self.refresh_view()
 
     def editar_gastos_admin(self):
         """Abre el diálogo para editar fondo de papelería y % de mora."""
-        
-        # 1. Obtener valores actuales
-        current_papeleria = self.db_manager.get_config_value_as_int("total_admin")
-        
-        # Para el porcentaje, necesitamos leerlo como float (o string y convertir)
-        cursor = self.db_manager.conn.cursor()
-        row = cursor.execute("SELECT value FROM config WHERE key='porcentaje_mora'").fetchone()
-        current_mora = float(row['value']) if row else 0.02
-
+        current_papeleria = self._caja_service.get_total_admin()
+        current_mora = self._caja_service.get_porcentaje_mora()
         dlg = EditAdminDialog(current_papeleria, current_mora, self)
-        
         if dlg.exec():
             new_papeleria, new_mora = dlg.get_data()
-            
-            # 2. Guardar en Config
-            self.db_manager.set_config_value("total_admin", str(new_papeleria))
-            self.db_manager.set_config_value("porcentaje_mora", str(new_mora))
-            
-            show_success(self, "Configuración Actualizada", 
+            self._caja_service.set_admin_config(new_papeleria, new_mora)
+            show_success(self, "Configuración Actualizada",
                          f"Papelería: $ {format_miles_colombian_int(new_papeleria)}\n"
                          f"Tasa Mora: {new_mora}")
-            
-            # 3. Refrescar el resumen (para ver el cambio en papelería)
             self.refresh_view()
 
     # --- NUEVA FUNCIÓN: ABRIR CARPETA ---
