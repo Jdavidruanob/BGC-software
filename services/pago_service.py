@@ -5,8 +5,11 @@ from utils.recibo_generator_pago import generar_recibo_solo_pagos
 
 
 class PagoService:
-    def __init__(self, db_manager):
-        self._db = db_manager
+    def __init__(self, db, liquidaciones, auxiliar, config):
+        self._db = db                # DBConnection
+        self._liquidaciones = liquidaciones
+        self._auxiliar = auxiliar
+        self._config = config
 
     def register(self, recibi_de_id: int, recibi_data: dict, pagos_input: list):
         """
@@ -16,7 +19,7 @@ class PagoService:
         Retorna (recibo_id, excel_path, reporte_global).
         Lanza ValueError con mensaje descriptivo para errores de validación.
         """
-        tasa_mora = float(self._db.get_config_value("porcentaje_mora") or 0.02)
+        tasa_mora = float(self._config.get("porcentaje_mora") or 0.02)
         hoy = get_hoy()
         fecha = get_hoy_str()
 
@@ -40,7 +43,7 @@ class PagoService:
                 continue
 
             if letra_id not in pagos_para_recibo:
-                saldo_ini = self._db.get_deuda_capital_actual(letra_id)
+                saldo_ini = self._liquidaciones.get_current_debt(letra_id)
                 pagos_para_recibo[letra_id] = {
                     "socio_data": socio_data, "letra_id": letra_id,
                     "nro_cuotas_pagadas_start": 0, "nro_cuotas_pagadas_end": 0,
@@ -67,8 +70,8 @@ class PagoService:
             cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi_de_id,))
             recibo_id = cursor.lastrowid
 
-            saldo_caja = self._db.get_config_value_as_int("saldo_en_caja")
-            total_admin = self._db.get_config_value_as_int("total_admin")
+            saldo_caja = self._config.get_int("saldo_en_caja")
+            total_admin = self._config.get_int("total_admin")
             mora_total = 0
             reporte_global = {}
 
@@ -78,14 +81,14 @@ class PagoService:
                     pagos_para_recibo, reporte_global,
                 )
 
-            self._db.set_config_value("saldo_en_caja", str(saldo_caja))
+            self._config.set("saldo_en_caja", str(saldo_caja))
             if mora_total > 0:
-                self._db.set_config_value("total_admin", str(total_admin + mora_total))
+                self._config.set("total_admin", str(total_admin + mora_total))
 
             self._db.conn.commit()
 
             excel_path = generar_recibo_solo_pagos(
-                db_manager=self._db,
+                get_total_cuotas=self._liquidaciones.get_total_cuotas,
                 recibo_id=recibo_id,
                 recibi_de_data=recibi_data,
                 pagos_credito_info=list(pagos_para_recibo.values()),
@@ -129,7 +132,7 @@ class PagoService:
 
     def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora):
         nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
-        pendientes = self._db.get_pending_installments(letra_id)
+        pendientes = self._liquidaciones.find_pending(letra_id)
         vencidas = []
         for cuota in pendientes:
             f_venc = datetime.strptime(cuota["fecha_vencimiento"], "%Y-%m-%d").date()
@@ -159,7 +162,7 @@ class PagoService:
 
         remanente = 0
         if temp > 0:
-            deuda = self._db.get_deuda_capital_actual(letra_id)
+            deuda = self._liquidaciones.get_current_debt(letra_id)
             cap_vencidas = sum(v["data"]["valor_cuota"] for v in vencidas[:pagables])
             deuda_futura = deuda - cap_vencidas
             remanente = min(temp, deuda_futura)
@@ -201,7 +204,7 @@ class PagoService:
                 dict_recibo["valor_capital_consolidado"] += it["cap"]
                 dict_recibo["interes_consolidado"] += it["int"]
                 dict_recibo["mora_consolidada"] += it["mora"]
-                self._db.add_to_auxiliar(
+                self._auxiliar.add(
                     fecha=fecha, tipo="Pago Credito", socio=nombre,
                     monto=it["monto_base"], saldo=saldo_caja,
                     recibo=recibo_id, cuota=it["nro"], id_credito=str(letra_id),
@@ -226,7 +229,7 @@ class PagoService:
                 dict_recibo["valor_capital_consolidado"] += v["data"]["valor_cuota"]
                 dict_recibo["interes_consolidado"] += v["data"]["interes_mes"]
                 dict_recibo["mora_consolidada"] += v["mora"]
-                self._db.add_to_auxiliar(
+                self._auxiliar.add(
                     fecha=fecha, tipo="Pago Credito", socio=nombre,
                     monto=v["monto_base"], saldo=saldo_caja,
                     recibo=recibo_id, cuota=nro, id_credito=str(letra_id),
@@ -238,9 +241,9 @@ class PagoService:
                     VALUES (?, 'pago_credito', ?, ?, 0, ?)
                 """, (recibo_id, socio_data["id"], letra_id, capital_puro))
                 saldo_caja += capital_puro
-                self._db.recalcular_tabla_amortizacion(letra_id, capital_puro)
+                self._liquidaciones.recalculate_amortization(letra_id, capital_puro)
                 dict_recibo["valor_capital_consolidado"] += capital_puro
-                self._db.add_to_auxiliar(
+                self._auxiliar.add(
                     fecha=fecha, tipo="Abono Capital", socio=nombre,
                     monto=capital_puro, saldo=saldo_caja,
                     recibo=recibo_id, cuota=0, id_credito=str(letra_id),

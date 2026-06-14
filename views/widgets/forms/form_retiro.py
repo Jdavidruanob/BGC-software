@@ -11,7 +11,6 @@ from config import  (
     format_miles_colombian_int, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 )
 from utils.message_boxes import show_success, show_error, show_warning
-from services.retiro_service import RetiroService
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -19,13 +18,13 @@ class NoScrollComboBox(QComboBox):
 
 class FormRetiro(QWidget):
     operation_registered = Signal()
-    def __init__(self, db_manager, assistant_page=None):
+    def __init__(self, service, db_manager, assistant_page=None):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
         self.socios_data = []
         self.saldo_actual_socio = 0
-        self._service = RetiroService(db_manager)
+        self._service = service
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignTop)

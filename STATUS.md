@@ -1,6 +1,6 @@
 # BGC Software — Estado del Proyecto
 
-> Última actualización: 2026-06-10  
+> Última actualización: 2026-06-13  
 > Rama activa: `develop`
 
 ---
@@ -25,6 +25,7 @@ código siguiendo SOLID (SRP, DIP), sin sobreingeniería**.
 | `4dbe0be` | Fase 1: Extraer repositorios de `db_manager.py` |
 | `f72c9b5` | Fase 2a: Crear capa de servicios (7 archivos) |
 | `d70e8b7` | Fase 2b: Migrar vistas a usar los servicios |
+| *(pendiente)* | Fase 3: Desacoplar servicios de `db_manager` — inyección directa de repos |
 
 ---
 
@@ -96,74 +97,39 @@ Total: ~790 líneas de lógica de negocio/SQL eliminadas de la UI.
 
 ---
 
-## Lo que falta — Fase 3
+## Lo que ya está hecho — Fase 3 ✅
 
-La Fase 3 es la última del refactor. **No cambia ningún comportamiento, solo limpia
-la estructura de dependencias.**
+La Fase 3 desacopló completamente los **servicios** de `db_manager`. Los servicios
+ahora reciben repos individuales; `db_manager` queda como fachada de solo lectura
+para las vistas que aún no fueron migradas.
 
-### 3.1 — Eliminar la fachada `db_manager.py`
+### Cambios realizados en Fase 3
 
-**Por qué existe todavía:** los servicios usan `db_manager` porque los generadores
-de Excel (`utils/`) llaman a `db_manager.get_total_cuotas_credito()`. Hay que pasar
-ese método directamente al generador o inyectarlo de otra forma.
+| Archivo | Cambio |
+|---|---|
+| `db/db_manager.py` | Añadidos property accessors (`db_conn`, `config_repo`, `auxiliar_repo`, `liquidaciones_repo`, `creditos_repo`). Eliminados ~20 métodos de escritura (solo los usaban los servicios). |
+| `services/aporte_service.py` | Constructor `(db, config, auxiliar)` — usa repos directamente. |
+| `services/retiro_service.py` | Constructor `(db, config, auxiliar)`. |
+| `services/credito_service.py` | Constructor `(db, creditos, auxiliar, config)`. |
+| `services/pago_service.py` | Constructor `(db, liquidaciones, auxiliar, config)`. |
+| `services/combinado_service.py` | Constructor `(db, liquidaciones, auxiliar, config)`. |
+| `services/caja_service.py` | Constructor `(config, auxiliar)` — sin `DBConnection`. |
+| `utils/recibo_generator_aporte.py` | Eliminado parámetro `db_manager` (nunca se usaba). |
+| `utils/recibo_generator_pago.py` | `db_manager` → `get_total_cuotas: callable`. |
+| `utils/recibo_generator_combinado.py` | `db_manager` → `get_total_cuotas: callable`. |
+| `views/widgets/forms/form_*.py` | Constructores reciben `service` pre-construido en lugar de instanciarlo. |
+| `views/home_page.py` | Constructor recibe 6 servicios + `db_manager`. Pasa cada servicio a su form. |
+| `app.py` | Construye servicios inyectando repos via `db_manager.config_repo` etc., luego pasa servicios a `HomePage`. |
 
-**Pasos:**
-1. Auditar qué métodos de `db_manager` sigue usando cada servicio y cada vista.
-2. Hacer que los servicios reciban los repos que necesitan directamente, en lugar
-   de la fachada completa.
-3. Ajustar los generadores de Excel para que no dependan de `db_manager`.
-4. Eliminar `db/db_manager.py`.
+### Estado de `db_manager` después de Fase 3
 
-### 3.2 — Limpiar el wiring en `app.py`
+`db_manager` permanece como fachada **de solo lectura** para las vistas que no fueron
+migradas (members_page, member_detail_page, assistant_page, liquidation_page). Estas
+vistas usan solo `get_all_members`, `get_member_by_id`, `get_auxiliary_operations`,
+`conn.cursor()` etc. — nada de escritura.
 
-Con la fachada eliminada, `app.py` instancia `DBConnection`, repos y servicios
-y los inyecta en las vistas:
-
-```python
-# Esquema objetivo de app.py
-db = DBConnection(DB_PATH_FINAL)
-db.connect()
-
-schema = SchemaManager(db)
-schema.create_tables()
-
-# Repos
-socios = SociosRepository(db)
-creditos = CreditosRepository(db)
-liquidaciones = LiquidacionesRepository(db)
-auxiliar = AuxiliarRepository(db)
-config_repo = ConfigRepository(db)
-
-# Servicios
-aporte_svc = AporteService(socios, auxiliar, config_repo)
-retiro_svc = RetiroService(socios, auxiliar, config_repo)
-credito_svc = CreditoService(creditos, liquidaciones, auxiliar, config_repo)
-pago_svc = PagoService(liquidaciones, auxiliar, config_repo)
-combinado_svc = CombinadoService(socios, liquidaciones, auxiliar, config_repo)
-caja_svc = CajaService(auxiliar, config_repo)
-
-# Vistas
-window = MainWindow()
-assistant_page = AssistantPage(auxiliar)
-home_page = HomePage(aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc, caja_svc, assistant_page, window)
-...
-```
-
-### 3.3 — Revisar vistas restantes que acceden a `db_manager` directamente
-
-Las siguientes vistas aún no han sido migradas (no tienen equivalente en los servicios
-actuales). En Fase 3 deben revisarse:
-
-| Vista | Acceso actual a db_manager | Acción sugerida |
-|---|---|---|
-| `views/members_page.py` | `get_all_members`, `search_members_by_name` | Inyectar `SociosRepository` directamente |
-| `views/member_detail_page.py` | `get_member_by_id`, `get_active_credits_by_member`, `update_member`, `delete_member` | Inyectar `SociosRepository` + `CreditosRepository` |
-| `views/assistant_page.py` | `get_auxiliary_operations`, `delete_auxiliary_operation` | Inyectar `AuxiliarRepository` |
-| `views/liquidation_page.py` | `get_pending_installments`, `get_credit_by_letra` | Inyectar `LiquidacionesRepository` + `CreditosRepository` |
-| `views/home_page.py` (resumen) | `get_all_members_full`, SQL para créditos activos | Inyectar repos o exponer método en `CajaService` |
-
-> Nota: estas vistas son de solo lectura (no modifican datos), por lo que inyectar
-> repos directamente es aceptable — no necesitan pasar por un servicio.
+Si en el futuro se quiere eliminar `db_manager` del todo, el paso sería migrar esas
+vistas a recibir repos directamente. No es prioritario.
 
 ---
 

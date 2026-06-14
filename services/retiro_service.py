@@ -3,8 +3,10 @@ from utils.recibo_generator_retiro import generar_recibo_retiro
 
 
 class RetiroService:
-    def __init__(self, db_manager):
-        self._db = db_manager
+    def __init__(self, db, config, auxiliar):
+        self._db = db        # DBConnection
+        self._config = config
+        self._auxiliar = auxiliar
 
     def register(self, socio_id: int, socio_data: dict, monto: int):
         """
@@ -28,13 +30,13 @@ class RetiroService:
                 "UPDATE socios SET saldo = saldo - ? WHERE id = ?", (monto, socio_id)
             )
 
-            saldo_caja = self._db.get_config_value_as_int("saldo_en_caja")
+            saldo_caja = self._config.get_int("saldo_en_caja")
             nuevo_saldo_caja = saldo_caja - monto
-            self._db.set_config_value("saldo_en_caja", str(nuevo_saldo_caja))
+            self._config.set("saldo_en_caja", str(nuevo_saldo_caja))
 
             fecha = get_hoy_str()
             nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
-            self._db.add_to_auxiliar(
+            self._auxiliar.add(
                 fecha=fecha, tipo="Retiro", socio=nombre,
                 recibo=recibo_id, monto=-monto, saldo=nuevo_saldo_caja,
             )

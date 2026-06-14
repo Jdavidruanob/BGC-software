@@ -1,6 +1,8 @@
 """
 Fachada de compatibilidad. Delega a los repositorios del paquete db/.
-En Fase 2, las vistas pasarán a usar los servicios directamente y esta clase se eliminará.
+Los servicios usan repos directamente (inyectados desde app.py via las propiedades
+db_conn, config_repo, auxiliar_repo, etc.). Esta fachada permanece solo para
+las vistas de solo lectura y el wiring en app.py.
 """
 from db.connection import DBConnection
 from db.schema import SchemaManager
@@ -30,6 +32,18 @@ class DBManager:
     def conn(self):
         return self._db.conn
 
+    # --- Accessors para app.py: construye servicios inyectando repos ---
+    @property
+    def db_conn(self): return self._db
+    @property
+    def config_repo(self): return self._config
+    @property
+    def auxiliar_repo(self): return self._auxiliar
+    @property
+    def liquidaciones_repo(self): return self._liquidaciones
+    @property
+    def creditos_repo(self): return self._creditos
+
     def connect(self):
         result = self._db.connect()
         if result:
@@ -56,17 +70,14 @@ class DBManager:
     def get_all_members_full(self): return self._socios.find_all_full()
     def search_members_by_name(self, search_term): return self._socios.search_by_name(search_term)
     def get_member_by_id(self, member_id): return self._socios.find_by_id(member_id)
-    def get_member_balance(self, member_id): return self._socios.get_balance(member_id)
     def add_member(self, nombres, apellidos, phone, photo_path, saldo=0): self._socios.save(nombres, apellidos, phone, photo_path, saldo)
     def update_member(self, socio_id, nombres, apellidos, phone, photo_path, nuevo_saldo): return self._socios.update(socio_id, nombres, apellidos, phone, photo_path, nuevo_saldo)
     def delete_member(self, socio_id): return self._socios.delete(socio_id)
 
-    # --- Creditos ---
-    def add_credit(self, socio_ids, capital, interes, no_cuotas): return self._creditos.save(socio_ids, capital, interes, no_cuotas)
+    # --- Creditos (solo lectura para vistas) ---
     def get_active_credits_by_member(self, member_id): return self._creditos.find_active_by_socio_id(member_id)
     def get_letras_by_socio_id(self, socio_id): return self._creditos.find_active_by_socio_id(socio_id)
     def get_credit_by_letra(self, letra): return self._creditos.find_by_letra(letra)
-    def update_credit_installments(self, letra_id, new_total_cuotas): return self._creditos.update_installments(letra_id, new_total_cuotas)
     def add_historical_credit(self, letra, capital, interes, no_cuotas, fecha_inicio, socios_ids, cuotas_data): return self._creditos.save_historical(letra, capital, interes, no_cuotas, fecha_inicio, socios_ids, cuotas_data)
     def add_multiple_historical_credits(self, credits_list):
         print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
@@ -87,24 +98,7 @@ class DBManager:
         exitosos = len([l for l in resultados if l])
         print(f"\n✅ Proceso finalizado: {exitosos} créditos creados correctamente.")
         return resultados
-    def registrar_credito_completo(self, socio_ids, capital, interes_tasa, n_cuotas, usuario_tesorero="ALVARO L. BURBANO GARCIA"): return self._creditos.register_complete(socio_ids, capital, interes_tasa, n_cuotas)
 
-    # --- Liquidaciones ---
-    def guardar_liquidaciones(self, lista_cuotas): self._liquidaciones.save_all(lista_cuotas)
-    def get_total_cuotas_credito(self, credito_letra): return self._liquidaciones.get_total_cuotas(credito_letra)
-    def get_pending_installments(self, letra_id): return self._liquidaciones.find_pending(letra_id)
-    def get_deuda_capital_actual(self, letra_id): return self._liquidaciones.get_current_debt(letra_id)
-    def recalcular_tabla_amortizacion(self, letra_id, abono_capital_recien_registrado): self._liquidaciones.recalculate_amortization(letra_id, abono_capital_recien_registrado)
-
-    # --- Recibos ---
-    def create_aporte_recibo(self, recibi_de_id, aportes): return self._recibos.create_aporte(recibi_de_id, aportes)
-
-    # --- Auxiliar ---
-    def add_to_auxiliar(self, fecha, tipo, socio, monto, saldo, recibo=None, cuota=None, id_credito=None): self._auxiliar.add(fecha, tipo, socio, monto, saldo, recibo, cuota, id_credito)
+    # --- Auxiliar (solo lectura para vistas) ---
     def get_auxiliary_operations(self, limit=10, offset=0, start_date=None, end_date=None, operation_type=None, socio_name=None, numero=None, letra_credito=None): return self._auxiliar.find_all(limit, offset, start_date, end_date, operation_type, socio_name, numero, letra_credito)
     def delete_auxiliary_operation(self, op_id): return self._auxiliar.delete(op_id)
-
-    # --- Config ---
-    def get_config_value(self, key): return self._config.get(key)
-    def get_config_value_as_int(self, key): return self._config.get_int(key)
-    def set_config_value(self, key, value): self._config.set(key, value)

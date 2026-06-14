@@ -14,7 +14,6 @@ from config import (
 )
 from utils.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
-from services.credito_service import CreditoService
 
 
 class NoScrollComboBox(QComboBox):
@@ -23,14 +22,14 @@ class NoScrollComboBox(QComboBox):
 
 class FormNuevoCredito(QWidget):
     operation_registered = Signal()
-    def __init__(self, db_manager, window, assistant_page=None):
+    def __init__(self, service, db_manager, window, assistant_page=None):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
         self.main_window = window
         self.socios_data = []
         self.socios_seleccionados = []
-        self._service = CreditoService(db_manager)
+        self._service = service
 
         layout = QVBoxLayout()
         layout.setAlignment(Qt.AlignTop)

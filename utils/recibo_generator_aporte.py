@@ -34,7 +34,6 @@ GASTO_POR_APORTE = 3000
 MAX_APORTES_PERMITIDOS = 6  # Nuevo límite establecido
 
 def generar_recibo_solo_aportes(
-    db_manager, 
     recibo_id: int,
     recibi_de_data: dict, 
     aportes_info: list = None,

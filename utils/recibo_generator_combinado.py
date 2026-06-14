@@ -41,7 +41,7 @@ GASTO_POR_APORTE = 3000
 MAX_FILAS_PERMITIDAS = 6 
 
 def generar_recibo_combinado(
-    db_manager, 
+    get_total_cuotas,
     recibo_id: int,
     recibi_de_data: dict, 
     aportes_info: list = None, 
@@ -155,7 +155,7 @@ def generar_recibo_combinado(
                 cuota_txt = "ABONO"
             else:
                 if letra_id not in cuotas_cache:
-                    cuotas_cache[letra_id] = db_manager.get_total_cuotas_credito(letra_id)
+                    cuotas_cache[letra_id] = get_total_cuotas(letra_id)
                 total_c = cuotas_cache[letra_id]
                 
                 if n_start == n_end:

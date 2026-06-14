@@ -5,8 +5,10 @@ PAPELERIA_POR_APORTE = 3000
 
 
 class AporteService:
-    def __init__(self, db_manager):
-        self._db = db_manager
+    def __init__(self, db, config, auxiliar):
+        self._db = db        # DBConnection
+        self._config = config
+        self._auxiliar = auxiliar
 
     def register(self, recibi_de_id: int, recibi_data: dict,
                  aportes: list, count_cobrables: int):
@@ -26,8 +28,8 @@ class AporteService:
             recibo_id = cursor.lastrowid
             fecha = get_hoy_str()
 
-            saldo_caja = self._db.get_config_value_as_int("saldo_en_caja")
-            saldo_admin = self._db.get_config_value_as_int("total_admin")
+            saldo_caja = self._config.get_int("saldo_en_caja")
+            saldo_admin = self._config.get_int("total_admin")
 
             for socio_data, monto in aportes:
                 socio_id = socio_data["id"]
@@ -40,19 +42,18 @@ class AporteService:
                 )
                 saldo_caja += monto
                 nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
-                self._db.add_to_auxiliar(
+                self._auxiliar.add(
                     fecha=fecha, tipo="Aporte", socio=nombre,
                     recibo=recibo_id, monto=monto, saldo=saldo_caja,
                 )
 
-            self._db.set_config_value("saldo_en_caja", str(saldo_caja))
-            self._db.set_config_value(
+            self._config.set("saldo_en_caja", str(saldo_caja))
+            self._config.set(
                 "total_admin", str(saldo_admin + PAPELERIA_POR_APORTE * count_cobrables)
             )
             self._db.conn.commit()
 
             excel_path = generar_recibo_solo_aportes(
-                db_manager=self._db,
                 recibo_id=recibo_id,
                 recibi_de_data=recibi_data,
                 aportes_info=aportes_for_recibo,

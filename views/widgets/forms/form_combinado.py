@@ -10,7 +10,6 @@ from config import(
 )
 from utils.message_boxes import show_success, show_error, show_warning, show_info
 import os
-from services.combinado_service import CombinadoService
 
 MAX_APORTE_ROWS_IN_TEMPLATE = 6
 MAX_CREDITO_ROWS_IN_TEMPLATE= 6
@@ -21,15 +20,15 @@ class NoScrollComboBox(QComboBox):
 
 class FormCombinado(QWidget):
     operation_registered = Signal()
-    def __init__(self, db_manager, assistant_page):
-        
+    def __init__(self, service, db_manager, assistant_page):
+
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
         self.socios_data = []
         self.aportes_widgets = []
         self.pagos_widgets = []
-        self._service = CombinadoService(db_manager)
+        self._service = service
         
         # --- Layout principal ---
         main_layout = QVBoxLayout()

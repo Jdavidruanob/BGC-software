@@ -19,17 +19,17 @@ from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
 from views.widgets.edit_admin_dialog import EditAdminDialog 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
-from services.caja_service import CajaService
 
 
 class HomePage(QWidget):
-    def __init__(self, db_manager, assistant_page, window):
+    def __init__(self, aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc,
+                 caja_svc, db_manager, assistant_page, window):
         super().__init__()
         self.setObjectName("HomePage")
         self.db_manager = db_manager
         self.assistant_page = assistant_page
         self.main_window = window
-        self._caja_service = CajaService(db_manager)
+        self._caja_service = caja_svc
 
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(80, 40, 80, 20)
@@ -114,11 +114,11 @@ class HomePage(QWidget):
 
         self.stack = QStackedWidget()
 
-        self.form_aporte = FormAporte(self.db_manager, self.assistant_page)
-        self.page_pago = FormPagoCredito(self.db_manager, self.assistant_page)
-        self.form_nuevo_credito = FormNuevoCredito(self.db_manager, self.main_window, self.assistant_page)
-        self.form_retiro = FormRetiro(self.db_manager)
-        self.form_aporte_pago = FormCombinado(self.db_manager, self.assistant_page)
+        self.form_aporte = FormAporte(aporte_svc, self.db_manager, self.assistant_page)
+        self.page_pago = FormPagoCredito(pago_svc, self.db_manager, self.assistant_page)
+        self.form_nuevo_credito = FormNuevoCredito(credito_svc, self.db_manager, self.main_window, self.assistant_page)
+        self.form_retiro = FormRetiro(retiro_svc, self.db_manager)
+        self.form_aporte_pago = FormCombinado(combinado_svc, self.db_manager, self.assistant_page)
 
         # Conectar señales de actualización
         self.form_aporte.operation_registered.connect(self.refresh_view)
