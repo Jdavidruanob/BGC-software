@@ -37,7 +37,7 @@ BGC-software/
 │   ├── connection.py             # DBConnection: sqlite3.connect + row_factory
 │   ├── schema.py                 # SchemaManager: CREATE TABLE, init config, secuencias
 │   ├── migration.py              # MigrationService: migración anual de saldos
-│   ├── db_manager.py             # Fachada de compatibilidad (temporal — se elimina en Fase 3)
+│   ├── db_manager.py             # Fachada de solo lectura para vistas; los servicios usan repos directamente
 │   └── repositories/
 │       ├── socios_repo.py        # CRUD socios
 │       ├── creditos_repo.py      # CRUD créditos + socio_credito + register_complete
@@ -304,31 +304,34 @@ Los archivos generados se guardan en `Archivos_BGC/{FISCAL_YEAR}/Recibos/`.
 ┌─────────────────────────────────────┐
 │  Views (PySide6 QWidgets)           │  Solo recolección de input y display
 │  views/*, views/widgets/forms/*     │  Sin SQL, sin lógica de negocio
-└───────────────┬─────────────────────┘
-                │ llama a
-┌───────────────▼─────────────────────┐
-│  Services                           │  Lógica de negocio + transacciones
-│  services/*_service.py              │  Un commit() por método público
-└───────────────┬─────────────────────┘
-                │ usa (via db_manager facade actualmente)
-┌───────────────▼─────────────────────┐
-│  Repositories                       │  CRUD puro por dominio, sin commits
-│  db/repositories/                   │
-└───────────────┬─────────────────────┘
-                │
-┌───────────────▼─────────────────────┐
-│  DBConnection (db/connection.py)    │  sqlite3.connect, row_factory
-└─────────────────────────────────────┘
+└──────┬──────────────────────────────┘
+       │ forms llaman a                │ vistas de lectura usan
+       ▼                              ▼
+┌─────────────────┐        ┌──────────────────────┐
+│  Services       │        │  DBManager (fachada)  │
+│  services/      │        │  db/db_manager.py     │
+│  Un commit()    │        │  Solo lectura para    │
+│  por operación  │        │  members/assistant/   │
+└───────┬─────────┘        │  liquidation pages    │
+        │ inyectados       └──────────┬────────────┘
+        ▼                             │
+┌─────────────────────────────────────▼──────────┐
+│  Repositories  (db/repositories/)              │
+│  CRUD puro por dominio, sin commits            │
+└───────────────────────┬────────────────────────┘
+                        │
+┌───────────────────────▼────────────────────────┐
+│  DBConnection (db/connection.py)               │
+│  sqlite3.connect + row_factory                 │
+└────────────────────────────────────────────────┘
 ```
 
-**Reglas de la arquitectura:**
-- Los **repositorios** no hacen `commit()`, no tienen lógica de negocio.
-- Los **servicios** orquestan uno o varios repositorios, manejan la transacción
-  completa (`try / rollback / commit`), llaman a los generadores de Excel.
-- Las **vistas** reciben `db_manager` en el constructor, instancian su servicio
-  internamente, y solo hacen: recolectar input → llamar servicio → mostrar resultado.
-- Los `ValueError` que lanza un servicio por validación de negocio son capturados
-  en el form y mostrados con `show_error`.
+**Reglas invariantes de la arquitectura:**
+- Los **repositorios** nunca hacen `commit()` ni tienen lógica de negocio.
+- Los **servicios** orquestan repositorios, manejan la transacción completa (`try / rollback / commit`), y llaman a los generadores de Excel. Reciben repos individuales inyectados, no `db_manager`.
+- Los **forms** reciben el servicio pre-construido en el constructor (inyectado desde `HomePage`). Solo hacen: recolectar input → llamar servicio → mostrar resultado.
+- Las **vistas de lectura** (`members_page`, `member_detail_page`, `assistant_page`, `liquidation_page`) reciben `db_manager` directamente para consultas simples.
+- Los `ValueError` de validación de negocio se lanzan desde servicios y se capturan en los forms con `show_error`.
 
 ---
 
@@ -339,9 +342,18 @@ db_manager = DBManager(DB_PATH_FINAL)
 db_manager.connect()
 db_manager.create_tables()
 
+# Servicios construidos inyectando repos desde db_manager
+aporte_svc  = AporteService(db_manager.db_conn, db_manager.config_repo, db_manager.auxiliar_repo)
+retiro_svc  = RetiroService(db_manager.db_conn, db_manager.config_repo, db_manager.auxiliar_repo)
+credito_svc = CreditoService(db_manager.db_conn, db_manager.creditos_repo, db_manager.auxiliar_repo, db_manager.config_repo)
+pago_svc    = PagoService(db_manager.db_conn, db_manager.liquidaciones_repo, db_manager.auxiliar_repo, db_manager.config_repo)
+combinado_svc = CombinadoService(db_manager.db_conn, db_manager.liquidaciones_repo, db_manager.auxiliar_repo, db_manager.config_repo)
+caja_svc    = CajaService(db_manager.config_repo, db_manager.auxiliar_repo)
+
 window = MainWindow()
 assistant_page = AssistantPage(db_manager)
-home_page = HomePage(db_manager, assistant_page, window)
+home_page = HomePage(aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc,
+                     caja_svc, db_manager, assistant_page, window)
 
 window.add_view("home", home_page)
 window.add_view("assistant", assistant_page)
@@ -349,8 +361,14 @@ window.add_view("members", MembersPage(db_manager, window))
 window.add_view("data", DataPage())
 ```
 
-Los forms (`FormAporte`, `FormRetiro`, etc.) son instanciados dentro de `HomePage`
-y reciben `db_manager` vía su constructor.
+`HomePage` instancia los forms pasándoles el servicio ya construido:
+```python
+self.form_aporte      = FormAporte(aporte_svc, self.db_manager, self.assistant_page)
+self.page_pago        = FormPagoCredito(pago_svc, self.db_manager, self.assistant_page)
+self.form_nuevo_credito = FormNuevoCredito(credito_svc, self.db_manager, self.main_window, ...)
+self.form_retiro      = FormRetiro(retiro_svc, self.db_manager)
+self.form_aporte_pago = FormCombinado(combinado_svc, self.db_manager, self.assistant_page)
+```
 
 ---
 
