@@ -35,7 +35,7 @@ COL_RESUMEN_VALORES = 'K'  # Columna donde van los valores del resumen final
 MAX_PAGOS_PERMITIDOS = 6  # Límite de filas
 
 def generar_recibo_solo_pagos(
-    db_manager, 
+    get_total_cuotas,
     recibo_id: int,
     recibi_de_data: dict, 
     pagos_credito_info: list = None
@@ -123,7 +123,7 @@ def generar_recibo_solo_pagos(
                 cuota_display = "NA" # O "ABONO"
             else:
                 if letra_id not in cuotas_info_cache:
-                    total_cuotas_credito = db_manager.get_total_cuotas_credito(letra_id)
+                    total_cuotas_credito = get_total_cuotas(letra_id)
                     cuotas_info_cache[letra_id] = total_cuotas_credito
                 
                 if nro_cuotas_start == nro_cuotas_end:

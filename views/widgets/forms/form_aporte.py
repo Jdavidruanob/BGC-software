@@ -12,19 +12,18 @@ from config import (
     parse_miles_colombian, get_hoy, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR 
 )
 from utils.message_boxes import show_success, show_error, show_warning
-from services.aporte_service import AporteService
 
-class NoScrollComboBox(QComboBox): 
+class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()
 
 class FormAporte(QWidget):
     operation_registered = Signal()
-    def __init__(self, db_manager, assistant_page=None):
+    def __init__(self, service, db_manager, assistant_page=None):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
-        self._service = AporteService(db_manager)
+        self._service = service
         self.socios_data = [] # Esta lista debe contener los dicts completos de los socios con su 'saldo' actual
         self.aportes_widgets = []
 

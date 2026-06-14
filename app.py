@@ -11,6 +11,12 @@ from views.assistant_page import AssistantPage
 from views.members_page import MembersPage
 from views.data_page import DataPage
 from db.db_manager import DBManager
+from services.aporte_service import AporteService
+from services.retiro_service import RetiroService
+from services.credito_service import CreditoService
+from services.pago_service import PagoService
+from services.combinado_service import CombinadoService
+from services.caja_service import CajaService
 # Importar configuraciones
 from config import (
     DYNAMIC_DATA_BASE_DIR, 
@@ -95,10 +101,19 @@ def main():
 
     #db_manager.populate_initial_members()
 
+    # Construir servicios inyectando repos desde db_manager
+    aporte_svc = AporteService(db_manager.db_conn, db_manager.config_repo, db_manager.auxiliar_repo)
+    retiro_svc = RetiroService(db_manager.db_conn, db_manager.config_repo, db_manager.auxiliar_repo)
+    credito_svc = CreditoService(db_manager.db_conn, db_manager.creditos_repo, db_manager.auxiliar_repo, db_manager.config_repo)
+    pago_svc = PagoService(db_manager.db_conn, db_manager.liquidaciones_repo, db_manager.auxiliar_repo, db_manager.config_repo)
+    combinado_svc = CombinadoService(db_manager.db_conn, db_manager.liquidaciones_repo, db_manager.auxiliar_repo, db_manager.config_repo)
+    caja_svc = CajaService(db_manager.config_repo, db_manager.auxiliar_repo)
+
     # Create main window
     window = MainWindow()
     assistant_page = AssistantPage(db_manager)
-    home_page = HomePage(db_manager, assistant_page, window)
+    home_page = HomePage(aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc,
+                         caja_svc, db_manager, assistant_page, window)
 
     # Create and add new views to the main window
     window.add_view("home", home_page)

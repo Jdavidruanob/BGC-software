@@ -17,21 +17,19 @@ from dateutil.relativedelta import relativedelta
 from collections import defaultdict 
 
 
-from services.pago_service import PagoService
-
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
         event.ignore()  # Evita que se cambie el valor al hacer scroll
 
 class FormPagoCredito(QWidget):
     operation_registered = Signal()
-    def __init__(self, db_manager, assistant_page = None):
+    def __init__(self, service, db_manager, assistant_page=None):
         super().__init__()
         self.db = db_manager
         self.assistant_page = assistant_page
         self.socios_data = []
         self.pagos_widgets = []  # [(combo_socio, letras_container, wrapper_widget)]
-        self._service = PagoService(db_manager)
+        self._service = service
 
         # --- Layout principal ---
         main_layout = QVBoxLayout()
