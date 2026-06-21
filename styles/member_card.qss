@@ -1,0 +1,27 @@
+#MemberCard {
+    border: 2px solid #e4eaf1;
+    border-radius: 10px;
+    padding: 14px;
+    margin: 14px;
+    
+}
+
+#MemberCard:hover {
+    border: 2px solid %(PRIMARY_COLOR)s;
+}
+
+#PhotoLabel {
+
+}
+
+#NameLabel {
+    font-size: 18px;
+    color: #0A0A0A ;
+    margin-top: 6px;
+}
+
+#CreditLabel {
+    font-size: 15px;
+    color: %(SECONDARY_COLOR)s;
+    margin-top: 4px;
+}

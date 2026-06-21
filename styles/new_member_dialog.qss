@@ -1,0 +1,45 @@
+#NewMemberDialog {
+    background-color: #fefefe;
+    font-family: "Inter", sans-serif;
+    font-size: 20px;
+    color: %(TEXT_COLOR)s;
+    border-radius: 12px;
+}
+
+#FormLabel {
+    font-weight: bold;
+    font-size: 18px;
+    color: %(PRIMARY_COLOR)s;
+}
+
+#InputField {
+    height: 35px;
+    font-size: 18px;
+    border: 2px solid #e4eaf1;
+    border-radius: 8px;
+}
+
+#PhotoButton {
+    font-size: 16px;
+    padding: 8px 12px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border: none;
+    border-radius: 6px;
+}
+
+#PhotoButton:hover{
+    background-color: #2a4a80;
+}
+
+#CreateMemberButton {
+    font-size: 16px;
+    padding: 10px 30px;
+    font-weight: bold;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 8px;
+}
+#CreateMemberButton:hover {
+    background-color: #2a4a80;
+}

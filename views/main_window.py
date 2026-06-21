@@ -1,109 +1,148 @@
-# financial_cooperative/views/main_window.py
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
-from PySide6.QtCore import Signal, QSize
-from PySide6.QtGui import QIcon, QFont
+import os
 
-# Importa tus páginas
-from views.home_page import HomePage
-from views.auxiliary_page import AuxiliaryPage
-from views.partners_page import PartnersPage
-from views.data_page import DataPage
+from PySide6.QtWidgets import (
+    QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
+    QVBoxLayout, QStackedWidget, QSizePolicy
+)
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtSvgWidgets import QSvgWidget  # <--- Agregar esta importación
+from PySide6.QtCore import QSize
+from PySide6.QtGui import QIcon, QPixmap, QPainter
+from config import load_styles, load_svg_icon, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 
 class MainWindow(QMainWindow):
-    # Señal para notificar al Presenter sobre la navegación
-    navigate_requested = Signal(str)
-
     def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Cooperativa Familiar")
-        self.setGeometry(100, 100, 1200, 800) # Tamaño inicial de la ventana
-        self.setObjectName("MainWindow") # Para aplicar QSS global
+        super().__init__() 
+        self.setWindowTitle("bgc software")
+        self.setWindowState(Qt.WindowMaximized) # inicializar en ventana completa 
+        self.views = {} # Diccionario para almacenar vistas,  clave: nombre, valor: widget
+        
+        # --- Widget central ---
+        central_widget = QWidget()
+        main_layout = QVBoxLayout()
 
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QVBoxLayout(self.central_widget)
+        # ----- Top Bar -----
+        top_bar = QWidget()
+        top_bar.setObjectName("TopBar")
+        top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(80, 17.5, 80, 17.5) # Margen Topbar, right, top, left, bottom
 
-        self._create_navbar()
-        self._create_stacked_widget()
-        self._add_pages_to_stacked_widget()
+       # ----- Logo con QSvgWidget (Vectorial y Nítido) -----
+        logo_relative_path = "logo/BGC_logo_noche.svg"
+        logo_absolute_path = os.path.join(ASSETS_DIR, logo_relative_path)
 
-        self.main_layout.addLayout(self.navbar_layout)
-        self.main_layout.addWidget(self.stacked_widget)
-
-        self.load_global_qss()
-
-        # Establecer la página de inicio por defecto
-        self.stacked_widget.setCurrentIndex(0) # O el índice de tu página de Inicio
-
-    def _create_navbar(self):
-        self.navbar_layout = QHBoxLayout()
-        self.navbar_layout.setContentsMargins(0, 0, 0, 0)
-        self.navbar_layout.setSpacing(0) # Eliminar espaciado entre botones
-
-        font = QFont("Arial", 12) # Puedes ajustar la fuente
-
-        # Botón Inicio
-        self.btn_home = QPushButton("Inicio")
-        self.btn_home.setObjectName("NavbarButton")
-        self.btn_home.setFont(font)
-        self.btn_home.clicked.connect(lambda: self.navigate_requested.emit("home"))
-        self.navbar_layout.addWidget(self.btn_home)
-
-        # Botón Auxiliar
-        self.btn_auxiliary = QPushButton("Auxiliar")
-        self.btn_auxiliary.setObjectName("NavbarButton")
-        self.btn_auxiliary.setFont(font)
-        self.btn_auxiliary.clicked.connect(lambda: self.navigate_requested.emit("auxiliary"))
-        self.navbar_layout.addWidget(self.btn_auxiliary)
-
-        # Botón Socios
-        self.btn_partners = QPushButton("Socios")
-        self.btn_partners.setObjectName("NavbarButton")
-        self.btn_partners.setFont(font)
-        self.btn_partners.clicked.connect(lambda: self.navigate_requested.emit("partners"))
-        self.navbar_layout.addWidget(self.btn_partners)
-
-        # Botón Datos
-        self.btn_data = QPushButton("Datos")
-        self.btn_data.setObjectName("NavbarButton")
-        self.btn_data.setFont(font)
-        self.btn_data.clicked.connect(lambda: self.navigate_requested.emit("data"))
-        self.navbar_layout.addWidget(self.btn_data)
-
-        # Espaciador para empujar los botones a la izquierda si es necesario
-        # self.navbar_layout.addStretch()
-
-    def _create_stacked_widget(self):
-        self.stacked_widget = QStackedWidget()
-
-    def _add_pages_to_stacked_widget(self):
-        self.home_page = HomePage()
-        self.auxiliary_page = AuxiliaryPage()
-        self.partners_page = PartnersPage()
-        self.data_page = DataPage()
-
-        self.stacked_widget.addWidget(self.home_page)      # Index 0
-        self.stacked_widget.addWidget(self.auxiliary_page) # Index 1
-        self.stacked_widget.addWidget(self.partners_page)  # Index 2
-        self.stacked_widget.addWidget(self.data_page)      # Index 3
-
-    def set_current_page(self, page_name):
-        # Mapea el nombre de la página al índice del stacked widget
-        page_map = {
-            "home": 0,
-            "auxiliary": 1,
-            "partners": 2,
-            "data": 3,
-        }
-        index = page_map.get(page_name)
-        if index is not None:
-            self.stacked_widget.setCurrentIndex(index)
+        if os.path.exists(logo_absolute_path):
+            # 1. Crear el Widget SVG directamente con el archivo
+            self.logo_widget = QSvgWidget(logo_absolute_path)
+            
+            # 2. Configurar el tamaño deseado (80x80)
+            # Al ser un QSvgWidget, el vector se redibuja a este tamaño exacto sin pixelarse
+            self.logo_widget.setFixedSize(60, 60)
+            
+            # 3. FONDO TRANSPARENTE (Crucial)
+            # QSvgWidget a veces pinta un fondo negro o blanco por defecto.
+            # Esto fuerza a que el fondo del widget sea transparente.
+            self.logo_widget.setStyleSheet("background-color: transparent;")
+            self.logo_widget.setAttribute(Qt.WA_TranslucentBackground)
+            
+            top_layout.addWidget(self.logo_widget, alignment=Qt.AlignLeft)
+        
         else:
-            print(f"Página '{page_name}' no encontrada.")
+            # Fallback por si no encuentra el archivo
+            print(f"⚠️ No se encontró el logo en: {logo_absolute_path}")
+            logo_label = QLabel("🔷 BGC")
+            logo_label.setStyleSheet("font-weight: bold; font-size: 18px; color: white;")
+            top_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
 
-    def load_global_qss(self):
-        try:
-            with open("resources/qss/global.qss", "r") as f:
-                self.setStyleSheet(f.read())
-        except FileNotFoundError:
-            print("global.qss no encontrado. Usando estilos predeterminados.")
+        top_layout.addStretch()
+
+        # Botones con íconos PNG
+        icons_dir = os.path.join(ASSETS_DIR, "icons")
+        # Inicio
+        self.btn_home = QPushButton(" Inicio")
+        self.btn_home.setIcon(load_svg_icon("icons/home.svg")) #TODO: Revisar despues de ejecutar el exe aver si funciona bien 
+        # Auxiliar
+        self.btn_assistant = QPushButton(" Auxiliar")
+        self.btn_assistant.setIcon(QIcon(os.path.join(icons_dir, "library.svg"))) 
+        # Socios
+        self.btn_members = QPushButton(" Socios")
+        self.btn_members.setIcon(QIcon(os.path.join(icons_dir, "users-group.svg")))
+        # Datos
+        self.btn_data = QPushButton(" Datos")
+        self.btn_data.setIcon(QIcon(os.path.join(icons_dir, "chart-area-line.svg")))
+
+        # Configuración de botones
+        for btn in [self.btn_home, self.btn_assistant, self.btn_members, self.btn_data]:
+            btn.setIconSize(QSize(24, 24))
+            btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            top_layout.addWidget(btn, alignment=Qt.AlignRight)
+
+        top_bar.setLayout(top_layout) # Layout de la barra superior
+
+        # Stack para vistas
+        self.stack = QStackedWidget() # QStackedWidget es un contenedor que permite apilar widgets uno encima del otro
+
+        # Conexiones
+        self.btn_home.clicked.connect(lambda: self.show_view("home"))
+        self.btn_assistant.clicked.connect(lambda: self.show_view("assistant"))
+        self.btn_members.clicked.connect(lambda: self.show_view("members"))
+        self.btn_data.clicked.connect(lambda: self.show_view("data"))
+
+        # Layout principal
+        main_layout.addWidget(top_bar)
+        main_layout.addWidget(self.stack)
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+
+        # Cargar estilos
+        qss_path = os.path.join(STYLES_DIR, "main.qss") 
+        load_styles(self, qss_path)
+
+        # Configuración de botones 
+        self.btn_home.setObjectName("NavBarButton")
+        self.btn_assistant.setObjectName("NavBarButton")
+        self.btn_members.setObjectName("NavBarButton")
+        self.btn_data.setObjectName("NavBarButton")
+
+
+    def add_view(self, name, widget):
+        """ Agrega una vista al stack y al diccionario de vistas. """
+        self.views[name] = widget
+        self.stack.addWidget(widget)
+
+    def show_view(self, name):
+        """Muestra la vista y la refresca si tiene método 'refresh_view'."""
+        if name in self.views:
+            widget = self.views[name]
+            self.stack.setCurrentWidget(widget)
+            self.highlight_active_button(name)
+
+            # Llama a refresh_view si existe
+            if hasattr(widget, "refresh_view"):
+                try:
+                    widget.refresh_view()
+                except Exception as e:
+                    print(f"❌ Error al refrescar vista '{name}': {e}")
+
+            
+    def highlight_active_button(self, active_name):
+        """ Resalta el botón activo en la barra de navegación. """
+        buttons = {
+            "home": self.btn_home,
+            "assistant": self.btn_assistant,
+            "members": self.btn_members,
+            "data": self.btn_data,
+        }
+
+        for name, button in buttons.items():
+            if name == active_name:
+                button.setProperty("active", True)
+            else:
+                button.setProperty("active", False)
+
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.update

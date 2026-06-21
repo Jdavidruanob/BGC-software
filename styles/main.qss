@@ -1,0 +1,39 @@
+/* Estilos solo para los botones del navbar */
+QWidget {
+    background: #fff;
+}
+
+QPushButton#NavBarButton {
+    color: %(TEXT_COLOR)s;
+    background-color: %(PRIMARY_COLOR)s;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 18px;
+    border-radius: 6px;
+    margin-left: 10px; /* Espacio entre botones */
+}
+
+/* Hover: más oscuro */
+QPushButton#NavBarButton:hover {     
+    background-color: #2a4a80;
+}
+
+/* Activo (la página actual) */
+QPushButton#NavBarButton[active="true"] {
+    background-color: %(SECONDARY_COLOR)s;
+    color: white;
+}
+QWidget#TopBar {
+    background-color: %(PRIMARY_COLOR)s;
+    padding: 12px;
+    
+}
+
+QLabel#logoLabel {
+    margin-left: 80px;
+    background-color: %(PRIMARY_COLOR)s;
+    font-size: 3px;
+    font-weight: bold;
+}
+
+

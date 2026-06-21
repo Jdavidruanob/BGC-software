@@ -1,0 +1,108 @@
+#formTitle {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+#FormLabel {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#ComboSocio {
+    height: 40px;
+    font-size: 15px;
+    padding: 4px 8px;
+    border : 1px solid #d2d2d2;
+    border-radius: 4px;
+}
+
+#ComboSocio:hover {
+    background-color: #f1f5f9;
+}
+
+#MontoInput, QLineEdit {
+    font-size: 15px;
+    padding: 8px 12px;
+    background-color: #fafafa;
+    color: #e74c3c;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+}
+
+/* Tarjeta de Saldo Disponible */
+QFrame#CardSaldoDisponible {
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    background-color: #ecfdf5;
+}
+
+QLabel#TituloSaldoDisponible {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2e7d32;
+    background: transparent;
+}
+
+QLabel#SubtituloSaldoDisponible {
+    font-size: 14px;
+    color: #558b2f;
+    font-weight: 400;
+    background: transparent;
+}
+
+QLabel#MontoSaldoDisponible {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2e7d32;
+    background: transparent;
+    margin-left: 16px;
+}
+
+/* Tarjeta de Saldo Final */
+QFrame#CardSaldoFinal {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background-color: #f9fafb;
+    padding: 2px 12px;
+}
+
+QLabel#LabelQuedan {
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    background: transparent;
+}
+
+QLabel#MontoSaldoFinal {
+    font-size: 16px;
+    font-weight: bold;
+    color: #374151;
+    background: transparent;
+}
+
+#RegisterButton {
+    font-size: 16px;
+    padding: 10px 18px;
+    background-color: %(PRIMARY_COLOR)s;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+    border: none;
+    min-width: 120px;
+}
+
+#RegisterButton:hover {
+    background-color: #2a4a80;
+}
+
+/* Popup de QComboBox */
+QComboBox QAbstractItemView {
+  font-size: 16px;
+  spacing: 6px;
+  outline: none;
+}
+QComboBox QAbstractItemView::item {
+  min-height: 30px;
+  padding: 4px 8px;
+}

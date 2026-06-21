@@ -1,2 +1,10 @@
 .venv
 *pyc
+*.db
+__pycache__/
+Recibos/
+Liquidaciones/
+app.spec
+build/
+dist/
+Archivos_BGC/

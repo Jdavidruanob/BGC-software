@@ -1,0 +1,99 @@
+#title-member-detail  {
+    font-size: 32px;
+    font-weight: bold;
+    color: %(PRIMARY_COLOR)s; /* Primary color */
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+#backButton {
+    font-size: 16px;
+    padding: 7px 10px;
+    border-radius: 5px;
+    color: #111827;
+    border: 1px solid #e3e9f1;
+}
+
+#leftPanel {
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 325px;
+    max-width: 375px;
+}
+#memberId {
+    font-size: 14px;
+    color: #6b7280; /* Gray color for member ID */
+    margin-bottom: 20px;
+}
+#memberName {
+    font-size: 22px;
+    font-weight: bold;
+    color: #111827;
+}
+
+
+#memberInfoRowWidget {
+    font-size: 16px;
+    margin-top: 6px;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 0 5px 0; 
+
+}
+
+#memberInfoLabel {
+    color: #685563;
+}
+
+#memberInfoValue {
+    color: #020817;
+    font-weight: bold;
+}
+
+#editMemberButton {
+    font-size: 16px;
+    padding: 9px 20px;
+    color: #3b82f6; /* Primary color */
+    border-radius: 8px;
+    border: 1px solid #3b82f6
+}
+
+#editMemberButton:hover {
+    background-color: #f0f8ff; /* Secondary color */
+}
+
+#deleteMemberButton {
+    font-size: 16px;
+    padding: 9px 20px;
+    color: #e76e6e;
+    border-radius: 8px;
+    border: 1px solid #e76e6e
+}
+
+#deleteMemberButton:hover {
+    background-color: #fef2f2; /* Secondary color */
+}
+
+#creditCard {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+#creditCard:hover {
+    background-color: #f0f8ff;
+    border-color: %(PRIMARY_COLOR)s;
+}
+
+#creditTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: %(PRIMARY_COLOR)s; 
+}
+
+#creditInfo {
+    font-size: 16px;
+    color: #374151;
+}
