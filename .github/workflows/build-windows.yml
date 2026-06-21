@@ -33,6 +33,8 @@ jobs:
           --windowed
           --add-data "assets;assets"
           --add-data "styles;styles"
+          --hidden-import "dateutil"
+          --hidden-import "dateutil.relativedelta"
           --icon "app_icon2.ico"
           --name "BGC-software"
           app.py
