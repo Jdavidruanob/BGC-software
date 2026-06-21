@@ -26,18 +26,7 @@ jobs:
         run: python build.py
 
       - name: Build EXE
-        shell: bash
-        run: |
-          pyinstaller \
-            --noconfirm \
-            --onefile \
-            --windowed \
-            --add-data "assets;assets" \
-            --add-data "styles;styles" \
-            --collect-all dateutil \
-            --icon "app_icon2.ico" \
-            --name "BGC-software" \
-            app.py
+        run: python pyinstaller_build.py
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
