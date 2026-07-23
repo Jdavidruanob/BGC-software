@@ -189,3 +189,89 @@ def generar_liquidacion_credito(
         import traceback
         traceback.print_exc()
         return None
+
+
+def generar_liquidacion_actual(
+    credit_data: dict,
+    socios_str: str,
+    cuotas_rows: list,
+):
+    """
+    Genera el Excel con el estado ACTUAL de la liquidación, leyendo los valores
+    directamente de la tabla `liquidaciones` (respetando cuotas ya pagadas y
+    cualquier redistribución por abonos a capital).
+
+    Args:
+        credit_data: dict con 'letra', 'capital', 'interes', 'no_cuotas', 'fecha_inicio'.
+        socios_str:  nombres de los socios ya formateados (viene de GROUP_CONCAT).
+        cuotas_rows: filas de `liquidaciones` con nro_cuota, fecha_vencimiento,
+                     valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_pago.
+    """
+    try:
+        os.makedirs(LIQUIDACIONES_OUTPUT_DIR, exist_ok=True)
+
+        file_name = f"Liquidacion_actual_letra_{credit_data['letra']}_{date.today().strftime('%Y%m%d')}.xlsx"
+        output_path = os.path.join(LIQUIDACIONES_OUTPUT_DIR, file_name)
+
+        wb = load_workbook(TEMPLATE_LIQUIDACION_PATH)
+        ws = wb.active
+
+        ws[LETRA_CREDITO_CELL] = credit_data['letra']
+        ws[CAPITAL_CREDITO_CELL] = format_miles_colombian_int(credit_data['capital'])
+        ws[SOCIOS_PARTICIPANTES_CELL] = socios_str.upper()
+
+        fecha_inicio_dt = datetime.strptime(credit_data["fecha_inicio"][:10], "%Y-%m-%d")
+        ws[FECHA_CREACION_CREDITO] = fecha_inicio_dt.strftime("%Y-%m-%d")
+        ws[NO_CUOTAS_CELL] = credit_data['no_cuotas']
+        ws[INTERES_CREDITO_CELL] = f"{credit_data['interes'] * 100:.2f}%"
+        ws[CAPITAL_PRESTADO_REPETIDO_CELL] = format_miles_colombian_int(credit_data['capital'])
+
+        cuota_referencia = cuotas_rows[0]["valor_cuota"] if cuotas_rows else 0
+        ws[VALOR_CUOTA_ESTIMADA_CELL] = format_miles_colombian_int(cuota_referencia)
+
+        current_row = TABLA_START_ROW
+        for col_idx, header_text in enumerate(TABLA_HEADERS):
+            cell = ws[f"{TABLA_COLUMNS[col_idx]}{current_row}"]
+            cell.value = header_text
+            cell.font = HEADER_FONT
+            cell.alignment = CENTER_ALIGNMENT
+            cell.border = BORDER_STYLE
+
+        current_row += 1
+
+        for cuota in cuotas_rows:
+            fecha_pago = cuota["fecha_pago"] if cuota["fecha_pago"] else ""
+            row_data = [
+                cuota["fecha_vencimiento"],
+                str(cuota["nro_cuota"]),
+                format_miles_colombian_int(cuota["valor_cuota"]),
+                format_miles_colombian_int(cuota["interes_mes"]),
+                format_miles_colombian_int(cuota["cuota_mensual"]),
+                format_miles_colombian_int(max(0, cuota["saldo_capital"])),
+                fecha_pago,
+            ]
+            for col_idx, value in enumerate(row_data):
+                cell = ws[f"{TABLA_COLUMNS[col_idx]}{current_row}"]
+                cell.value = value
+                cell.alignment = CENTER_ALIGNMENT
+                cell.border = BORDER_STYLE
+            current_row += 1
+
+        for col_idx in range(len(TABLA_COLUMNS)):
+            ws.column_dimensions[TABLA_COLUMNS[col_idx]].width = 15
+
+        signature_row = current_row + 2
+        ws.merge_cells(start_row=signature_row, start_column=1, end_row=signature_row, end_column=7)
+        signature_cell = ws[f"A{signature_row}"]
+        signature_cell.value = "Tesorero: ALVARO L. BURBANO GARCIA"
+        signature_cell.alignment = CENTER_ALIGNMENT
+        signature_cell.font = Font(bold=True, size=12)
+
+        wb.save(output_path)
+        return output_path
+
+    except Exception as e:
+        print(f"❌ Error al generar liquidación actual: {e}")
+        import traceback
+        traceback.print_exc()
+        return None

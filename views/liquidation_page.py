@@ -9,6 +9,8 @@ from PySide6.QtGui import QColor
 import os
 from datetime import datetime
 from config import load_styles, format_miles_colombian_int, get_hoy_str, STYLES_DIR
+from utils.credit_liquidation_generator import generar_liquidacion_actual
+from utils.message_boxes import show_success, show_error
  
 
 class CreditLiquidationPage(QWidget):
@@ -41,10 +43,16 @@ class CreditLiquidationPage(QWidget):
         title = QLabel("🧾 Liquidación del Crédito")
         title.setObjectName("liqTitle")
 
+        generate_btn = QPushButton("📄 Generar liquidación actual")
+        generate_btn.setObjectName("liqBackButton")
+        generate_btn.setCursor(Qt.PointingHandCursor)
+        generate_btn.clicked.connect(self.generar_liquidacion_actual)
+
         top_bar_layout.addWidget(back_btn)
         top_bar_layout.addStretch()
         top_bar_layout.addWidget(title)
         top_bar_layout.addStretch()
+        top_bar_layout.addWidget(generate_btn)
         top_bar.setLayout(top_bar_layout)
         main_layout.addWidget(top_bar)
 
@@ -197,3 +205,33 @@ class CreditLiquidationPage(QWidget):
     def refresh_view(self):
         self.table.clearContents()
         self.load_liquidation_from_db()
+
+    def generar_liquidacion_actual(self):
+        letra = self.credit["letra"]
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("""
+                SELECT nro_cuota, fecha_vencimiento, valor_cuota, interes_mes,
+                       cuota_mensual, saldo_capital, fecha_pago
+                FROM liquidaciones
+                WHERE credito_letra = ?
+                ORDER BY nro_cuota ASC
+            """, (letra,))
+            cuotas = cursor.fetchall()
+
+            if not cuotas:
+                show_error(self, "Sin datos", "Este crédito no tiene cuotas registradas.")
+                return
+
+            path = generar_liquidacion_actual(
+                credit_data=self.credit,
+                socios_str=self.credit["socios"],
+                cuotas_rows=cuotas,
+            )
+            if path:
+                show_success(self, "Liquidación generada",
+                             f"Archivo Excel generado en:\n{path}")
+            else:
+                show_error(self, "Error", "No se pudo generar el archivo.")
+        except Exception as e:
+            show_error(self, "Error", f"Error generando liquidación actual: {e}")
