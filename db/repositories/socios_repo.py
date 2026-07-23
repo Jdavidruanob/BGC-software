@@ -163,3 +163,21 @@ class SociosRepository:
             print(f"❌ Error al eliminar socio: {e}")
             self.db.conn.rollback()
             return False
+
+    def history_counts(self, socio_id):
+        """Cuenta el historial de un socio (créditos, recibos y movimientos).
+        Se usa para bloquear la eliminación de socios con historial y no dejar
+        la base en estado inconsistente."""
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("SELECT COUNT(*) AS n FROM socio_credito WHERE socio_id = %s", (socio_id,))
+            creditos = cursor.fetchone()["n"]
+            cursor.execute("SELECT COUNT(*) AS n FROM recibos WHERE socio_id = %s", (socio_id,))
+            recibos = cursor.fetchone()["n"]
+            cursor.execute("SELECT COUNT(*) AS n FROM detalle_recibo WHERE socio_id = %s", (socio_id,))
+            movimientos = cursor.fetchone()["n"]
+            return {"creditos": creditos, "recibos": recibos, "movimientos": movimientos}
+        except Exception as e:
+            print(f"❌ Error consultando historial del socio: {e}")
+            # Ante la duda, reportar historial para NO permitir un borrado peligroso.
+            return {"creditos": 1, "recibos": 1, "movimientos": 1}

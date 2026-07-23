@@ -74,6 +74,7 @@ class DBManager:
     def add_member(self, nombres, apellidos, phone, photo_path, saldo=0): self._socios.save(nombres, apellidos, phone, photo_path, saldo)
     def update_member(self, socio_id, nombres, apellidos, phone, photo_path, nuevo_saldo): return self._socios.update(socio_id, nombres, apellidos, phone, photo_path, nuevo_saldo)
     def delete_member(self, socio_id): return self._socios.delete(socio_id)
+    def member_history_counts(self, socio_id): return self._socios.history_counts(socio_id)
 
     # --- Creditos (solo lectura para vistas) ---
     def get_active_credits_by_member(self, member_id): return self._creditos.find_active_by_socio_id(member_id)
