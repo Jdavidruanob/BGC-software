@@ -158,6 +158,9 @@ class HomePage(QWidget):
         resumen = self.create_resumen_widget()
         right_layout.addWidget(resumen)
 
+        # 1b) Notificaciones de inicio (próximos pagos, mora, movimientos)
+        right_layout.addWidget(self.create_notificaciones_widget())
+
         # --- Panel de Administración ---
         self.admin_panel = QWidget()
         admin_layout = QVBoxLayout()
@@ -364,7 +367,78 @@ class HomePage(QWidget):
 
         v.addWidget(header)
         v.addWidget(body)
-        
+
+        return frame
+
+    def create_notificaciones_widget(self):
+        """Panel 'Al día de hoy': próximos pagos, cuotas en mora y movimientos recientes."""
+        frame = QFrame()
+        frame.setObjectName("summaryCard")
+        v = QVBoxLayout(frame)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
+
+        header = QFrame()
+        header.setObjectName("summaryHeader")
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(10, 6, 10, 6)
+        lbl = QLabel("Al día de hoy")
+        lbl.setObjectName("summaryTitle")
+        hl.addWidget(lbl)
+        v.addWidget(header)
+
+        body = QWidget()
+        bl = QVBoxLayout(body)
+        bl.setContentsMargins(14, 12, 14, 12)
+        bl.setSpacing(6)
+
+        def seccion(titulo, items, formatter, vacio, color=None):
+            t = QLabel(titulo)
+            t.setStyleSheet("font-weight: bold; color: #444; margin-top: 6px;")
+            bl.addWidget(t)
+            if not items:
+                e = QLabel(vacio)
+                e.setStyleSheet("color: #888;")
+                bl.addWidget(e)
+                return
+            for it in items:
+                row = QLabel(formatter(it))
+                row.setWordWrap(True)
+                if color:
+                    row.setStyleSheet(f"color: {color};")
+                bl.addWidget(row)
+
+        try:
+            proximos = self.db_manager.upcoming_installments(limit=5)
+            mora = self.db_manager.overdue_installments(limit=5)
+            movimientos = self.db_manager.recent_movements(limit=5)
+        except Exception as e:
+            print(f"❌ Error cargando notificaciones de inicio: {e}")
+            proximos, mora, movimientos = [], [], []
+
+        seccion(
+            "🔔 Próximos pagos", proximos,
+            lambda c: (f"{c['fecha_vencimiento']} · Letra {c['credito_letra']} "
+                       f"(cuota {c['nro_cuota']}) · {c['socios']} · "
+                       f"${format_miles_colombian_int(c['cuota_mensual'])}"),
+            "No hay cuotas por vencer en los próximos 30 días.",
+        )
+        seccion(
+            "⚠️ En mora", mora,
+            lambda c: (f"{c['fecha_vencimiento']} · Letra {c['credito_letra']} "
+                       f"(cuota {c['nro_cuota']}) · {c['socios']} · "
+                       f"${format_miles_colombian_int(c['cuota_mensual'])}"),
+            "Sin cuotas en mora. 🎉",
+            color="#D32F2F",
+        )
+        seccion(
+            "🧾 Movimientos recientes", movimientos,
+            lambda m: (f"{m['fecha']} · {m['tipo']} · {m['socio']} · "
+                       f"${format_miles_colombian_int(m['monto'])}"),
+            "Sin movimientos recientes.",
+        )
+
+        v.addWidget(body)
         return frame
 
     def editar_saldo_en_caja(self):
@@ -541,6 +615,9 @@ class HomePage(QWidget):
         # 🔄 2. RE-CREAR EL RESUMEN
         resumen_widget = self.create_resumen_widget()
         layout.addWidget(resumen_widget)
+
+        # 🔄 2b. NOTIFICACIONES DE INICIO
+        layout.addWidget(self.create_notificaciones_widget())
 
         # 🔄 3. RE-CREAR EL PANEL DE ADMINISTRACIÓN COMPLETO
         # (Incluye Botones y Configuración de Fecha)

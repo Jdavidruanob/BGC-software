@@ -87,6 +87,21 @@ class DBManager:
     def rebalance_credit_installments(self, letra_id, overrides):
         return self._liquidaciones.rebalance_installments(letra_id, overrides)
 
+    # --- Inicio: próximos pagos, mora y movimientos ---
+    def upcoming_installments(self, limit=5, dias=30):
+        from config import get_hoy
+        from datetime import timedelta
+        hoy = get_hoy()
+        hasta = (hoy + timedelta(days=dias)).strftime("%Y-%m-%d")
+        return self._liquidaciones.find_upcoming(hoy.strftime("%Y-%m-%d"), hasta, limit)
+
+    def overdue_installments(self, limit=5):
+        from config import get_hoy_str
+        return self._liquidaciones.find_overdue(get_hoy_str(), limit)
+
+    def recent_movements(self, limit=5):
+        return self._auxiliar.find_all(limit=limit)
+
     def add_multiple_historical_credits(self, credits_list):
         print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
         resultados = []

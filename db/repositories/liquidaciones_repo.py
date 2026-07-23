@@ -68,6 +68,47 @@ class LiquidacionesRepository:
             print(f"Error calculando deuda actual: {e}")
             return 0
 
+    def find_upcoming(self, hoy_str, hasta_str, limit=5):
+        """Próximas cuotas por vencer (no pagadas) entre hoy y `hasta_str`."""
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                SELECT l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual,
+                       STRING_AGG(s.nombres || ' ' || s.apellidos, ', ') AS socios
+                FROM liquidaciones l
+                JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
+                JOIN socios s ON s.id = sc.socio_id
+                WHERE l.fecha_pago IS NULL
+                  AND l.fecha_vencimiento >= %s AND l.fecha_vencimiento <= %s
+                GROUP BY l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual
+                ORDER BY l.fecha_vencimiento ASC, l.credito_letra ASC
+                LIMIT %s
+            """, (hoy_str, hasta_str, limit))
+            return [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            print(f"❌ Error obteniendo próximos vencimientos: {e}")
+            return []
+
+    def find_overdue(self, hoy_str, limit=5):
+        """Cuotas en mora: no pagadas y ya vencidas (fecha_vencimiento < hoy)."""
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                SELECT l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual,
+                       STRING_AGG(s.nombres || ' ' || s.apellidos, ', ') AS socios
+                FROM liquidaciones l
+                JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
+                JOIN socios s ON s.id = sc.socio_id
+                WHERE l.fecha_pago IS NULL AND l.fecha_vencimiento < %s
+                GROUP BY l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual
+                ORDER BY l.fecha_vencimiento ASC, l.credito_letra ASC
+                LIMIT %s
+            """, (hoy_str, limit))
+            return [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            print(f"❌ Error obteniendo cuotas en mora: {e}")
+            return []
+
     def rebalance_installments(self, letra_id, overrides):
         """Reajusta las cuotas pendientes fijando algunas (overrides: {nro: valor}).
 
