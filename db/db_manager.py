@@ -84,6 +84,9 @@ class DBManager:
     def add_manual_credit(self, socio_ids, capital, interes, n_cuotas, cuota_inicial, fecha_inicio=None):
         return self._creditos.register_manual(socio_ids, capital, interes, n_cuotas, cuota_inicial, fecha_inicio)
 
+    def rebalance_credit_installments(self, letra_id, overrides):
+        return self._liquidaciones.rebalance_installments(letra_id, overrides)
+
     def add_multiple_historical_credits(self, credits_list):
         print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
         resultados = []

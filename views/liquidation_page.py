@@ -11,6 +11,7 @@ from datetime import datetime
 from config import load_styles, format_miles_colombian_int, get_hoy_str, db_date_str, STYLES_DIR
 from utils.credit_liquidation_generator import generar_liquidacion_actual
 from utils.message_boxes import show_success, show_error
+from views.widgets.edit_installments_dialog import EditInstallmentsDialog
  
 
 class CreditLiquidationPage(QWidget):
@@ -43,6 +44,11 @@ class CreditLiquidationPage(QWidget):
         title = QLabel("🧾 Liquidación del Crédito")
         title.setObjectName("liqTitle")
 
+        edit_btn = QPushButton("✏️ Editar cuotas")
+        edit_btn.setObjectName("liqBackButton")
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.clicked.connect(self.editar_cuotas)
+
         generate_btn = QPushButton("📄 Generar liquidación actual")
         generate_btn.setObjectName("liqBackButton")
         generate_btn.setCursor(Qt.PointingHandCursor)
@@ -52,6 +58,7 @@ class CreditLiquidationPage(QWidget):
         top_bar_layout.addStretch()
         top_bar_layout.addWidget(title)
         top_bar_layout.addStretch()
+        top_bar_layout.addWidget(edit_btn)
         top_bar_layout.addWidget(generate_btn)
         top_bar.setLayout(top_bar_layout)
         main_layout.addWidget(top_bar)
@@ -205,6 +212,41 @@ class CreditLiquidationPage(QWidget):
     def refresh_view(self):
         self.table.clearContents()
         self.load_liquidation_from_db()
+
+    def editar_cuotas(self):
+        """Abre el diálogo para editar el valor de una cuota y reajustar las demás."""
+        letra = self.credit["letra"]
+        try:
+            cursor = self.db_manager.conn.cursor()
+            cursor.execute("""
+                SELECT nro_cuota, valor_cuota, fecha_pago
+                FROM liquidaciones
+                WHERE credito_letra = %s
+                ORDER BY nro_cuota ASC
+            """, (letra,))
+            cuotas = [dict(r) for r in cursor.fetchall()]
+        except Exception as e:
+            show_error(self, "Error", f"No se pudieron cargar las cuotas: {e}")
+            return
+
+        if not cuotas:
+            show_error(self, "Sin cuotas", "Este crédito no tiene cuotas registradas.")
+            return
+
+        dialog = EditInstallmentsDialog(
+            self.credit["capital"], self.credit["interes"], cuotas, self
+        )
+        if dialog.exec():
+            overrides = dialog.get_overrides()
+            try:
+                self.db_manager.rebalance_credit_installments(letra, overrides)
+                show_success(self, "Cuotas reajustadas",
+                             "Las cuotas se reajustaron correctamente.")
+                self.refresh_view()
+            except ValueError as e:
+                show_error(self, "No se pudo reajustar", str(e))
+            except Exception as e:
+                show_error(self, "Error", f"Error al reajustar las cuotas:\n{e}")
 
     def generar_liquidacion_actual(self):
         letra = self.credit["letra"]

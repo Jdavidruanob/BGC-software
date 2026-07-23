@@ -2,6 +2,7 @@ from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
 from config import parse_db_date
+from services.amortization import rebalance_schedule
 
 
 class LiquidacionesRepository:
@@ -66,6 +67,50 @@ class LiquidacionesRepository:
         except Exception as e:
             print(f"Error calculando deuda actual: {e}")
             return 0
+
+    def rebalance_installments(self, letra_id, overrides):
+        """Reajusta las cuotas pendientes fijando algunas (overrides: {nro: valor}).
+
+        Distribuye el capital pendiente restante entre las cuotas libres, respeta
+        las cuotas ya pagadas y mantiene el invariante (suma de capital = capital).
+        Lanza ValueError con un mensaje claro si los valores no cuadran.
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("SELECT capital, interes FROM creditos WHERE letra = %s", (letra_id,))
+            credito = cursor.fetchone()
+            if not credito:
+                raise ValueError("Crédito no encontrado.")
+
+            cursor.execute("""
+                SELECT nro_cuota, valor_cuota, fecha_pago
+                FROM liquidaciones WHERE credito_letra = %s ORDER BY nro_cuota ASC
+            """, (letra_id,))
+            cuotas = [
+                {"nro_cuota": r["nro_cuota"], "valor_cuota": r["valor_cuota"],
+                 "pagada": r["fecha_pago"] is not None}
+                for r in cursor.fetchall()
+            ]
+
+            updates = rebalance_schedule(credito["capital"], credito["interes"], cuotas, overrides)
+            for u in updates:
+                cursor.execute("""
+                    UPDATE liquidaciones
+                    SET valor_cuota = %s, interes_mes = %s, cuota_mensual = %s, saldo_capital = %s
+                    WHERE credito_letra = %s AND nro_cuota = %s
+                """, (u["valor_cuota"], u["interes_mes"], u["cuota_mensual"],
+                      u["saldo_capital"], letra_id, u["nro_cuota"]))
+
+            self.db.conn.commit()
+            print(f"✅ Cuotas del crédito {letra_id} reajustadas.")
+            return True
+        except ValueError:
+            self.db.conn.rollback()
+            raise
+        except Exception as e:
+            self.db.conn.rollback()
+            print(f"❌ Error reajustando cuotas: {e}")
+            raise
 
     def recalculate_amortization(self, letra_id, abono_capital_recien_registrado):
         try:
