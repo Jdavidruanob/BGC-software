@@ -102,6 +102,80 @@ class DBManager:
     def recent_movements(self, limit=5):
         return self._auxiliar.find_all(limit=limit)
 
+    # --- Dashboard de datos ---
+    def dashboard_metrics(self):
+        """Devuelve un dict con los indicadores del tablero de datos."""
+        from config import get_hoy_str
+        hoy = get_hoy_str()
+        mes = hoy[:7]
+        cur = self.conn.cursor()
+
+        def scalar(sql, params=()):
+            cur.execute(sql, params)
+            r = cur.fetchone()
+            v = r["v"] if r else 0
+            return int(v) if v is not None else 0
+
+        recaudo_tipos = ["Aporte", "Pago Credito", "Abono Capital"]
+        cartera_cte = (
+            "WITH prox AS (SELECT credito_letra, MIN(nro_cuota) AS nro "
+            "FROM liquidaciones WHERE fecha_pago IS NULL GROUP BY credito_letra) "
+        )
+
+        saldo_caja = self._config.get_int("saldo_en_caja")
+        papeleria = self._config.get_int("total_admin")
+        mora_acumulada = scalar("SELECT COALESCE(SUM(abono_mora),0) AS v FROM detalle_recibo")
+        aportes_socios = scalar("SELECT COALESCE(SUM(saldo),0) AS v FROM socios")
+        cartera = scalar(cartera_cte +
+            "SELECT COALESCE(SUM(l.saldo_capital + l.valor_cuota),0) AS v "
+            "FROM prox p JOIN liquidaciones l "
+            "ON l.credito_letra = p.credito_letra AND l.nro_cuota = p.nro")
+        socios_activos = scalar("SELECT COUNT(*) AS v FROM socios")
+        creditos_vigentes = scalar(
+            "SELECT COUNT(DISTINCT credito_letra) AS v FROM liquidaciones WHERE fecha_pago IS NULL")
+        creditos_en_mora = scalar(
+            "SELECT COUNT(DISTINCT credito_letra) AS v FROM liquidaciones "
+            "WHERE fecha_pago IS NULL AND fecha_vencimiento < %s", (hoy,))
+        recaudo_mes = scalar(
+            "SELECT COALESCE(SUM(monto),0) AS v FROM auxiliar "
+            "WHERE tipo = ANY(%s) AND substr(fecha,1,7) = %s", (recaudo_tipos, mes))
+
+        cur.execute(
+            "SELECT substr(fecha,1,7) AS mes, COALESCE(SUM(monto),0) AS total FROM auxiliar "
+            "WHERE tipo = ANY(%s) GROUP BY substr(fecha,1,7) ORDER BY mes DESC LIMIT 6",
+            (recaudo_tipos,))
+        tendencia = [{"mes": r["mes"], "total": int(r["total"] or 0)} for r in cur.fetchall()][::-1]
+
+        cur.execute(cartera_cte +
+            "SELECT l.credito_letra, (l.saldo_capital + l.valor_cuota) AS deuda, "
+            "STRING_AGG(s.nombres || ' ' || s.apellidos, ', ') AS socios "
+            "FROM prox p JOIN liquidaciones l "
+            "ON l.credito_letra = p.credito_letra AND l.nro_cuota = p.nro "
+            "JOIN socio_credito sc ON sc.credito_letra = l.credito_letra "
+            "JOIN socios s ON s.id = sc.socio_id "
+            "GROUP BY l.credito_letra, l.saldo_capital, l.valor_cuota "
+            "ORDER BY deuda DESC LIMIT 5")
+        mayores_deudores = [
+            {"letra": r["credito_letra"], "deuda": int(r["deuda"] or 0), "socios": r["socios"]}
+            for r in cur.fetchall()
+        ]
+
+        return {
+            "saldo_caja": saldo_caja,
+            "aportes_socios": aportes_socios,
+            "cartera": cartera,
+            "administracion": papeleria + mora_acumulada,
+            "papeleria": papeleria,
+            "mora_acumulada": mora_acumulada,
+            "socios_activos": socios_activos,
+            "creditos_vigentes": creditos_vigentes,
+            "creditos_en_mora": creditos_en_mora,
+            "creditos_al_dia": max(creditos_vigentes - creditos_en_mora, 0),
+            "recaudo_mes": recaudo_mes,
+            "tendencia": tendencia,
+            "mayores_deudores": mayores_deudores,
+        }
+
     def add_multiple_historical_credits(self, credits_list):
         print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
         resultados = []

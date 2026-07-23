@@ -75,7 +75,7 @@ def main():
     window.add_view("home", home_page)
     window.add_view("assistant", assistant_page)
     window.add_view("members", MembersPage(db_manager, window))  # Se pasa db_manager y window para acceso a la ventana principal
-    window.add_view("data", DataPage())
+    window.add_view("data", DataPage(db_manager))
 
     window.show_view("home")
     window.show() # Mostrar la ventana principal
