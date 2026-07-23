@@ -1,5 +1,14 @@
 # importar librerías necesarias
 import sys
+
+# Forzar salida UTF-8 para que los emojis de los print no rompan la consola de
+# Windows (cp1252). Sin esto, `python app.py` falla al arrancar.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFontDatabase, QFont, QIcon
 import os 
