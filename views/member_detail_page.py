@@ -5,7 +5,7 @@ from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QPen
 from PySide6.QtCore import Qt, QSize
 import os
 
-from config import load_svg_icon, load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import load_svg_icon, load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR, db_date_str
 from utils.message_boxes import show_warning, show_success, show_error, show_info
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
@@ -109,7 +109,7 @@ class MemberDetailPage(QWidget):
 
         data_labels = [
             ("Teléfono:", member["celular"]),   
-            ("Fecha de ingreso:", member["created_at"][:10]),
+            ("Fecha de ingreso:", db_date_str(member["created_at"])),
             ("Saldo de aportes:", f"${format_miles_colombian_int(member['saldo'])}")
         ]
 

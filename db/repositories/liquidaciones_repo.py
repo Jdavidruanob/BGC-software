@@ -1,7 +1,7 @@
-import sqlite3
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
+from config import parse_db_date
 
 
 class LiquidacionesRepository:
@@ -10,24 +10,25 @@ class LiquidacionesRepository:
 
     def save_all(self, lista_cuotas):
         try:
-            self.db.conn.executemany("""
+            cursor = self.db.conn.cursor()
+            cursor.executemany("""
                 INSERT INTO liquidaciones (
                     credito_letra, nro_cuota, fecha_vencimiento, valor_cuota,
                     interes_mes, cuota_mensual, saldo_capital, fecha_pago
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, lista_cuotas)
             self.db.conn.commit()
             print("✅ Liquidaciones guardadas.")
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error guardando liquidaciones: {e}")
 
     def get_total_cuotas(self, credito_letra):
         try:
             cursor = self.db.conn.cursor()
-            cursor.execute("SELECT no_cuotas FROM creditos WHERE letra = ?", (credito_letra,))
+            cursor.execute("SELECT no_cuotas FROM creditos WHERE letra = %s", (credito_letra,))
             result = cursor.fetchone()
             return result["no_cuotas"] if result else 0
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"Error al obtener el total de cuotas para la letra {credito_letra}: {e}")
             return 0
 
@@ -37,7 +38,7 @@ class LiquidacionesRepository:
             cursor.execute("""
                 SELECT nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital
                 FROM liquidaciones
-                WHERE credito_letra = ? AND fecha_pago IS NULL
+                WHERE credito_letra = %s AND fecha_pago IS NULL
                 ORDER BY nro_cuota ASC
             """, (letra_id,))
             return cursor.fetchall()
@@ -50,14 +51,14 @@ class LiquidacionesRepository:
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 SELECT valor_cuota, saldo_capital FROM liquidaciones
-                WHERE credito_letra = ? AND fecha_pago IS NULL
+                WHERE credito_letra = %s AND fecha_pago IS NULL
                 ORDER BY nro_cuota ASC LIMIT 1
             """, (letra_id,))
             row = cursor.fetchone()
             if row:
                 return row["saldo_capital"] + row["valor_cuota"]
             cursor.execute(
-                "SELECT saldo_capital FROM liquidaciones WHERE credito_letra = ? ORDER BY nro_cuota DESC LIMIT 1",
+                "SELECT saldo_capital FROM liquidaciones WHERE credito_letra = %s ORDER BY nro_cuota DESC LIMIT 1",
                 (letra_id,),
             )
             last = cursor.fetchone()
@@ -72,7 +73,7 @@ class LiquidacionesRepository:
             hoy = date.today().strftime("%Y-%m-%d")
 
             cursor.execute(
-                "SELECT capital, interes, no_cuotas, fecha_inicio FROM creditos WHERE letra = ?",
+                "SELECT capital, interes, no_cuotas, fecha_inicio FROM creditos WHERE letra = %s",
                 (letra_id,),
             )
             credito = cursor.fetchone()
@@ -84,34 +85,34 @@ class LiquidacionesRepository:
             no_cuotas_originales = credito["no_cuotas"]
 
             cursor.execute(
-                "SELECT SUM(valor_cuota) FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NOT NULL",
+                "SELECT SUM(valor_cuota) AS total FROM liquidaciones WHERE credito_letra = %s AND fecha_pago IS NOT NULL",
                 (letra_id,),
             )
-            pagado_cuotas = cursor.fetchone()[0] or 0
+            pagado_cuotas = int(cursor.fetchone()["total"] or 0)
 
             cursor.execute("""
-                SELECT SUM(monto) FROM detalle_recibo
-                WHERE credito_letra = ? AND (
+                SELECT SUM(monto) AS total FROM detalle_recibo
+                WHERE credito_letra = %s AND (
                     (tipo_operacion = 'pago_credito' AND nro_cuota = 0) OR
                     tipo_operacion = 'abono_capital'
                 )
             """, (letra_id,))
-            pagado_abonos = cursor.fetchone()[0] or 0
+            pagado_abonos = int(cursor.fetchone()["total"] or 0)
 
             saldo_real_nuevo = capital_original - pagado_cuotas - pagado_abonos
 
             def _update_no_cuotas():
                 cursor.execute(
-                    "SELECT MAX(nro_cuota) FROM liquidaciones WHERE credito_letra = ?", (letra_id,)
+                    "SELECT MAX(nro_cuota) AS m FROM liquidaciones WHERE credito_letra = %s", (letra_id,)
                 )
-                ultima = cursor.fetchone()[0] or 0
+                ultima = cursor.fetchone()["m"] or 0
                 cursor.execute(
-                    "UPDATE creditos SET no_cuotas = ? WHERE letra = ?", (ultima, letra_id)
+                    "UPDATE creditos SET no_cuotas = %s WHERE letra = %s", (ultima, letra_id)
                 )
 
             if saldo_real_nuevo <= 0:
                 cursor.execute(
-                    "DELETE FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL",
+                    "DELETE FROM liquidaciones WHERE credito_letra = %s AND fecha_pago IS NULL",
                     (letra_id,),
                 )
                 _update_no_cuotas()
@@ -119,7 +120,7 @@ class LiquidacionesRepository:
                 return
 
             cursor.execute(
-                "SELECT valor_cuota FROM liquidaciones WHERE credito_letra = ? AND nro_cuota = 1",
+                "SELECT valor_cuota FROM liquidaciones WHERE credito_letra = %s AND nro_cuota = 1",
                 (letra_id,),
             )
             row_base = cursor.fetchone()
@@ -129,7 +130,7 @@ class LiquidacionesRepository:
 
             cursor.execute("""
                 SELECT id, valor_cuota FROM liquidaciones
-                WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento < ?
+                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento < %s
             """, (letra_id, hoy))
             vencidas = cursor.fetchall()
             capital_en_vencidas = sum(v["valor_cuota"] for v in vencidas)
@@ -137,7 +138,7 @@ class LiquidacionesRepository:
 
             cursor.execute("""
                 DELETE FROM liquidaciones
-                WHERE credito_letra = ? AND fecha_pago IS NULL AND fecha_vencimiento >= ?
+                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento >= %s
             """, (letra_id, hoy))
 
             if capital_para_futuro == 0:
@@ -146,17 +147,18 @@ class LiquidacionesRepository:
                 return
 
             cursor.execute(
-                "SELECT nro_cuota, fecha_vencimiento FROM liquidaciones WHERE credito_letra = ? ORDER BY nro_cuota DESC LIMIT 1",
+                "SELECT nro_cuota, fecha_vencimiento FROM liquidaciones WHERE credito_letra = %s ORDER BY nro_cuota DESC LIMIT 1",
                 (letra_id,),
             )
             ultimo_reg = cursor.fetchone()
 
             nro_start = ultimo_reg["nro_cuota"] + 1 if ultimo_reg else 1
-            fecha_start = (
-                datetime.strptime(ultimo_reg["fecha_vencimiento"], "%Y-%m-%d")
+            fecha_ref = (
+                parse_db_date(ultimo_reg["fecha_vencimiento"])
                 if ultimo_reg
-                else datetime.strptime(credito["fecha_inicio"][:10], "%Y-%m-%d")
+                else parse_db_date(credito["fecha_inicio"])
             )
+            fecha_start = datetime.combine(fecha_ref, datetime.min.time())
 
             nuevas_cuotas = []
             saldo_iter = capital_para_futuro
@@ -178,16 +180,16 @@ class LiquidacionesRepository:
                 (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes,
                  cuota_mensual, saldo_capital, interes_mora, mora_aplicada,
                  notif_prev_enviada, notif_venc_enviada, fecha_pago)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, NULL)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, 0, 0, NULL)
             """, nuevas_cuotas)
 
             cursor.execute(
-                "SELECT MAX(nro_cuota) FROM liquidaciones WHERE credito_letra = ?", (letra_id,)
+                "SELECT MAX(nro_cuota) AS m FROM liquidaciones WHERE credito_letra = %s", (letra_id,)
             )
-            nueva_ultima = cursor.fetchone()[0]
+            nueva_ultima = cursor.fetchone()["m"]
             if nueva_ultima:
                 cursor.execute(
-                    "UPDATE creditos SET no_cuotas = ? WHERE letra = ?", (nueva_ultima, letra_id)
+                    "UPDATE creditos SET no_cuotas = %s WHERE letra = %s", (nueva_ultima, letra_id)
                 )
 
             self.db.conn.commit()

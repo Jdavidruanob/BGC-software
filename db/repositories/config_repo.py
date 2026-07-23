@@ -8,7 +8,7 @@ class ConfigRepository:
     def get(self, key):
         try:
             cursor = self.db.conn.cursor()
-            cursor.execute("SELECT value FROM config WHERE key = ?", (key,))
+            cursor.execute("SELECT value FROM config WHERE key = %s", (key,))
             row = cursor.fetchone()
             return row["value"] if row else None
         except Exception:
@@ -16,14 +16,14 @@ class ConfigRepository:
 
     def get_int(self, key):
         cursor = self.db.conn.cursor()
-        cursor.execute("SELECT value FROM config WHERE key = ?", (key,))
+        cursor.execute("SELECT value FROM config WHERE key = %s", (key,))
         row = cursor.fetchone()
         return int(row["value"]) if row else 0
 
     def set(self, key, value):
         cursor = self.db.conn.cursor()
         cursor.execute("""
-            INSERT INTO config (key, value) VALUES (?, ?)
+            INSERT INTO config (key, value) VALUES (%s, %s)
             ON CONFLICT(key) DO UPDATE SET value = excluded.value
         """, (key, value))
         self.db.conn.commit()

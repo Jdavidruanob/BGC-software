@@ -10,7 +10,7 @@ class AuxiliarRepository:
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 INSERT INTO auxiliar (fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (fecha, tipo, socio, recibo, monto, saldo, cuota, id_credito))
             self.db.conn.commit()
         except Exception as e:
@@ -26,33 +26,32 @@ class AuxiliarRepository:
         params = []
 
         if start_date:
-            query += " AND fecha >= ?"
+            query += " AND fecha >= %s"
             params.append(start_date)
         if end_date:
-            query += " AND fecha <= ?"
+            query += " AND fecha <= %s"
             params.append(end_date)
         if operation_type:
-            query += " AND tipo = ?"
+            query += " AND tipo = %s"
             params.append(operation_type)
         if socio_name:
-            query += " AND LOWER(socio) LIKE ?"
+            query += " AND LOWER(socio) LIKE %s"
             params.append(f"%{socio_name.lower()}%")
         if numero is not None:
-            query += " AND recibo = ?"
+            query += " AND recibo = %s"
             params.append(numero)
         if letra_credito:
-            query += " AND id_credito = ?"
+            query += " AND id_credito = %s"
             params.append(letra_credito)
 
-        query += " ORDER BY fecha DESC, id DESC LIMIT ? OFFSET ?"
+        query += " ORDER BY fecha DESC, id DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
 
         try:
             cursor = self.db.conn.cursor()
             cursor.execute(query, tuple(params))
             rows = cursor.fetchall()
-            column_names = [description[0] for description in cursor.description]
-            return [dict(zip(column_names, row)) for row in rows]
+            return [dict(row) for row in rows]
         except Exception as e:
             print(f"❌ Error obteniendo operaciones del auxiliar: {e}")
             return []
@@ -61,15 +60,15 @@ class AuxiliarRepository:
         try:
             cursor = self.db.conn.cursor()
 
-            cursor.execute("SELECT monto FROM auxiliar WHERE id = ?", (op_id,))
+            cursor.execute("SELECT monto FROM auxiliar WHERE id = %s", (op_id,))
             row = cursor.fetchone()
             if not row:
                 return False
             monto_eliminado = row["monto"]
 
-            cursor.execute("DELETE FROM auxiliar WHERE id = ?", (op_id,))
+            cursor.execute("DELETE FROM auxiliar WHERE id = %s", (op_id,))
             cursor.execute(
-                "UPDATE auxiliar SET saldo = saldo - ? WHERE id > ?",
+                "UPDATE auxiliar SET saldo = saldo - %s WHERE id > %s",
                 (monto_eliminado, op_id),
             )
 
@@ -77,7 +76,7 @@ class AuxiliarRepository:
             config_row = cursor.fetchone()
             saldo_actual = int(config_row["value"]) if config_row else 0
             cursor.execute("""
-                INSERT INTO config (key, value) VALUES ('saldo_en_caja', ?)
+                INSERT INTO config (key, value) VALUES ('saldo_en_caja', %s)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value
             """, (str(saldo_actual - monto_eliminado),))
 

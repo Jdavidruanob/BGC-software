@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 import os
 from datetime import datetime
-from config import load_styles, format_miles_colombian_int, get_hoy_str, STYLES_DIR
+from config import load_styles, format_miles_colombian_int, get_hoy_str, db_date_str, STYLES_DIR
 from utils.credit_liquidation_generator import generar_liquidacion_actual
 from utils.message_boxes import show_success, show_error
  
@@ -66,7 +66,7 @@ class CreditLiquidationPage(QWidget):
         fields = [
             f"Letra: {credit['letra']}",
             f"Capital: ${format_miles_colombian_int(credit['capital'])}",
-            f"Fecha: {credit['fecha_inicio'][:10]}",
+            f"Fecha: {db_date_str(credit['fecha_inicio'])}",
             f"Cuotas: {credit['no_cuotas']}"
         ]
         for f in fields:
@@ -121,7 +121,7 @@ class CreditLiquidationPage(QWidget):
                 SELECT fecha_vencimiento, nro_cuota, valor_cuota, interes_mes, 
                        cuota_mensual, saldo_capital, fecha_pago
                 FROM liquidaciones
-                WHERE credito_letra = ?
+                WHERE credito_letra = %s
                 ORDER BY nro_cuota ASC
             """, (letra,))
             
@@ -131,15 +131,15 @@ class CreditLiquidationPage(QWidget):
             hoy_str = get_hoy_str()
 
             for i, c in enumerate(cuotas):
-                # Datos básicos
-                f_venc = c["fecha_vencimiento"]
+                # Datos básicos (fecha normalizada a 'YYYY-MM-DD' venga como texto o date)
+                f_venc = db_date_str(c["fecha_vencimiento"])
                 nro = str(c["nro_cuota"])
                 v_cap = f"${format_miles_colombian_int(c['valor_cuota'])}"
                 v_int = f"${format_miles_colombian_int(c['interes_mes'])}"
                 v_total = f"${format_miles_colombian_int(c['cuota_mensual'])}"
                 v_saldo = f"${format_miles_colombian_int(c['saldo_capital'])}"
                 
-                f_pago = c["fecha_pago"] 
+                f_pago = db_date_str(c["fecha_pago"]) if c["fecha_pago"] else None
 
                 # LÓGICA DE ESTADO
                 estado_text = "Pendiente"
@@ -148,7 +148,7 @@ class CreditLiquidationPage(QWidget):
 
                 if f_pago:
                     # PAGADA: Verde y solo fecha
-                    estado_text = f_pago 
+                    estado_text = f_pago
                     color_texto = QColor("#2E7D32") # Verde
                     es_bold = True
                 else:
@@ -194,7 +194,7 @@ class CreditLiquidationPage(QWidget):
             cursor.execute("""
                 SELECT saldo_capital 
                 FROM liquidaciones 
-                WHERE credito_letra = ? AND fecha_pago IS NOT NULL 
+                WHERE credito_letra = %s AND fecha_pago IS NOT NULL 
                 ORDER BY nro_cuota DESC LIMIT 1
             """, (credit_data['letra'],))
             row = cursor.fetchone()
@@ -214,7 +214,7 @@ class CreditLiquidationPage(QWidget):
                 SELECT nro_cuota, fecha_vencimiento, valor_cuota, interes_mes,
                        cuota_mensual, saldo_capital, fecha_pago
                 FROM liquidaciones
-                WHERE credito_letra = ?
+                WHERE credito_letra = %s
                 ORDER BY nro_cuota ASC
             """, (letra,))
             cuotas = cursor.fetchall()

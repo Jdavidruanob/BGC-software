@@ -24,8 +24,8 @@ class AporteService:
 
         cursor = self._db.conn.cursor()
         try:
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi_de_id,))
-            recibo_id = cursor.lastrowid
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (%s) RETURNING id", (recibi_de_id,))
+            recibo_id = cursor.fetchone()["id"]
             fecha = get_hoy_str()
 
             saldo_caja = self._config.get_int("saldo_en_caja")
@@ -35,10 +35,10 @@ class AporteService:
                 socio_id = socio_data["id"]
                 cursor.execute("""
                     INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                    VALUES (?, 'aporte', ?, ?)
+                    VALUES (%s, 'aporte', %s, %s)
                 """, (recibo_id, socio_id, monto))
                 cursor.execute(
-                    "UPDATE socios SET saldo = saldo + ? WHERE id = ?", (monto, socio_id)
+                    "UPDATE socios SET saldo = saldo + %s WHERE id = %s", (monto, socio_id)
                 )
                 saldo_caja += monto
                 nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"

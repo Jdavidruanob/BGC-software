@@ -295,14 +295,14 @@ class HomePage(QWidget):
 
         # 3. Mora (Calculado sumando todos los abonos por mora en recibos)
         # Usamos COALESCE para que si es Null devuelva 0
-        row_mora = cursor.execute("SELECT COALESCE(SUM(abono_mora), 0) FROM detalle_recibo").fetchone()
-        total_mora = row_mora[0] if row_mora else 0
+        row_mora = cursor.execute("SELECT COALESCE(SUM(abono_mora), 0) AS total FROM detalle_recibo").fetchone()
+        total_mora = int(row_mora["total"]) if row_mora else 0
 
         # 4. Total Administración (Suma visual)
         gran_total_admin = papeleria + total_mora
 
         # 5. Créditos activos
-        total_creditos = cursor.execute("SELECT COUNT(*) FROM creditos").fetchone()[0]
+        total_creditos = cursor.execute("SELECT COUNT(*) AS n FROM creditos").fetchone()["n"]
 
 
         # --- Construcción visual ---

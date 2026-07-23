@@ -1,4 +1,3 @@
-import sqlite3
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
@@ -13,12 +12,12 @@ class CreditosRepository:
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 INSERT INTO creditos (capital, interes, no_cuotas, fecha_inicio)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (%s, %s, %s, CURRENT_TIMESTAMP) RETURNING letra
             """, (capital, interes, no_cuotas))
-            new_letra = cursor.lastrowid
+            new_letra = cursor.fetchone()["letra"]
             for socio_id in socio_ids:
                 cursor.execute(
-                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (?, ?)",
+                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (%s, %s)",
                     (socio_id, new_letra),
                 )
             self.db.conn.commit()
@@ -36,29 +35,31 @@ class CreditosRepository:
                 SELECT c.letra, c.capital, c.interes, c.no_cuotas
                 FROM creditos c
                 JOIN socio_credito sc ON c.letra = sc.credito_letra
-                WHERE sc.socio_id = ?
+                WHERE sc.socio_id = %s
             """, (socio_id,))
             return cursor.fetchall()
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error obteniendo créditos activos: {e}")
             return []
 
     def find_by_letra(self, letra):
         query = """
-            SELECT c.*, GROUP_CONCAT(s.nombres || ' ' || s.apellidos, ', ') AS socios
+            SELECT c.*, STRING_AGG(s.nombres || ' ' || s.apellidos, ', ') AS socios
             FROM creditos c
             JOIN socio_credito sc ON sc.credito_letra = c.letra
             JOIN socios s ON s.id = sc.socio_id
-            WHERE c.letra = ?
+            WHERE c.letra = %s
             GROUP BY c.letra
         """
-        return self.db.conn.execute(query, (letra,)).fetchone()
+        cursor = self.db.conn.cursor()
+        cursor.execute(query, (letra,))
+        return cursor.fetchone()
 
     def update_installments(self, letra_id, new_total_cuotas):
         try:
             cursor = self.db.conn.cursor()
             cursor.execute(
-                "UPDATE creditos SET no_cuotas = ? WHERE letra = ?",
+                "UPDATE creditos SET no_cuotas = %s WHERE letra = %s",
                 (new_total_cuotas, letra_id),
             )
             print(f"ℹ️ Crédito {letra_id} actualizado a {new_total_cuotas} cuotas.")
@@ -73,14 +74,15 @@ class CreditosRepository:
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 INSERT INTO creditos (letra, capital, interes, no_cuotas, fecha_inicio)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s) RETURNING letra
             """, (letra, capital, interes, no_cuotas, fecha_inicio))
-            nueva_letra = letra if letra is not None else cursor.lastrowid
+            fila_letra = cursor.fetchone()
+            nueva_letra = letra if letra is not None else fila_letra["letra"]
             print(f"✅ Crédito histórico #{nueva_letra} creado.")
 
             for socio_id in socios_ids:
                 cursor.execute(
-                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (?, ?)",
+                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (%s, %s)",
                     (socio_id, nueva_letra),
                 )
 
@@ -89,7 +91,7 @@ class CreditosRepository:
                     INSERT INTO liquidaciones (
                         credito_letra, nro_cuota, fecha_vencimiento, valor_cuota,
                         interes_mes, cuota_mensual, saldo_capital, fecha_pago
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     nueva_letra,
                     cuota["nro_cuota"],
@@ -115,13 +117,13 @@ class CreditosRepository:
 
             cursor.execute("""
                 INSERT INTO creditos (capital, interes, no_cuotas, fecha_inicio)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s) RETURNING letra
             """, (capital, interes_tasa, n_cuotas, date.today().strftime("%Y-%m-%d")))
-            letra_id = cursor.lastrowid
+            letra_id = cursor.fetchone()["letra"]
 
             for sid in socio_ids:
                 cursor.execute(
-                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (?, ?)",
+                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (%s, %s)",
                     (sid, letra_id),
                 )
 
@@ -159,7 +161,7 @@ class CreditosRepository:
             cursor.executemany("""
                 INSERT INTO liquidaciones
                 (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, cuotas_db)
 
             cursor.execute("SELECT value FROM config WHERE key = 'saldo_en_caja'")

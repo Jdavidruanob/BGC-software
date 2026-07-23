@@ -16,7 +16,7 @@ from db.repositories.config_repo import ConfigRepository
 
 
 class DBManager:
-    def __init__(self, db_path):
+    def __init__(self, db_path=None):
         self._db = DBConnection(db_path)
         self.db_path = db_path
         self._schema = None
@@ -57,12 +57,13 @@ class DBManager:
             self._config = ConfigRepository(self._db)
         return result
 
-    # --- Schema ---
+    # --- Schema / Migración (DESACTIVADOS contra la base compartida) ---
+    # La estructura de la base la administra la API. Estos métodos se conservan
+    # solo por compatibilidad de firma y NO deben ejecutarse: crear/alterar
+    # tablas o reinicializar la config borraría datos reales (saldo_en_caja, etc.).
     def create_tables(self): self._schema.create_tables()
     def initialize_config_values(self): self._schema.initialize_config_values()
     def set_sequence_start_value(self, table_name, start_value): self._schema.set_sequence_start_value(table_name, start_value)
-
-    # --- Migration ---
     def run_annual_migration(self, prev_db_path): self._migration.run_annual_migration(prev_db_path)
 
     # --- Socios ---

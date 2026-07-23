@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 import os
 import sys # <-- Importa sys
-from datetime import date
+from datetime import date, datetime
 
 
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
@@ -40,6 +40,27 @@ def reset_fecha_normal():
     global _FECHA_SIMULADA
     _FECHA_SIMULADA = None
     print(f"🕒 MODO NORMAL ACTIVO: {date.today()}")
+
+
+def parse_db_date(value):
+    """Convierte un valor de fecha de la BD a un date de Python.
+
+    Tolerante a los tipos que devuelven SQLite (texto 'YYYY-MM-DD[...]') y
+    PostgreSQL (objetos date/datetime). Retorna None si el valor es nulo.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+
+
+def db_date_str(value):
+    """Como parse_db_date pero retorna 'YYYY-MM-DD' (o '' si el valor es nulo)."""
+    d = parse_db_date(value)
+    return d.strftime("%Y-%m-%d") if d else ""
 
 # Mantenemos estas constantes por compatibilidad, pero 
 # RECOMENDACIÓN: Usar get_hoy() dentro de las funciones.

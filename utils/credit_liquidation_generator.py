@@ -8,8 +8,8 @@ from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
 from config import (
-    format_miles_colombian_int, 
-    ASSETS_DIR, LIQUIDACIONES_OUTPUT_DIR
+    format_miles_colombian_int,
+    ASSETS_DIR, LIQUIDACIONES_OUTPUT_DIR, db_date_str
 )
 
 # --- Rutas y Constantes ---
@@ -79,8 +79,8 @@ def generar_liquidacion_credito(
         socios_nombres_completos = [f"{s['nombres']} {s['apellidos']}".upper() for s in socios_list]
         ws[SOCIOS_PARTICIPANTES_CELL] = ", Y/O ".join(socios_nombres_completos)
 
-        fecha_inicio_dt = datetime.strptime(credit_data["fecha_inicio"][:10], "%Y-%m-%d")
-        
+        fecha_inicio_dt = datetime.strptime(db_date_str(credit_data["fecha_inicio"]), "%Y-%m-%d")
+
         # CAMBIO 1: Calcular la fecha de la primera cuota para el "Vencimiento"
         ws[FECHA_CREACION_CREDITO] = fecha_inicio_dt.strftime("%Y-%m-%d")
 
@@ -220,7 +220,7 @@ def generar_liquidacion_actual(
         ws[CAPITAL_CREDITO_CELL] = format_miles_colombian_int(credit_data['capital'])
         ws[SOCIOS_PARTICIPANTES_CELL] = socios_str.upper()
 
-        fecha_inicio_dt = datetime.strptime(credit_data["fecha_inicio"][:10], "%Y-%m-%d")
+        fecha_inicio_dt = datetime.strptime(db_date_str(credit_data["fecha_inicio"]), "%Y-%m-%d")
         ws[FECHA_CREACION_CREDITO] = fecha_inicio_dt.strftime("%Y-%m-%d")
         ws[NO_CUOTAS_CELL] = credit_data['no_cuotas']
         ws[INTERES_CREDITO_CELL] = f"{credit_data['interes'] * 100:.2f}%"
@@ -240,9 +240,9 @@ def generar_liquidacion_actual(
         current_row += 1
 
         for cuota in cuotas_rows:
-            fecha_pago = cuota["fecha_pago"] if cuota["fecha_pago"] else ""
+            fecha_pago = db_date_str(cuota["fecha_pago"]) if cuota["fecha_pago"] else ""
             row_data = [
-                cuota["fecha_vencimiento"],
+                db_date_str(cuota["fecha_vencimiento"]),
                 str(cuota["nro_cuota"]),
                 format_miles_colombian_int(cuota["valor_cuota"]),
                 format_miles_colombian_int(cuota["interes_mes"]),

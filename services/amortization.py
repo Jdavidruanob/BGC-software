@@ -1,13 +1,19 @@
 """
 Funciones matemáticas puras para créditos. Sin estado, sin DB.
 """
-from datetime import datetime, date
+from datetime import date
 from dateutil.relativedelta import relativedelta
 
+from config import parse_db_date
 
-def calculate_mora(fecha_venc_str: str, hoy: date, valor_cuota: int, tasa_mora: float) -> int:
-    """Retorna el monto de mora si hoy supera el período de gracia de 1 mes."""
-    f_venc = datetime.strptime(fecha_venc_str, "%Y-%m-%d").date()
+
+def calculate_mora(fecha_venc_str, hoy: date, valor_cuota: int, tasa_mora: float) -> int:
+    """Retorna el monto de mora si hoy supera el período de gracia de 1 mes.
+
+    `fecha_venc_str` puede venir como texto 'YYYY-MM-DD' (SQLite) o como objeto
+    date/datetime (PostgreSQL); parse_db_date normaliza ambos.
+    """
+    f_venc = parse_db_date(fecha_venc_str)
     f_limite = f_venc + relativedelta(months=+1)
     return int(valor_cuota * tasa_mora) if hoy > f_limite else 0
 

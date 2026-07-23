@@ -1,6 +1,7 @@
 .venv
 *pyc
 *.db
+.env
 __pycache__/
 Recibos/
 Liquidaciones/

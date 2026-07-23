@@ -1,4 +1,3 @@
-import sqlite3
 from db.connection import DBConnection
 
 
@@ -30,7 +29,7 @@ class SociosRepository:
                 label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)"
                 results.append((row["id"], nombre_corto, foto, label))
             return results
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error obteniendo socios: {e}")
             return []
 
@@ -45,7 +44,7 @@ class SociosRepository:
                 ORDER BY s.nombres
             """)
             return [dict(row) for row in cursor.fetchall()]
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error obteniendo socios completos: {e}")
             return []
 
@@ -60,7 +59,7 @@ class SociosRepository:
                        COUNT(sc.credito_letra) as creditos
                 FROM socios s
                 LEFT JOIN socio_credito sc ON s.id = sc.socio_id
-                WHERE s.nombres LIKE ? OR s.apellidos LIKE ?
+                WHERE s.nombres LIKE %s OR s.apellidos LIKE %s
                 GROUP BY s.id
                 ORDER BY s.nombres
             """, (f"%{search_term}%", f"%{search_term}%"))
@@ -74,7 +73,7 @@ class SociosRepository:
                 label = "Sin créditos activos" if creditos == 0 else f"{creditos} crédito(s) activo(s)"
                 results.append((row["id"], nombre_corto, foto, label))
             return results
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error en búsqueda de socios: {e}")
             return []
 
@@ -83,20 +82,20 @@ class SociosRepository:
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 SELECT id, cc, nombres, apellidos, celular, saldo, photo_path, created_at
-                FROM socios WHERE id = ?
+                FROM socios WHERE id = %s
             """, (member_id,))
             return cursor.fetchone()
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error obteniendo datos del socio: {e}")
             return None
 
     def get_balance(self, member_id):
         try:
             cursor = self.db.conn.cursor()
-            cursor.execute("SELECT saldo FROM socios WHERE id = ?", (member_id,))
+            cursor.execute("SELECT saldo FROM socios WHERE id = %s", (member_id,))
             result = cursor.fetchone()
             return result["saldo"] if result else 0
-        except sqlite3.Error as e:
+        except Exception as e:
             print(f"❌ Error obteniendo saldo del socio {member_id}: {e}")
             return 0
 
@@ -105,7 +104,7 @@ class SociosRepository:
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 INSERT INTO socios (nombres, apellidos, celular, photo_path, saldo)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
             """, (nombres, apellidos, phone, photo_path, saldo))
             self.db.conn.commit()
             print(f"✅ Socio '{nombres} {apellidos}' agregado correctamente.")
@@ -115,14 +114,14 @@ class SociosRepository:
     def update(self, socio_id, nombres, apellidos, phone, photo_path, nuevo_saldo):
         try:
             cursor = self.db.conn.cursor()
-            cursor.execute("SELECT saldo FROM socios WHERE id = ?", (socio_id,))
+            cursor.execute("SELECT saldo FROM socios WHERE id = %s", (socio_id,))
             if not cursor.fetchone():
                 print("⚠️ Socio no encontrado.")
                 return False
             cursor.execute("""
                 UPDATE socios
-                SET nombres = ?, apellidos = ?, celular = ?, photo_path = ?, saldo = ?
-                WHERE id = ?
+                SET nombres = %s, apellidos = %s, celular = %s, photo_path = %s, saldo = %s
+                WHERE id = %s
             """, (nombres, apellidos, phone, photo_path, nuevo_saldo, socio_id))
             self.db.conn.commit()
             print(f"✏️ Socio '{nombres} {apellidos}' actualizado correctamente.")
@@ -136,26 +135,26 @@ class SociosRepository:
         try:
             cursor = self.db.conn.cursor()
 
-            cursor.execute("SELECT saldo FROM socios WHERE id = ?", (socio_id,))
+            cursor.execute("SELECT saldo FROM socios WHERE id = %s", (socio_id,))
             if not cursor.fetchone():
                 print("⚠️ Socio no encontrado.")
                 return False
 
-            cursor.execute("SELECT credito_letra FROM socio_credito WHERE socio_id = ?", (socio_id,))
-            letras = [row[0] for row in cursor.fetchall()]
+            cursor.execute("SELECT credito_letra FROM socio_credito WHERE socio_id = %s", (socio_id,))
+            letras = [row["credito_letra"] for row in cursor.fetchall()]
 
-            cursor.execute("DELETE FROM socio_credito WHERE socio_id = ?", (socio_id,))
+            cursor.execute("DELETE FROM socio_credito WHERE socio_id = %s", (socio_id,))
 
             for letra in letras:
-                cursor.execute("SELECT COUNT(*) FROM socio_credito WHERE credito_letra = ?", (letra,))
-                if cursor.fetchone()[0] == 0:
-                    cursor.execute("DELETE FROM liquidaciones WHERE credito_letra = ?", (letra,))
-                    cursor.execute("DELETE FROM creditos WHERE letra = ?", (letra,))
+                cursor.execute("SELECT COUNT(*) AS n FROM socio_credito WHERE credito_letra = %s", (letra,))
+                if cursor.fetchone()["n"] == 0:
+                    cursor.execute("DELETE FROM liquidaciones WHERE credito_letra = %s", (letra,))
+                    cursor.execute("DELETE FROM creditos WHERE letra = %s", (letra,))
                     print(f"🗑️ Crédito #{letra} eliminado por no tener más socios.")
 
-            cursor.execute("DELETE FROM detalle_recibo WHERE socio_id = ?", (socio_id,))
-            cursor.execute("DELETE FROM recibos WHERE socio_id = ?", (socio_id,))
-            cursor.execute("DELETE FROM socios WHERE id = ?", (socio_id,))
+            cursor.execute("DELETE FROM detalle_recibo WHERE socio_id = %s", (socio_id,))
+            cursor.execute("DELETE FROM recibos WHERE socio_id = %s", (socio_id,))
+            cursor.execute("DELETE FROM socios WHERE id = %s", (socio_id,))
 
             self.db.conn.commit()
             print(f"🗑️ Socio con ID {socio_id} eliminado junto con datos relacionados.")

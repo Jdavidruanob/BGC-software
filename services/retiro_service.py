@@ -18,16 +18,16 @@ class RetiroService:
 
         cursor = self._db.conn.cursor()
         try:
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (socio_id,))
-            recibo_id = cursor.lastrowid
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (%s) RETURNING id", (socio_id,))
+            recibo_id = cursor.fetchone()["id"]
 
             cursor.execute("""
                 INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                VALUES (?, 'retiro', ?, ?)
+                VALUES (%s, 'retiro', %s, %s)
             """, (recibo_id, socio_id, monto))
 
             cursor.execute(
-                "UPDATE socios SET saldo = saldo - ? WHERE id = ?", (monto, socio_id)
+                "UPDATE socios SET saldo = saldo - %s WHERE id = %s", (monto, socio_id)
             )
 
             saldo_caja = self._config.get_int("saldo_en_caja")

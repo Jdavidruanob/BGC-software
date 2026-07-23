@@ -13,16 +13,16 @@ class RecibosRepository:
         """
         try:
             cursor = self.db.conn.cursor()
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi_de_id,))
-            recibo_id = cursor.lastrowid
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (%s) RETURNING id", (recibi_de_id,))
+            recibo_id = cursor.fetchone()["id"]
 
             for socio_id, monto in aportes:
                 cursor.execute("""
                     INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                    VALUES (?, 'aporte', ?, ?)
+                    VALUES (%s, 'aporte', %s, %s)
                 """, (recibo_id, socio_id, monto))
                 cursor.execute(
-                    "UPDATE socios SET saldo = saldo + ? WHERE id = ?",
+                    "UPDATE socios SET saldo = saldo + %s WHERE id = %s",
                     (monto, socio_id),
                 )
 

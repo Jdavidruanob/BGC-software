@@ -1,5 +1,4 @@
-from datetime import datetime
-from config import get_hoy, get_hoy_str
+from config import get_hoy, get_hoy_str, parse_db_date
 from services.amortization import calculate_mora
 from utils.recibo_generator_pago import generar_recibo_solo_pagos
 
@@ -67,8 +66,8 @@ class PagoService:
         # --- Fase 2: Ejecución ---
         cursor = self._db.conn.cursor()
         try:
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (?)", (recibi_de_id,))
-            recibo_id = cursor.lastrowid
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (%s) RETURNING id", (recibi_de_id,))
+            recibo_id = cursor.fetchone()["id"]
 
             saldo_caja = self._config.get_int("saldo_en_caja")
             total_admin = self._config.get_int("total_admin")
@@ -105,8 +104,8 @@ class PagoService:
         cursor = self._db.conn.cursor()
         cursor.execute(
             "SELECT nro_cuota, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_vencimiento "
-            "FROM liquidaciones WHERE credito_letra = ? AND fecha_pago IS NULL "
-            "ORDER BY nro_cuota LIMIT ?",
+            "FROM liquidaciones WHERE credito_letra = %s AND fecha_pago IS NULL "
+            "ORDER BY nro_cuota LIMIT %s",
             (letra_id, n_cuotas),
         )
         filas = cursor.fetchall()
@@ -135,7 +134,7 @@ class PagoService:
         pendientes = self._liquidaciones.find_pending(letra_id)
         vencidas = []
         for cuota in pendientes:
-            f_venc = datetime.strptime(cuota["fecha_vencimiento"], "%Y-%m-%d").date()
+            f_venc = parse_db_date(cuota["fecha_vencimiento"])
             if f_venc >= hoy:
                 break
             mora = calculate_mora(cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora)
@@ -193,12 +192,12 @@ class PagoService:
                 cursor.execute("""
                     INSERT INTO detalle_recibo
                         (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto, abono_mora)
-                    VALUES (?, 'pago_credito', ?, ?, ?, ?, ?)
+                    VALUES (%s, 'pago_credito', %s, %s, %s, %s, %s)
                 """, (recibo_id, socio_data["id"], letra_id, it["nro"], it["monto_total"], it["mora"]))
                 cursor.execute("""
-                    UPDATE liquidaciones SET fecha_pago = DATE('now'), interes_mora = ?, mora_aplicada = ?
-                    WHERE credito_letra = ? AND nro_cuota = ?
-                """, (it["mora"], 1 if it["mora"] > 0 else 0, letra_id, it["nro"]))
+                    UPDATE liquidaciones SET fecha_pago = %s, interes_mora = %s, mora_aplicada = %s
+                    WHERE credito_letra = %s AND nro_cuota = %s
+                """, (fecha, it["mora"], 1 if it["mora"] > 0 else 0, letra_id, it["nro"]))
                 saldo_caja += it["monto_base"]
                 mora_total += it["mora"]
                 dict_recibo["valor_capital_consolidado"] += it["cap"]
@@ -218,12 +217,12 @@ class PagoService:
                 cursor.execute("""
                     INSERT INTO detalle_recibo
                         (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto, abono_mora)
-                    VALUES (?, 'pago_credito', ?, ?, ?, ?, ?)
+                    VALUES (%s, 'pago_credito', %s, %s, %s, %s, %s)
                 """, (recibo_id, socio_data["id"], letra_id, nro, v["costo_total"], v["mora"]))
                 cursor.execute("""
-                    UPDATE liquidaciones SET fecha_pago = DATE('now'), interes_mora = ?, mora_aplicada = ?
-                    WHERE credito_letra = ? AND nro_cuota = ?
-                """, (v["mora"], 1 if v["mora"] > 0 else 0, letra_id, nro))
+                    UPDATE liquidaciones SET fecha_pago = %s, interes_mora = %s, mora_aplicada = %s
+                    WHERE credito_letra = %s AND nro_cuota = %s
+                """, (fecha, v["mora"], 1 if v["mora"] > 0 else 0, letra_id, nro))
                 saldo_caja += v["monto_base"]
                 mora_total += v["mora"]
                 dict_recibo["valor_capital_consolidado"] += v["data"]["valor_cuota"]
@@ -238,7 +237,7 @@ class PagoService:
                 cursor.execute("""
                     INSERT INTO detalle_recibo
                         (recibo_id, tipo_operacion, socio_id, credito_letra, nro_cuota, monto)
-                    VALUES (?, 'pago_credito', ?, ?, 0, ?)
+                    VALUES (%s, 'pago_credito', %s, %s, 0, %s)
                 """, (recibo_id, socio_data["id"], letra_id, capital_puro))
                 saldo_caja += capital_puro
                 self._liquidaciones.recalculate_amortization(letra_id, capital_puro)
