@@ -81,6 +81,9 @@ class DBManager:
     def get_letras_by_socio_id(self, socio_id): return self._creditos.find_active_by_socio_id(socio_id)
     def get_credit_by_letra(self, letra): return self._creditos.find_by_letra(letra)
     def add_historical_credit(self, letra, capital, interes, no_cuotas, fecha_inicio, socios_ids, cuotas_data): return self._creditos.save_historical(letra, capital, interes, no_cuotas, fecha_inicio, socios_ids, cuotas_data)
+    def add_manual_credit(self, socio_ids, capital, interes, n_cuotas, cuota_inicial, fecha_inicio=None):
+        return self._creditos.register_manual(socio_ids, capital, interes, n_cuotas, cuota_inicial, fecha_inicio)
+
     def add_multiple_historical_credits(self, credits_list):
         print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
         resultados = []

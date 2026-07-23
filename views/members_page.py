@@ -13,6 +13,7 @@ from config import (
     STYLES_DIR, ASSETS_DIR,
 )
 from views.widgets.new_member_dialog import NewMemberDialog
+from views.widgets.manual_credit_dialog import ManualCreditDialog
 from views.member_detail_page import MemberDetailPage
 from views.widgets.comboBox_custom import strip_accents
 from utils.message_boxes import show_success, show_error, show_warning
@@ -63,6 +64,15 @@ class MembersPage(QWidget):
         new_btn.setCursor(Qt.PointingHandCursor)
         new_btn.clicked.connect(self.open_new_member_dialog)
         top_bar.addWidget(new_btn)
+
+        manual_btn = QPushButton("  Crédito manual")
+        manual_btn.setObjectName("newMemberButton")
+        manual_btn.setFixedHeight(45)
+        manual_btn.setIconSize(QSize(18, 18))
+        manual_btn.setIcon(load_svg_icon("icons/credit-card.svg"))
+        manual_btn.setCursor(Qt.PointingHandCursor)
+        manual_btn.clicked.connect(self.open_manual_credit_dialog)
+        top_bar.addWidget(manual_btn)
 
         self.search_box = QLineEdit()
         self.search_box.setObjectName("searchBox-members")
@@ -258,6 +268,27 @@ class MembersPage(QWidget):
             self.refresh_members()
         else:
             show_error(self, "Error", "No se pudo eliminar el socio.")
+
+    def open_manual_credit_dialog(self):
+        socios = self.db_manager.get_all_members_full()
+        if not socios:
+            show_error(self, "Sin socios", "No hay socios para asignar el crédito.")
+            return
+        dialog = ManualCreditDialog(socios, self)
+        if dialog.exec():
+            data = dialog.get_data()
+            try:
+                letra = self.db_manager.add_manual_credit(
+                    data["socio_ids"], data["capital"], data["interes"],
+                    data["n_cuotas"], data["cuota_inicial"], data["fecha_inicio"],
+                )
+                show_success(self, "Crédito creado",
+                             f"Crédito manual #{letra} registrado correctamente.")
+                self.refresh_members()
+            except ValueError as e:
+                show_error(self, "No se pudo crear", str(e))
+            except Exception as e:
+                show_error(self, "Error", f"Error creando el crédito manual:\n{e}")
 
     def open_member_detail(self, member_id):
         view_name = f"member_detail_{member_id}"

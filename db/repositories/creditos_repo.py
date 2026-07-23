@@ -1,6 +1,7 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
+from services.amortization import build_manual_schedule
 
 
 class CreditosRepository:
@@ -175,3 +176,56 @@ class CreditosRepository:
         except Exception as e:
             self.db.conn.rollback()
             raise e
+
+    def register_manual(self, socio_ids, capital, interes, n_cuotas, cuota_inicial, fecha_inicio=None):
+        """Registra un crédito manual/histórico a partir de una cuota dada.
+
+        A diferencia de register_complete, NO descuenta caja (el dinero ya se
+        entregó en el pasado) y NO calcula la cuota: la recibe (cuota_inicial).
+        La liquidación se genera con build_manual_schedule (última cuota absorbe
+        el residuo; suma de capital = capital del crédito). Retorna la letra.
+        """
+        if n_cuotas < 1:
+            raise ValueError("El número de cuotas debe ser al menos 1.")
+        if cuota_inicial <= 0:
+            raise ValueError("La cuota debe ser mayor que cero.")
+        if cuota_inicial * (n_cuotas - 1) > capital:
+            raise ValueError(
+                "La cuota es demasiado alta para ese capital y número de cuotas "
+                "(la última cuota quedaría negativa)."
+            )
+        if not socio_ids:
+            raise ValueError("Selecciona al menos un socio.")
+
+        fecha_inicio = fecha_inicio or date.today()
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                INSERT INTO creditos (capital, interes, no_cuotas, fecha_inicio)
+                VALUES (%s, %s, %s, %s) RETURNING letra
+            """, (capital, interes, n_cuotas, fecha_inicio.strftime("%Y-%m-%d")))
+            letra_id = cursor.fetchone()["letra"]
+
+            for sid in socio_ids:
+                cursor.execute(
+                    "INSERT INTO socio_credito (socio_id, credito_letra) VALUES (%s, %s)",
+                    (sid, letra_id),
+                )
+
+            filas = build_manual_schedule(
+                letra_id, capital, interes, n_cuotas, cuota_inicial, fecha_inicio
+            )
+            cursor.executemany("""
+                INSERT INTO liquidaciones
+                (credito_letra, nro_cuota, fecha_vencimiento, valor_cuota,
+                 interes_mes, cuota_mensual, saldo_capital)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, filas)
+
+            self.db.conn.commit()
+            print(f"✅ Crédito manual #{letra_id} creado ({n_cuotas} cuotas).")
+            return letra_id
+        except Exception as e:
+            self.db.conn.rollback()
+            print(f"❌ Error creando crédito manual: {e}")
+            raise
