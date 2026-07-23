@@ -11,10 +11,11 @@ from config import(
      parse_miles_colombian, get_hoy_str, get_hoy, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 )
 from utils.message_boxes import show_success, show_error, show_warning, show_info
+from views.widgets.comboBox_custom import SearchableComboBox
 import os
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
-from collections import defaultdict 
+from collections import defaultdict
 
 
 class NoScrollComboBox(QComboBox):
@@ -30,6 +31,9 @@ class FormPagoCredito(QWidget):
         self.socios_data = []
         self.pagos_widgets = []  # [(combo_socio, letras_container, wrapper_widget)]
         self._service = service
+        # Auto "Recibí de": el primer pago refleja al socio que entrega,
+        # mientras el usuario no lo cambie a mano.
+        self._auto_first_pago = True
 
         # --- Layout principal ---
         main_layout = QVBoxLayout()
@@ -42,11 +46,12 @@ class FormPagoCredito(QWidget):
         # "Recibí de:"
         lbl_recibi = QLabel("Recibí de:")
         lbl_recibi.setObjectName("FormLabel")
-        self.combo_recibi_de = NoScrollComboBox()
+        self.combo_recibi_de = SearchableComboBox(placeholder_text="Escribe para buscar un socio…")
         self.combo_recibi_de.setObjectName("ComboRecibiDe")
         self.combo_recibi_de.setMinimumHeight(50)
         self.combo_recibi_de.setMaximumHeight(50)
         self.combo_recibi_de.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.combo_recibi_de.selectionCommitted.connect(self._on_recibi_changed)
         main_layout.addWidget(lbl_recibi)
         main_layout.addWidget(self.combo_recibi_de)
 
@@ -91,22 +96,52 @@ class FormPagoCredito(QWidget):
         """Carga lista de socios para combo_recibi_de."""
         try:
             self.socios_data = self.db.get_all_members_full()
-            self.combo_recibi_de.clear()
-            for socio in self.socios_data:
-                nombre = f"{socio['nombres']} {socio['apellidos']}"
-                self.combo_recibi_de.addItem(nombre, userData=socio)
+            self.combo_recibi_de.populate_socios(self.socios_data)
         except Exception as e:
             show_error(self, "", f"Error cargando socios:\n{e}")
 
+    def _pago_socio_combos(self):
+        """Devuelve, en orden, los combos de socio de los bloques de pago actuales."""
+        combos = []
+        for i in range(self.pagos_container.count()):
+            w = self.pagos_container.itemAt(i).widget()
+            if w:
+                c = w.findChild(SearchableComboBox, "ComboSocioPago")
+                if c:
+                    combos.append(c)
+        return combos
+
+    def _on_recibi_changed(self):
+        """Auto 'Recibí de': coloca al socio que entrega como primer pago."""
+        recibi = self.combo_recibi_de.currentData()
+        if not recibi:
+            return
+        combos = self._pago_socio_combos()
+        if not combos:
+            self.agregar_pago()  # crea el primer bloque (se prellena solo)
+        elif self._auto_first_pago:
+            combos[0].set_socio_by_id(recibi["id"])
+
     def agregar_pago(self):
         """Agrega bloque para un socio + sus letras a pagar."""
-        # Combo socio
-        combo = NoScrollComboBox()
+        es_primero = len(self._pago_socio_combos()) == 0
+
+        # Combo socio (buscable)
+        combo = SearchableComboBox(placeholder_text="Escribe para buscar un socio…")
         combo.setObjectName("ComboSocioPago")
         combo.setMinimumHeight(36)
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        for socio in self.socios_data:
-            combo.addItem(f"{socio['nombres']} {socio['apellidos']}", userData=socio)
+        combo.populate_socios(self.socios_data)
+
+        recibi = self.combo_recibi_de.currentData()
+        if es_primero and self._auto_first_pago and recibi:
+            combo.set_socio_by_id(recibi["id"])
+
+        def _on_socio_manual():
+            combos = self._pago_socio_combos()
+            if combos and combos[0] is combo:
+                self._auto_first_pago = False
+        combo.selectionCommitted.connect(_on_socio_manual)
 
         # Botón agregar letra
         btn_add_letra = QPushButton(" Agregar letra a pagar")
@@ -228,7 +263,7 @@ class FormPagoCredito(QWidget):
             wrapper = self.pagos_container.itemAt(i).widget()
             if not wrapper:
                 continue
-            combo = wrapper.findChild(NoScrollComboBox, "ComboSocioPago")
+            combo = wrapper.findChild(SearchableComboBox, "ComboSocioPago")
             wrapper_layout = wrapper.layout()
             if wrapper_layout.count() <= 1:
                 continue
@@ -314,6 +349,7 @@ class FormPagoCredito(QWidget):
         
         # Vacía la lista de widgets de pago
         self.pagos_widgets.clear()
-        
+        self._auto_first_pago = True
+
         # Recarga los socios
         self.load_socios()

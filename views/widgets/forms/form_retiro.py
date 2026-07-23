@@ -11,6 +11,7 @@ from config import  (
     format_miles_colombian_int, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 )
 from utils.message_boxes import show_success, show_error, show_warning
+from views.widgets.comboBox_custom import SearchableComboBox
 
 class NoScrollComboBox(QComboBox):
     def wheelEvent(self, event):
@@ -36,8 +37,8 @@ class FormRetiro(QWidget):
         lbl_titulo.setObjectName("FormLabel")
         layout.addWidget(lbl_titulo)
 
-        # Combo de socio
-        self.combo_socio = NoScrollComboBox()
+        # Combo de socio (buscable)
+        self.combo_socio = SearchableComboBox(placeholder_text="Escribe para buscar un socio…")
         self.combo_socio.setObjectName("ComboSocio")
         self.combo_socio.setMinimumHeight(50)
         self.combo_socio.setMaximumHeight(50)
@@ -170,10 +171,7 @@ class FormRetiro(QWidget):
         try:
             self.socios_data = self.db.get_all_members_full()
             self.combo_socio.blockSignals(True)
-            self.combo_socio.clear()
-            for socio in self.socios_data:
-                nombre = f"{socio['nombres']} {socio['apellidos']}"
-                self.combo_socio.addItem(nombre, userData=socio)
+            self.combo_socio.populate_socios(self.socios_data)
             self.combo_socio.blockSignals(False)
             self.actualizar_preview()
         except Exception as e:
@@ -229,10 +227,7 @@ class FormRetiro(QWidget):
         try:
             self.socios_data = self.db.get_all_members_full()
             self.combo_socio.blockSignals(True)
-            self.combo_socio.clear()
-            for socio in self.socios_data:
-                nombre = f"{socio['nombres']} {socio['apellidos']}"
-                self.combo_socio.addItem(nombre, userData=socio)
+            self.combo_socio.populate_socios(self.socios_data)
             self.combo_socio.blockSignals(False)
         except Exception as e:
             show_error(self, "", f"Error cargando socios:\n{e}")

@@ -12,10 +12,7 @@ from config import (
     parse_miles_colombian, get_hoy, get_hoy_str, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR 
 )
 from utils.message_boxes import show_success, show_error, show_warning
-
-class NoScrollComboBox(QComboBox):
-    def wheelEvent(self, event):
-        event.ignore()
+from views.widgets.comboBox_custom import SearchableComboBox
 
 class FormAporte(QWidget):
     operation_registered = Signal()
@@ -26,6 +23,9 @@ class FormAporte(QWidget):
         self._service = service
         self.socios_data = [] # Esta lista debe contener los dicts completos de los socios con su 'saldo' actual
         self.aportes_widgets = []
+        # Auto "Recibí de": el primer aporte refleja al socio que entrega,
+        # mientras el usuario no lo cambie a mano.
+        self._auto_first = True
 
         main_layout = QVBoxLayout()
         main_layout.setAlignment(Qt.AlignTop)
@@ -35,12 +35,13 @@ class FormAporte(QWidget):
 
         lbl_recibi = QLabel("Recibí de:")
         lbl_recibi.setObjectName("FormLabel")
-        self.combo_recibi_de = NoScrollComboBox()
+        self.combo_recibi_de = SearchableComboBox(placeholder_text="Escribe para buscar un socio…")
         self.combo_recibi_de.setObjectName("ComboRecibiDe")
         self.combo_recibi_de.setMinimumHeight(50)
         self.combo_recibi_de.setMaximumHeight(50)
 
         self.combo_recibi_de.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.combo_recibi_de.selectionCommitted.connect(self._on_recibi_changed)
         main_layout.addWidget(lbl_recibi)
         main_layout.addWidget(self.combo_recibi_de)
 
@@ -77,31 +78,49 @@ class FormAporte(QWidget):
     def load_socios(self):
         try:
             # Asegúrate de que get_all_members_full() retorne el 'saldo' actual de cada socio
-            self.socios_data = self.db.get_all_members_full() 
-            self.combo_recibi_de.clear()
-            for socio in self.socios_data:
-                nombre = f"{socio['nombres']} {socio['apellidos']}"
-                self.combo_recibi_de.addItem(nombre, userData=socio)
-            
-            # Recargar los combos existentes
-            # AHORA DESEMPAQUETAMOS 4 ELEMENTOS: combo, input, check, wrapper
-            for combo, _, _, _ in self.aportes_widgets: 
-                combo.clear()
-                for socio in self.socios_data:
-                    nombre = f"{socio['nombres']} {socio['apellidos']}"
-                    combo.addItem(nombre, userData=socio)
+            self.socios_data = self.db.get_all_members_full()
+            self.combo_recibi_de.populate_socios(self.socios_data)
+
+            # Recargar los combos existentes conservando su selección
+            for combo, _, _, _ in self.aportes_widgets:
+                prev = combo.currentData()
+                combo.populate_socios(self.socios_data)
+                if prev:
+                    combo.set_socio_by_id(prev["id"])
 
         except Exception as e:
             show_error(self, "", f"Error cargando socios:\n{e}")
 
+    def _on_recibi_changed(self):
+        """Auto 'Recibí de': coloca al socio que entrega como primer aporte."""
+        recibi = self.combo_recibi_de.currentData()
+        if not recibi:
+            return
+        if not self.aportes_widgets:
+            # Aún no hay filas: creamos la primera (se prellenará sola).
+            self.agregar_aporte()
+        elif self._auto_first:
+            self.aportes_widgets[0][0].set_socio_by_id(recibi["id"])
+
     def agregar_aporte(self):
-        combo = NoScrollComboBox()
+        es_primera = len(self.aportes_widgets) == 0
+
+        combo = SearchableComboBox(placeholder_text="Escribe para buscar un socio…")
         combo.setObjectName("ComboSocio")
         combo.setMinimumHeight(36)
         combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        for socio in self.socios_data:
-            nombre = f"{socio['nombres']} {socio['apellidos']}"
-            combo.addItem(nombre, userData=socio)
+        combo.populate_socios(self.socios_data)
+
+        # Auto "Recibí de": la primera fila se prellena con el socio que entrega.
+        recibi = self.combo_recibi_de.currentData()
+        if es_primera and self._auto_first and recibi:
+            combo.set_socio_by_id(recibi["id"])
+
+        def _on_socio_manual():
+            # Si el usuario cambia a mano el socio de la PRIMERA fila, dejamos de sincronizar.
+            if self.aportes_widgets and self.aportes_widgets[0][0] is combo:
+                self._auto_first = False
+        combo.selectionCommitted.connect(_on_socio_manual)
 
         monto_input = QLineEdit()
         monto_input.setObjectName("MontoInput")
@@ -224,5 +243,6 @@ class FormAporte(QWidget):
 
     def clear_form(self):
         for _, _, _, wrapper in self.aportes_widgets: # <--- Usamos el 4to elemento
-            wrapper.setParent(None) 
+            wrapper.setParent(None)
         self.aportes_widgets.clear()
+        self._auto_first = True

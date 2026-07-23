@@ -14,6 +14,7 @@ from config import (
 )
 from utils.message_boxes import show_success, show_error, show_warning
 from views.liquidation_page import CreditLiquidationPage
+from views.widgets.comboBox_custom import SearchableComboBox
 
 
 class NoScrollComboBox(QComboBox):
@@ -36,13 +37,14 @@ class FormNuevoCredito(QWidget):
         layout.setContentsMargins(20, 0, 20, 30)
         layout.setSpacing(24)
 
-        # Combo de socios
-        self.combo_socios = NoScrollComboBox()
+        # Combo de socios (buscable)
+        self.combo_socios = SearchableComboBox(placeholder_text="Escribe para buscar un socio…")
         self.combo_socios.setObjectName("ComboSocio")
         self.combo_socios.setMinimumHeight(50)
         self.combo_socios.setMaximumHeight(50)
         self.combo_socios.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.combo_socios.currentIndexChanged.connect(self.agregar_socio_seleccionado)
+        # Se agrega solo cuando el usuario elige un socio (no en cambios programáticos).
+        self.combo_socios.selectionCommitted.connect(self.agregar_socio_seleccionado)
 
         lbl_socio = QLabel("Seleccionar Socio:")
         lbl_socio.setObjectName("FormLabel")
@@ -191,12 +193,7 @@ class FormNuevoCredito(QWidget):
         try:
             self.socios_data = self.db.get_all_members_full()
             self.combo_socios.blockSignals(True)
-            self.combo_socios.clear()
-            self.combo_socios.addItem("-- Selecciona un socio --", userData=None)  # 👈 opción vacía
-            for socio in self.socios_data:
-                nombre = f"{socio['nombres']} {socio['apellidos']}"
-                self.combo_socios.addItem(nombre, userData=socio)
-            self.combo_socios.setCurrentIndex(0)
+            self.combo_socios.populate_socios(self.socios_data)
             self.combo_socios.blockSignals(False)
         except Exception as e:
             show_error(self, "", f"Error cargando socios:\n{e}")
@@ -208,6 +205,8 @@ class FormNuevoCredito(QWidget):
             return
         self.socios_seleccionados.append(socio)
         self.mostrar_socio_tag(socio)
+        # Dejar el combo listo (vacío) para buscar el siguiente socio.
+        self.combo_socios.setCurrentIndex(-1)
 
     def mostrar_socio_tag(self, socio):
         wrapper = QFrame() 
@@ -235,7 +234,7 @@ class FormNuevoCredito(QWidget):
         def eliminar():
             wrapper.setParent(None)
             self.socios_seleccionados.remove(socio)
-            self.combo_socios.setCurrentIndex(0)
+            self.combo_socios.setCurrentIndex(-1)
 
         btn.clicked.connect(eliminar)
         layout.addWidget(icon_btn)  # <-- Icono a la izquierda
