@@ -18,6 +18,20 @@ def primary_button(text: str, icon_name: str = None) -> QPushButton:
     return btn
 
 
+def back_button(on_click=None) -> QPushButton:
+    """Botón ÚNICO de 'volver' para toda la app: mismo texto, posición y estilo.
+    Colócalo arriba a la izquierda de cada pantalla. `on_click` conecta la acción.
+    """
+    btn = QPushButton("←  Volver")
+    btn.setObjectName("backButton")
+    btn.setCursor(Qt.PointingHandCursor)
+    btn.setMinimumHeight(44)
+    btn.setMinimumWidth(120)
+    if on_click is not None:
+        btn.clicked.connect(on_click)
+    return btn
+
+
 def form_label(text: str) -> QLabel:
     """Etiqueta de campo de formulario (FormLabel)."""
     lbl = QLabel(text)

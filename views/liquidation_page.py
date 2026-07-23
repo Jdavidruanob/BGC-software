@@ -12,6 +12,7 @@ from config import load_styles, format_miles_colombian_int, get_hoy_str, db_date
 from utils.credit_liquidation_generator import generar_liquidacion_actual
 from utils.message_boxes import show_success, show_error
 from views.widgets.edit_installments_dialog import EditInstallmentsDialog
+from views.widgets.ui_helpers import back_button
  
 
 class CreditLiquidationPage(QWidget):
@@ -36,10 +37,7 @@ class CreditLiquidationPage(QWidget):
         top_bar_layout = QHBoxLayout()
         top_bar_layout.setContentsMargins(20, 10, 20, 10)
 
-        back_btn = QPushButton("← Volver")
-        back_btn.setObjectName("liqBackButton")
-        back_btn.setCursor(Qt.PointingHandCursor)
-        back_btn.clicked.connect(lambda: self.main_window.show_view(f"member_detail_{member_id}"))
+        back_btn = back_button(lambda: self.main_window.show_view(f"member_detail_{member_id}"))
 
         title = QLabel("🧾 Liquidación del Crédito")
         title.setObjectName("liqTitle")

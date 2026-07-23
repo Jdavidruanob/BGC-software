@@ -19,11 +19,12 @@ from services.combinado_service import CombinadoService
 from services.caja_service import CajaService
 # Importar configuraciones
 from config import (
-    DYNAMIC_DATA_BASE_DIR, 
-    ASSETS_DIR, 
+    DYNAMIC_DATA_BASE_DIR,
+    ASSETS_DIR,
     DB_PATH_FINAL,
-    FISCAL_YEAR, 
+    FISCAL_YEAR,
     DB_FILE_NAME,
+    BASE_FONT_PT,
 )
 
 def main():
@@ -42,9 +43,14 @@ def main():
     font_id = QFontDatabase.addApplicationFont(font_path)
     if font_id != -1:
         family = QFontDatabase.applicationFontFamilies(font_id)[0]
-        app.setFont(QFont(family))
+        base_font = QFont(family)
+        base_font.setPointSize(BASE_FONT_PT)   # letra base más grande (adulto mayor)
+        app.setFont(base_font)
         print(f"✅ Fuente '{family}' cargada correctamente.")
     else:
+        fallback = app.font()
+        fallback.setPointSize(BASE_FONT_PT)
+        app.setFont(fallback)
         print("❌ No se pudo cargar la fuente Inter Variable.")
 
 

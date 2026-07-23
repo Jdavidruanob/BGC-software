@@ -2,6 +2,24 @@
    ESTILOS COMPARTIDOS — aplica a todos los componentes
    ===================================================== */
 
+/* Botón único de "volver" (mismo estilo en todas las pantallas) */
+#backButton {
+    font-size: 16px;
+    font-weight: bold;
+    color: %(PRIMARY_COLOR)s;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 6px 16px;
+}
+#backButton:hover {
+    background-color: #eef2f7;
+    border-color: %(PRIMARY_COLOR)s;
+}
+#backButton:focus {
+    border: 2px solid %(PRIMARY_COLOR)s;
+}
+
 /* Título de formulario */
 #formTitle {
     font-size: 22px;

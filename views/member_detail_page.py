@@ -10,6 +10,7 @@ from utils.message_boxes import show_warning, show_success, show_error, show_inf
 from config import PRIMARY_COLOR
 from views.widgets.new_member_dialog import NewMemberDialog
 from views.widgets.credit_card_widget import CreditCardWidget
+from views.widgets.ui_helpers import back_button
 from views.liquidation_page import CreditLiquidationPage
 
 class MemberDetailPage(QWidget):
@@ -29,10 +30,8 @@ class MemberDetailPage(QWidget):
 
         header_layout = QHBoxLayout()
 
-        # Botón de regreso
-        back_btn = QPushButton("←")
-        back_btn.setObjectName("backButton")
-        back_btn.clicked.connect(lambda: self.main_window.show_view("members"))
+        # Botón de regreso (componente único)
+        back_btn = back_button(lambda: self.main_window.show_view("members"))
         header_layout.addWidget(back_btn)
 
         # Título justo a la derecha del botón

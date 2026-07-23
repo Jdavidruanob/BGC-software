@@ -120,6 +120,10 @@ PRIMARY_HOVER_COLOR = "#2a4a80"  # Azul hover (botones primarios)
 SECONDARY_COLOR = "#8C5B2F"      # Marrón (hover y botón activo)
 TEXT_COLOR = "#FFFFFF"           # Texto blanco
 
+# Tamaño de fuente base de la app (pensado para adulto mayor: letra grande).
+# Afecta tablas, listas y etiquetas sin tamaño explícito en el QSS.
+BASE_FONT_PT = 11
+
 
 # --- Metodos Globales ---
 
