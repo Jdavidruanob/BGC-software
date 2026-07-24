@@ -7,7 +7,9 @@ from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QIntValidator # ¡Asegúrate de que QIntValidator esté importado!
 import os
 
-from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR, FISCAL_YEAR
+from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR, FISCAL_YEAR, RECIBOS_OUTPUT_DIR
+from utils.sync_recibos import sincronizar_recibos
+from utils.message_boxes import show_info
 
 class AssistantPage(QWidget):
     def __init__(self, db_manager):
@@ -106,7 +108,14 @@ class AssistantPage(QWidget):
         self.clear_filters_btn.setObjectName("clearFiltersButton")
         self.clear_filters_btn.clicked.connect(self.clear_filters)
         socio_buttons_layout.addWidget(self.clear_filters_btn)
-        
+
+        # Refrescar: recarga la lista y baja al computador los recibos que el
+        # bot haya generado y que aún no estén en la carpeta.
+        self.refresh_btn = QPushButton("🔄 Refrescar")
+        self.refresh_btn.setObjectName("applyFiltersButton")
+        self.refresh_btn.clicked.connect(self.on_refrescar)
+        socio_buttons_layout.addWidget(self.refresh_btn)
+
         filters_layout.addLayout(socio_buttons_layout)
         
         main_layout.addWidget(filters_frame)
@@ -440,6 +449,19 @@ class AssistantPage(QWidget):
                 # Opcional: Mostrar éxito rápido en barra de estado si tuvieras
             else:
                 QMessageBox.critical(self, "Error", "No se pudo eliminar la operación.")
+
+    def on_refrescar(self):
+        """Baja los recibos nuevos del bot al computador y recarga la lista."""
+        self.db_manager.invalidate_members()
+        nuevos = sincronizar_recibos(self.db_manager.conn, RECIBOS_OUTPUT_DIR)
+        self.apply_filters()
+        if nuevos:
+            show_info(
+                self, "",
+                f"Se descargaron {nuevos} recibo(s) nuevo(s) a la carpeta de recibos.",
+            )
+        else:
+            show_info(self, "", "Todo actualizado. No hay recibos nuevos por descargar.")
 
     def refresh_view(self):
         """

@@ -35,7 +35,9 @@ from config import (
     FISCAL_YEAR,
     DB_FILE_NAME,
     BASE_FONT_PT,
+    RECIBOS_OUTPUT_DIR,
 )
+from utils.sync_recibos import sincronizar_recibos
 
 def main():
     app = QApplication(sys.argv)
@@ -82,6 +84,10 @@ def main():
             "DATABASE_URL esté en la misma carpeta del programa.",
         )
         sys.exit(1)
+
+    # Bajar al computador los recibos que el bot haya generado (los que aún no
+    # estén en la carpeta). No bloquea el arranque si falla.
+    sincronizar_recibos(db_manager.conn, RECIBOS_OUTPUT_DIR)
 
     # Construir servicios inyectando repos desde db_manager
     aporte_svc = AporteService(db_manager.db_conn, db_manager.config_repo, db_manager.auxiliar_repo)
