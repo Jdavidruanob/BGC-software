@@ -29,13 +29,28 @@ class ManualCreditDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Crédito manual (histórico)")
         self.setModal(True)
-        self.setMinimumSize(720, 640)
+        # Mínimo pequeño para que quepa en pantallas chicas; el contenido va en
+        # un scroll, así que nada se corta aunque la ventana no crezca.
+        self.setMinimumSize(680, 480)
+        self.resize(760, 800)
         self.setObjectName("ManualCreditDialog")
 
         self._socios = socios
         self._seleccionados = []   # dicts de socio
 
-        root = QVBoxLayout(self)
+        # El contenido va dentro de un scroll; los botones quedan fijos abajo.
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        outer.addWidget(scroll, 1)
+
+        content = QWidget()
+        scroll.setWidget(content)
+        root = QVBoxLayout(content)
         root.setContentsMargins(30, 24, 30, 24)
         root.setSpacing(14)
 
@@ -84,17 +99,8 @@ class ManualCreditDialog(QDialog):
         self.input_interes.setPlaceholderText("Interés % mensual (ej: 2)")
 
         self.date_inicio = QDateEdit(calendarPopup=True)
-        self.date_inicio.setObjectName("InputField")
         self.date_inicio.setDisplayFormat("yyyy-MM-dd")
         self.date_inicio.setDate(QDate.currentDate())
-
-        # Altura mínima de respaldo (por si el QSS no carga) y columnas parejas
-        # y anchas para que los inputs no queden angostos ni cortados.
-        for w in (self.input_capital, self.input_cuotas, self.input_cuota,
-                  self.input_interes, self.date_inicio):
-            w.setMinimumHeight(42)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
 
         grid.addWidget(QLabel("Capital:"), 0, 0)
         grid.addWidget(self.input_capital, 1, 0)
@@ -136,8 +142,10 @@ class ManualCreditDialog(QDialog):
         self.lbl_estado.setWordWrap(True)
         root.addWidget(self.lbl_estado)
 
-        # --- Botones ---
-        btns = QHBoxLayout()
+        # --- Botones (fijos abajo, fuera del scroll para verse siempre) ---
+        btns_wrap = QWidget()
+        btns = QHBoxLayout(btns_wrap)
+        btns.setContentsMargins(30, 12, 30, 18)
         btns.addStretch()
         cancel = QPushButton("Cancelar")
         cancel.setObjectName("CancelButton")
@@ -150,7 +158,7 @@ class ManualCreditDialog(QDialog):
         self.btn_guardar.clicked.connect(self._on_guardar)
         btns.addWidget(cancel)
         btns.addWidget(self.btn_guardar)
-        root.addLayout(btns)
+        outer.addWidget(btns_wrap)
 
         qss_path = os.path.join(STYLES_DIR, "new_member_dialog.qss")
         load_styles(self, qss_path)
