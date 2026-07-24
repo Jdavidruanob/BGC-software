@@ -37,6 +37,10 @@ class CreditosRepository:
                 FROM creditos c
                 JOIN socio_credito sc ON c.letra = sc.credito_letra
                 WHERE sc.socio_id = %s
+                  AND EXISTS (
+                      SELECT 1 FROM liquidaciones l
+                      WHERE l.credito_letra = c.letra AND l.fecha_pago IS NULL
+                  )
             """, (socio_id,))
             return cursor.fetchall()
         except Exception as e:

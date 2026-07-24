@@ -16,6 +16,7 @@ class SociosRepository:
                        COUNT(sc.credito_letra) as creditos
                 FROM socios s
                 LEFT JOIN socio_credito sc ON s.id = sc.socio_id
+                WHERE COALESCE(s.activo, 1) = 1
                 GROUP BY s.id
                 ORDER BY s.nombres
             """)
@@ -40,6 +41,7 @@ class SociosRepository:
                 SELECT s.*, COUNT(sc.credito_letra) as creditos
                 FROM socios s
                 LEFT JOIN socio_credito sc ON s.id = sc.socio_id
+                WHERE COALESCE(s.activo, 1) = 1
                 GROUP BY s.id
                 ORDER BY s.nombres
             """)
@@ -59,7 +61,8 @@ class SociosRepository:
                        COUNT(sc.credito_letra) as creditos
                 FROM socios s
                 LEFT JOIN socio_credito sc ON s.id = sc.socio_id
-                WHERE s.nombres LIKE %s OR s.apellidos LIKE %s
+                WHERE (s.nombres LIKE %s OR s.apellidos LIKE %s)
+                  AND COALESCE(s.activo, 1) = 1
                 GROUP BY s.id
                 ORDER BY s.nombres
             """, (f"%{search_term}%", f"%{search_term}%"))
@@ -76,6 +79,13 @@ class SociosRepository:
         except Exception as e:
             print(f"❌ Error en búsqueda de socios: {e}")
             return []
+
+    def deactivate(self, socio_id):
+        """Retira al socio (soft-delete): lo marca inactivo y le deja el saldo
+        en 0. Conserva la fila y su historial, pero deja de aparecer en listados
+        y búsquedas. No hace commit: lo maneja el servicio en su transacción."""
+        cursor = self.db.conn.cursor()
+        cursor.execute("UPDATE socios SET activo = 0, saldo = 0 WHERE id = %s", (socio_id,))
 
     def find_by_id(self, member_id):
         try:
