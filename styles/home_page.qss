@@ -74,6 +74,25 @@ QPushButton[btnType="operacion"]:checked {
     background-color: transparent;
 }
 
+/* Scrollbar fino del área "Al día de hoy" */
+#notifScroll QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 2px;
+}
+#notifScroll QScrollBar::handle:vertical {
+    background: #cbd5e1;
+    border-radius: 4px;
+    min-height: 24px;
+}
+#notifScroll QScrollBar::handle:vertical:hover {
+    background: #94a3b8;
+}
+#notifScroll QScrollBar::add-line:vertical,
+#notifScroll QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
 /* Labels de valor */
 #summaryValue {
     font-size: 14px;

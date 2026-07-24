@@ -388,8 +388,9 @@ class HomePage(QWidget):
         v.addWidget(header)
 
         body = QWidget()
+        body.setStyleSheet("background: transparent;")
         bl = QVBoxLayout(body)
-        bl.setContentsMargins(14, 10, 14, 12)
+        bl.setContentsMargins(14, 10, 16, 12)   # margen derecho: no tapar el scroll
         bl.setSpacing(4)
 
         def corto_socios(socios):
@@ -426,9 +427,9 @@ class HomePage(QWidget):
                 bl.addWidget(item_row(formatter(it), color))
 
         try:
-            proximos = self.db_manager.upcoming_installments(limit=4)
-            mora = self.db_manager.overdue_installments(limit=4)
-            movimientos = self.db_manager.recent_movements(limit=4)
+            proximos = self.db_manager.upcoming_installments(limit=6)
+            mora = self.db_manager.overdue_installments(limit=6)
+            movimientos = self.db_manager.recent_movements(limit=6)
         except Exception as e:
             print(f"❌ Error cargando notificaciones de inicio: {e}")
             proximos, mora, movimientos = [], [], []
@@ -455,8 +456,20 @@ class HomePage(QWidget):
                        f"${format_miles_colombian_int(m['monto'])}"),
             "Sin movimientos recientes.",
         )
+        bl.addStretch()
 
-        v.addWidget(body)
+        # El cuerpo va dentro de un área con scroll y alto máximo; el encabezado
+        # "Al día de hoy" queda fijo arriba (fuera del scroll).
+        scroll = QScrollArea()
+        scroll.setObjectName("notifScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setMaximumHeight(360)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setStyleSheet("QScrollArea#notifScroll{background:transparent;border:none;}")
+        scroll.setWidget(body)
+        v.addWidget(scroll)
         return frame
 
     def editar_saldo_en_caja(self):
