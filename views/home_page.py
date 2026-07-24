@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, QDate, QUrl # <--- IMPORTANTE: Faltaba QDate
 from PySide6.QtGui import QDesktopServices
 from config import (
-    load_styles, load_svg_icon, format_miles_colombian_int, 
-    STYLES_DIR, DYNAMIC_DATA_BASE_DIR,
+    load_styles, load_svg_icon, format_miles_colombian_int,
+    STYLES_DIR, DYNAMIC_DATA_BASE_DIR, DATA_ROOT_FOLDER,
     get_hoy, get_hoy_str, set_fecha_simulada, reset_fecha_normal # <--- Funciones de tiempo
 )
 from views.widgets.forms.form_aporte import FormAporte
@@ -505,9 +505,11 @@ class HomePage(QWidget):
 
     # --- NUEVA FUNCIÓN: ABRIR CARPETA ---
     def abrir_carpeta_archivos(self):
-        """Abre la carpeta donde se almacenan los datos (Recibos, DB, etc.) en el explorador de Windows."""
-        folder_path = DYNAMIC_DATA_BASE_DIR
-        
+        """Abre directamente la carpeta 'Archivos_BGC' en el explorador."""
+        import os
+        folder_path = DATA_ROOT_FOLDER
+        os.makedirs(folder_path, exist_ok=True)
+
         # QUrl.fromLocalFile crea una URL compatible con el SO
         # QDesktopServices.openUrl abre esa URL con el programa predeterminado (Explorador de archivos)
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(folder_path)):
