@@ -1,9 +1,9 @@
 """Sincroniza a la PC los recibos generados por el bot/API.
 
 El bot (y la API) guardan cada recibo en la tabla `recibos_archivos` de la base
-compartida (xlsx + pdf). Esta utilidad los baja a la carpeta de recibos del
-computador para que el usuario los tenga y los pueda abrir/imprimir, sin volver
-a bajar los que ya tiene.
+compartida. Esta utilidad baja SOLO el Excel (.xlsx) a la carpeta de recibos
+del computador para que el usuario los tenga y los pueda abrir/editar, sin
+volver a bajar los que ya tiene.
 """
 
 import os
@@ -31,10 +31,9 @@ def sincronizar_recibos(conn, output_dir):
         if not faltantes:
             return 0
 
-        # 3) Traer los binarios solo de los faltantes y guardarlos.
+        # 3) Traer solo el Excel de los faltantes y guardarlo (sin PDF).
         cur.execute(
-            "SELECT recibo_id, xlsx_bytes, pdf_bytes FROM recibos_archivos "
-            "WHERE recibo_id = ANY(%s)",
+            "SELECT recibo_id, xlsx_bytes FROM recibos_archivos WHERE recibo_id = ANY(%s)",
             (faltantes,),
         )
         nuevos = 0
@@ -43,9 +42,6 @@ def sincronizar_recibos(conn, output_dir):
             try:
                 with open(os.path.join(output_dir, f"Recibo_{rid}.xlsx"), "wb") as f:
                     f.write(bytes(row["xlsx_bytes"]))
-                if row["pdf_bytes"]:
-                    with open(os.path.join(output_dir, f"Recibo_{rid}.pdf"), "wb") as f:
-                        f.write(bytes(row["pdf_bytes"]))
                 nuevos += 1
             except Exception as e:
                 print(f"❌ No se pudo guardar el recibo {rid}: {e}")
