@@ -1,4 +1,4 @@
-#NewMemberDialog {
+#NewMemberDialog, #ManualCreditDialog {
     background-color: #fefefe;
     font-family: "Inter", sans-serif;
     font-size: 20px;
@@ -12,11 +12,27 @@
     color: %(PRIMARY_COLOR)s;
 }
 
-#InputField {
-    height: 35px;
+/* Campos de texto, fecha y combo: misma altura cómoda y padding para que el
+   texto no se vea cortado ni apretado. */
+#InputField, #ManualCreditDialog QDateEdit, #ManualCreditDialog QComboBox {
+    min-height: 42px;
     font-size: 18px;
+    padding: 6px 12px;
     border: 2px solid #e4eaf1;
     border-radius: 8px;
+    background-color: #ffffff;
+    color: %(TEXT_COLOR)s;
+}
+#InputField:focus, #ManualCreditDialog QDateEdit:focus, #ManualCreditDialog QComboBox:focus {
+    border: 2px solid %(PRIMARY_COLOR)s;
+}
+#ManualCreditDialog QDateEdit::drop-down, #ManualCreditDialog QComboBox::drop-down {
+    width: 28px;
+    border: none;
+}
+#HelpText {
+    font-size: 14px;
+    color: #64748b;
 }
 
 #PhotoButton {

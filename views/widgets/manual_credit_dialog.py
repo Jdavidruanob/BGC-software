@@ -84,8 +84,17 @@ class ManualCreditDialog(QDialog):
         self.input_interes.setPlaceholderText("Interés % mensual (ej: 2)")
 
         self.date_inicio = QDateEdit(calendarPopup=True)
+        self.date_inicio.setObjectName("InputField")
         self.date_inicio.setDisplayFormat("yyyy-MM-dd")
         self.date_inicio.setDate(QDate.currentDate())
+
+        # Altura mínima de respaldo (por si el QSS no carga) y columnas parejas
+        # y anchas para que los inputs no queden angostos ni cortados.
+        for w in (self.input_capital, self.input_cuotas, self.input_cuota,
+                  self.input_interes, self.date_inicio):
+            w.setMinimumHeight(42)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
 
         grid.addWidget(QLabel("Capital:"), 0, 0)
         grid.addWidget(self.input_capital, 1, 0)
