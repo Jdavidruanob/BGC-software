@@ -12,11 +12,13 @@ from PySide6.QtSvgWidgets import QSvgWidget  # <--- Agregar esta importación
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from config import load_styles, load_svg_icon, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from version import APP_VERSION
+from views.widgets.update_banner import UpdateBanner
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__() 
-        self.setWindowTitle("bgc software")
+        super().__init__()
+        self.setWindowTitle(f"bgc software v{APP_VERSION}")
         self.setWindowState(Qt.WindowMaximized) # inicializar en ventana completa 
         self.views = {} # Diccionario para almacenar vistas,  clave: nombre, valor: widget
         
@@ -91,11 +93,18 @@ class MainWindow(QMainWindow):
         self.btn_members.clicked.connect(lambda: self.show_view("members"))
         self.btn_data.clicked.connect(lambda: self.show_view("data"))
 
+        # Aviso de actualización (oculto hasta que haya una versión nueva).
+        self.update_banner = UpdateBanner()
+
         # Layout principal
         main_layout.addWidget(top_bar)
+        main_layout.addWidget(self.update_banner)
         main_layout.addWidget(self.stack)
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
+
+        # Comprobar actualizaciones en segundo plano (no bloquea el arranque).
+        self.update_banner.start_check()
 
         # Cargar estilos
         qss_path = os.path.join(STYLES_DIR, "main.qss") 

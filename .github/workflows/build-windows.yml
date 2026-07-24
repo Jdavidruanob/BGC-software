@@ -1,7 +1,20 @@
 name: Build Windows EXE
 
+# Se dispara a mano (workflow_dispatch). Lee la versión de version.py, compila
+# el .exe, arma el instalador con Inno Setup y publica una release en GitHub
+# con el instalador adjunto. La app instalada compara su versión contra esa
+# release para avisar al usuario que hay actualización.
+
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publicar release en GitHub (crea el tag vX.Y.Z)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write  # necesario para crear el release y el tag
 
 jobs:
   build:
@@ -22,15 +35,44 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller pillow
 
+      - name: Leer versión de version.py
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path version.py -Pattern 'APP_VERSION\s*=\s*"([^"]+)"').Matches.Groups[1].Value
+          echo "APP_VERSION=$v" >> $env:GITHUB_ENV
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+          echo "Versión detectada: $v"
+
       - name: Generate app icon
         run: python build.py
 
       - name: Build EXE
         run: python pyinstaller_build.py
 
-      - name: Upload EXE
+      - name: Instalar Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compilar instalador
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$env:APP_VERSION" installer.iss
+
+      - name: Subir instalador como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: BGC-software-windows
-          path: dist/BGC-software.exe
+          name: BGC-software-installer
+          path: installer_output/BGC-software-Setup.exe
           retention-days: 30
+
+      - name: Publicar release en GitHub
+        if: ${{ inputs.publish_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: BGC Software v${{ steps.version.outputs.version }}
+          body: |
+            Instalador de BGC Software v${{ steps.version.outputs.version }}.
+            Descarga `BGC-software-Setup.exe` e instálalo. La app avisa sola de
+            las próximas actualizaciones.
+          files: installer_output/BGC-software-Setup.exe
