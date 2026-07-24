@@ -46,11 +46,20 @@ class MembersPage(QWidget):
         super().__init__()
         self.db_manager = db_manager
         self.main_window = main_window
+        self.setObjectName("membersPageRoot")
         self._all_members = []   # lista completa de dicts (para filtrar en memoria)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(80, 20, 80, 20)
+        main_layout.setContentsMargins(60, 28, 60, 28)
         main_layout.setSpacing(16)
+
+        # --- Encabezado de la sección ---
+        titulo = QLabel("Socios")
+        titulo.setObjectName("title-members")
+        subtitulo = QLabel("Administra socios, saldos y créditos")
+        subtitulo.setObjectName("subtitle-members")
+        main_layout.addWidget(titulo)
+        main_layout.addWidget(subtitulo)
 
         # --- Barra superior: Nuevo socio + búsqueda ---
         top_bar = QHBoxLayout()
@@ -66,7 +75,7 @@ class MembersPage(QWidget):
         top_bar.addWidget(new_btn)
 
         manual_btn = QPushButton("  Crédito manual")
-        manual_btn.setObjectName("newMemberButton")
+        manual_btn.setObjectName("posSecondaryButton")
         manual_btn.setFixedHeight(45)
         manual_btn.setIconSize(QSize(18, 18))
         manual_btn.setIcon(load_svg_icon("icons/credit-card.svg"))
