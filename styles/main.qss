@@ -15,7 +15,7 @@ QWidget#TopBar {
 
 /* Botones de navegación: transparentes sobre el azul, tipo "pill" */
 QPushButton#NavBarButton {
-    color: #cfddee;
+    color: #94a3b8;
     background-color: transparent;
     padding: 10px 22px;
     font-weight: 600;

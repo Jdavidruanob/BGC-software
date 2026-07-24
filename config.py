@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel, QScrollArea
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QPixmap, QPainter
+from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PySide6.QtSvg import QSvgRenderer
 import os
 import sys # <-- Importa sys
@@ -170,8 +170,34 @@ def load_svg_icon(relative_path: str, size: QSize = QSize(24, 24)) -> QIcon:
     painter = QPainter(pixmap)
     renderer.render(painter)
     painter.end()
-    
+
     return QIcon(pixmap)
+
+def load_svg_icon_tinted(relative_path: str, color: str, size: QSize = QSize(24, 24)) -> QIcon:
+    """Como load_svg_icon, pero tiñe el ícono al color dado (efecto 'currentColor').
+
+    Renderiza el SVG y luego reemplaza su color por `color`, respetando la forma
+    (alfa). Sirve para que los íconos del navbar hereden el color del texto.
+    """
+    absolute_path = os.path.join(ASSETS_DIR, relative_path)
+    renderer = QSvgRenderer(absolute_path)
+    if not renderer.isValid():
+        return QIcon()
+
+    base = QPixmap(size)
+    base.fill(Qt.transparent)
+    p = QPainter(base)
+    renderer.render(p)
+    p.end()
+
+    tinted = QPixmap(size)
+    tinted.fill(Qt.transparent)
+    p2 = QPainter(tinted)
+    p2.drawPixmap(0, 0, base)
+    p2.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    p2.fillRect(tinted.rect(), QColor(color))
+    p2.end()
+    return QIcon(tinted)
 
 def format_miles_colombian_int(value: int) -> str:
     """
