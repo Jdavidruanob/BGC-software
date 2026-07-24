@@ -491,16 +491,34 @@ class HomePage(QWidget):
             self.refresh_view()
 
     def editar_gastos_admin(self):
-        """Abre el diálogo para editar fondo de papelería y % de mora."""
+        """Abre el diálogo para editar papelería, % de mora y la numeración
+        (próximo recibo / próxima letra)."""
         current_papeleria = self._caja_service.get_total_admin()
         current_mora = self._caja_service.get_porcentaje_mora()
-        dlg = EditAdminDialog(current_papeleria, current_mora, self)
+        cur_recibo = self.db_manager.get_next_recibo()
+        cur_letra = self.db_manager.get_next_letra()
+        dlg = EditAdminDialog(current_papeleria, current_mora, cur_recibo, cur_letra, self)
         if dlg.exec():
-            new_papeleria, new_mora = dlg.get_data()
+            new_papeleria, new_mora, new_recibo, new_letra = dlg.get_data()
             self._caja_service.set_admin_config(new_papeleria, new_mora)
-            show_success(self, "Configuración Actualizada",
-                         f"Papelería: $ {format_miles_colombian_int(new_papeleria)}\n"
-                         f"Tasa Mora: {new_mora}")
+            mensajes = [
+                f"Papelería: $ {format_miles_colombian_int(new_papeleria)}",
+                f"Tasa Mora: {new_mora}",
+            ]
+            # Solo se toca la numeración si el usuario la cambió (evita reinicios
+            # accidentales de las secuencias).
+            try:
+                if new_recibo != cur_recibo:
+                    self.db_manager.set_next_recibo(new_recibo)
+                    mensajes.append(f"Próximo recibo: {new_recibo}")
+                if new_letra != cur_letra:
+                    self.db_manager.set_next_letra(new_letra)
+                    mensajes.append(f"Próxima letra: {new_letra}")
+            except Exception as e:
+                show_error(self, "Numeración",
+                           f"No se pudo cambiar la numeración (¿otra ventana ocupada?):\n{e}")
+                return
+            show_success(self, "Configuración Actualizada", "\n".join(mensajes))
             self.refresh_view()
 
     # --- NUEVA FUNCIÓN: ABRIR CARPETA ---

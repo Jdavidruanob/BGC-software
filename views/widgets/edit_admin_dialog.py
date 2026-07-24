@@ -3,15 +3,20 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIntValidator
 from config import load_styles, format_miles_colombian_int, parse_miles_colombian, STYLES_DIR
 
 class EditAdminDialog(QDialog):
-    def __init__(self, current_papeleria, current_mora_pct, parent=None):
+    def __init__(self, current_papeleria, current_mora_pct,
+                 current_next_recibo=1, current_next_letra=1, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Configurar Administración")
         self.setModal(True)
-        self.setFixedSize(450, 320)
+        self.setMinimumSize(470, 500)
         self.setObjectName("NewMemberDialog")  # Reutilizamos el estilo base
+
+        self._orig_recibo = int(current_next_recibo)
+        self._orig_letra = int(current_next_letra)
 
         layout = QVBoxLayout()
         layout.setSpacing(15)
@@ -41,6 +46,35 @@ class EditAdminDialog(QDialog):
         self.input_mora.setPlaceholderText("Ej: 0.02")
         layout.addWidget(self.input_mora)
 
+        # --- CAMPO 3: PRÓXIMO NÚMERO DE RECIBO ---
+        lbl_recibo = QLabel("Número del próximo recibo:")
+        lbl_recibo.setObjectName("FormLabel")
+        layout.addWidget(lbl_recibo)
+
+        self.input_next_recibo = QLineEdit()
+        self.input_next_recibo.setObjectName("InputField")
+        self.input_next_recibo.setAlignment(Qt.AlignRight)
+        self.input_next_recibo.setValidator(QIntValidator(1, 99999999, self))
+        self.input_next_recibo.setText(str(current_next_recibo))
+        layout.addWidget(self.input_next_recibo)
+
+        # --- CAMPO 4: PRÓXIMA LETRA (CRÉDITO) ---
+        lbl_letra = QLabel("Número de la próxima letra (crédito):")
+        lbl_letra.setObjectName("FormLabel")
+        layout.addWidget(lbl_letra)
+
+        self.input_next_letra = QLineEdit()
+        self.input_next_letra.setObjectName("InputField")
+        self.input_next_letra.setAlignment(Qt.AlignRight)
+        self.input_next_letra.setValidator(QIntValidator(1, 99999999, self))
+        self.input_next_letra.setText(str(current_next_letra))
+        layout.addWidget(self.input_next_letra)
+
+        nota = QLabel("Al cambiar estos números, el sistema sigue automático desde ahí.")
+        nota.setWordWrap(True)
+        nota.setObjectName("HelpText")
+        layout.addWidget(nota)
+
         layout.addStretch()
 
         # --- BOTÓN GUARDAR ---
@@ -68,12 +102,21 @@ class EditAdminDialog(QDialog):
             self.input_papeleria.blockSignals(False)
 
     def get_data(self):
-        """Retorna (int_papeleria, float_mora)"""
+        """Retorna (int_papeleria, float_mora, int_next_recibo, int_next_letra)"""
         papeleria = parse_miles_colombian(self.input_papeleria.text())
-        
+
         try:
             mora = float(self.input_mora.text().replace(',', '.'))
         except ValueError:
             mora = 0.02 # Valor por defecto si fallan
-            
-        return papeleria, mora
+
+        try:
+            next_recibo = int(self.input_next_recibo.text().strip() or self._orig_recibo)
+        except ValueError:
+            next_recibo = self._orig_recibo
+        try:
+            next_letra = int(self.input_next_letra.text().strip() or self._orig_letra)
+        except ValueError:
+            next_letra = self._orig_letra
+
+        return papeleria, mora, next_recibo, next_letra

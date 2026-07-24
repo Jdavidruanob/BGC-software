@@ -131,6 +131,40 @@ class DBManager:
     def rebalance_credit_installments(self, letra_id, overrides):
         return self._liquidaciones.rebalance_installments(letra_id, overrides)
 
+    # --- Numeración: recibo y letra actuales ---------------------------------
+    # Permite fijar "en qué número vamos" (recibo y letra). Una vez fijado, el
+    # sistema sigue automático desde ahí. Útil para armar el historial.
+    def get_next_recibo(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT COALESCE(MAX(id), 0) + 1 AS n FROM recibos")
+        return int(cur.fetchone()["n"])
+
+    def get_next_letra(self):
+        cur = self.conn.cursor()
+        cur.execute("SELECT COALESCE(MAX(letra), 0) + 1 AS n FROM creditos")
+        return int(cur.fetchone()["n"])
+
+    def set_next_recibo(self, numero):
+        """Fija el número del PRÓXIMO recibo. De ahí sigue automático."""
+        self._reiniciar_secuencia("recibos", "id", numero)
+
+    def set_next_letra(self, numero):
+        """Fija el número de la PRÓXIMA letra. De ahí sigue automático."""
+        self._reiniciar_secuencia("creditos", "letra", numero)
+
+    def _reiniciar_secuencia(self, tabla, columna, numero):
+        numero = int(numero)
+        if numero < 1:
+            raise ValueError("El número debe ser mayor o igual a 1.")
+        cur = self.conn.cursor()
+        # lock_timeout: si otra ventana/operación tiene la tabla ocupada, falla
+        # rápido con un aviso en vez de colgar la app.
+        cur.execute("SET LOCAL lock_timeout = '5s'")
+        # tabla/columna son constantes internas (no input del usuario); numero
+        # es un int validado. ALTER no acepta parámetros, por eso va formateado.
+        cur.execute(f"ALTER TABLE {tabla} ALTER COLUMN {columna} RESTART WITH {numero}")
+        self.conn.commit()
+
     # --- Inicio: próximos pagos, mora y movimientos ---
     def upcoming_installments(self, limit=5, dias=30):
         from config import get_hoy
