@@ -43,8 +43,8 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Source: "dist\BGC-software.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{userprograms}\BGC Software"; Filename: "{app}\{#MyAppExeName}"
-Name: "{userdesktop}\BGC Software"; Filename: "{app}\{#MyAppExeName}"
+Name: "{userprograms}\BGC Software"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
+Name: "{userdesktop}\BGC Software"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Abrir BGC Software"; Flags: nowait postinstall skipifsilent

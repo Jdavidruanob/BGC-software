@@ -70,6 +70,16 @@ def main():
     db_manager = DBManager()
     if not db_manager.connect():
         print("❌ No se pudo conectar a la base de datos.")
+        # Mensaje VISIBLE: la app es --windowed (sin consola), así que sin este
+        # diálogo un fallo de conexión se vería como "la app no abre" sin más.
+        from PySide6.QtWidgets import QMessageBox
+        QMessageBox.critical(
+            None,
+            "Sin conexión a la base de datos",
+            "No se pudo conectar a la base de datos.\n\n"
+            "Revisa que tengas internet y que el archivo «.env» con la línea "
+            "DATABASE_URL esté en la misma carpeta del programa.",
+        )
         sys.exit(1)
 
     # Construir servicios inyectando repos desde db_manager
