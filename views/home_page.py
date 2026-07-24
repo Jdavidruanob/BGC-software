@@ -298,26 +298,21 @@ class HomePage(QWidget):
 
     def create_resumen_widget(self):
         """Construye el widget 'Resumen de Caja' con desglose de Administración."""
+        # Un solo viaje a la base para saldo, papelería, mora y conteo de créditos.
         cursor = self.db_manager.conn.cursor()
-
-        # 1. Saldo en caja
-        row_caja = cursor.execute("SELECT value FROM config WHERE key = 'saldo_en_caja'").fetchone()
-        saldo_caja = int(row_caja["value"]) if row_caja else 0
-
-        # 2. Papelería (Acumulado histórico guardado en config como 'total_admin')
-        row_papeleria = cursor.execute("SELECT value FROM config WHERE key = 'total_admin'").fetchone()
-        papeleria = int(row_papeleria["value"]) if row_papeleria else 0
-
-        # 3. Mora (Calculado sumando todos los abonos por mora en recibos)
-        # Usamos COALESCE para que si es Null devuelva 0
-        row_mora = cursor.execute("SELECT COALESCE(SUM(abono_mora), 0) AS total FROM detalle_recibo").fetchone()
-        total_mora = int(row_mora["total"]) if row_mora else 0
-
-        # 4. Total Administración (Suma visual)
+        cursor.execute("""
+            SELECT
+              (SELECT value FROM config WHERE key = 'saldo_en_caja') AS caja,
+              (SELECT value FROM config WHERE key = 'total_admin')   AS admin,
+              (SELECT COALESCE(SUM(abono_mora), 0) FROM detalle_recibo) AS mora,
+              (SELECT COUNT(*) FROM creditos) AS ncred
+        """)
+        r = cursor.fetchone()
+        saldo_caja = int(r["caja"]) if r and r["caja"] is not None else 0
+        papeleria = int(r["admin"]) if r and r["admin"] is not None else 0
+        total_mora = int(r["mora"]) if r and r["mora"] is not None else 0
         gran_total_admin = papeleria + total_mora
-
-        # 5. Créditos activos
-        total_creditos = cursor.execute("SELECT COUNT(*) AS n FROM creditos").fetchone()["n"]
+        total_creditos = int(r["ncred"]) if r and r["ncred"] is not None else 0
 
 
         # --- Construcción visual ---
@@ -639,6 +634,9 @@ class HomePage(QWidget):
     def refresh_forms(self):
         """Actualiza todos los formularios de la HomePage si implementan .refresh()"""
         print("🔄 Actualizando formularios...")
+        # Tras una operación el saldo cambió: refrescar el caché de socios una vez,
+        # y que los 5 formularios reusen esa única consulta (en vez de 5 iguales).
+        self.db_manager.invalidate_members()
         # Aporte
         self.form_aporte.refresh()
         # Pago Crédito

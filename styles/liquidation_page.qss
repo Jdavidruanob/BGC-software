@@ -49,6 +49,27 @@ QHeaderView::section {
     background-color: %(PRIMARY_COLOR)s;
 }
 
+/* Botón "Volver" (componente compartido) sobre la barra oscura:
+   texto blanco, contorno sutil, sin el recuadro punteado de foco. */
+#backButton {
+    color: #ffffff;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 16px;
+    font-weight: bold;
+    outline: none;
+}
+#backButton:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #ffffff;
+}
+#backButton:focus {
+    border: 1px solid #ffffff;
+    outline: none;
+}
+
 #liqBackButton {
     font-size: 16px;
     font-weight: 500;

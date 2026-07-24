@@ -2,7 +2,7 @@ import os
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
-    QVBoxLayout, QStackedWidget, QSizePolicy
+    QVBoxLayout, QStackedWidget, QSizePolicy, QApplication
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
@@ -11,9 +11,12 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtSvgWidgets import QSvgWidget  # <--- Agregar esta importación
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap, QPainter
-from config import load_styles, load_svg_icon, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
+from config import load_styles, load_svg_icon, load_svg_icon_tinted, PRIMARY_COLOR, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from version import APP_VERSION
 from views.widgets.update_banner import UpdateBanner
+
+NAV_ICON_INACTIVO = "#94a3b8"   # slate-400: gris desactivado
+NAV_ICON_ACTIVO = PRIMARY_COLOR  # azul oscuro (sobre la pastilla blanca)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -61,20 +64,28 @@ class MainWindow(QMainWindow):
 
         top_layout.addStretch()
 
-        # Botones con íconos PNG
-        icons_dir = os.path.join(ASSETS_DIR, "icons")
-        # Inicio
+        # Botones de navegación
         self.btn_home = QPushButton(" Inicio")
-        self.btn_home.setIcon(load_svg_icon("icons/home.svg")) #TODO: Revisar despues de ejecutar el exe aver si funciona bien 
-        # Auxiliar
         self.btn_assistant = QPushButton(" Auxiliar")
-        self.btn_assistant.setIcon(QIcon(os.path.join(icons_dir, "library.svg"))) 
-        # Socios
         self.btn_members = QPushButton(" Socios")
-        self.btn_members.setIcon(QIcon(os.path.join(icons_dir, "users-group.svg")))
-        # Datos
         self.btn_data = QPushButton(" Datos")
-        self.btn_data.setIcon(QIcon(os.path.join(icons_dir, "chart-area-line.svg")))
+
+        # Ruta del ícono de cada botón (se tiñe según el estado activo/inactivo)
+        self._nav_icon_path = {
+            "home": "icons/home.svg",
+            "assistant": "icons/library.svg",
+            "members": "icons/users-group.svg",
+            "data": "icons/chart-area-line.svg",
+        }
+        self._nav_btn = {
+            "home": self.btn_home,
+            "assistant": self.btn_assistant,
+            "members": self.btn_members,
+            "data": self.btn_data,
+        }
+        # Íconos en gris desactivado por defecto (el activo se resalta luego)
+        for nombre, btn in self._nav_btn.items():
+            btn.setIcon(load_svg_icon_tinted(self._nav_icon_path[nombre], NAV_ICON_INACTIVO))
 
         # Configuración de botones
         for btn in [self.btn_home, self.btn_assistant, self.btn_members, self.btn_data]:
@@ -106,6 +117,17 @@ class MainWindow(QMainWindow):
         # Comprobar actualizaciones en segundo plano (no bloquea el arranque).
         self.update_banner.start_check()
 
+        # Indicador de "cargando" (badge central que aparece mientras se consulta)
+        self._loading = QLabel("⏳  Cargando…", self)
+        self._loading.setObjectName("loadingOverlay")
+        self._loading.setAlignment(Qt.AlignCenter)
+        self._loading.setStyleSheet(
+            "#loadingOverlay{background: rgba(26,54,93,0.94); color: white;"
+            " font-size: 18px; font-weight: bold; border-radius: 12px;"
+            " padding: 16px 32px;}"
+        )
+        self._loading.hide()
+
         # Cargar estilos
         qss_path = os.path.join(STYLES_DIR, "main.qss") 
         load_styles(self, qss_path)
@@ -129,29 +151,43 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(widget)
             self.highlight_active_button(name)
 
-            # Llama a refresh_view si existe
+            # Llama a refresh_view si existe, mostrando un cursor de espera
+            # (indicador de "cargando") mientras se consultan datos. Como las
+            # consultas bloquean el hilo de la UI, forzamos el repintado con
+            # processEvents() ANTES de bloquear para que el cursor sí se vea.
             if hasattr(widget, "refresh_view"):
+                QApplication.setOverrideCursor(Qt.WaitCursor)
+                self._show_loading()
+                QApplication.processEvents()   # pinta el cambio de vista + badge antes de bloquear
                 try:
                     widget.refresh_view()
                 except Exception as e:
                     print(f"❌ Error al refrescar vista '{name}': {e}")
+                finally:
+                    self._loading.hide()
+                    QApplication.restoreOverrideCursor()
+
+    def _show_loading(self):
+        """Muestra el badge de 'cargando' centrado sobre la ventana."""
+        if not self.isVisible():
+            return  # en el arranque la ventana aún no se ve
+        self._loading.adjustSize()
+        s = self._loading.size()
+        self._loading.move((self.width() - s.width()) // 2,
+                           (self.height() - s.height()) // 2)
+        self._loading.raise_()
+        self._loading.show()
 
             
     def highlight_active_button(self, active_name):
-        """ Resalta el botón activo en la barra de navegación. """
-        buttons = {
-            "home": self.btn_home,
-            "assistant": self.btn_assistant,
-            "members": self.btn_members,
-            "data": self.btn_data,
-        }
-
-        for name, button in buttons.items():
-            if name == active_name:
-                button.setProperty("active", True)
-            else:
-                button.setProperty("active", False)
-
+        """ Resalta el botón activo en la barra de navegación (texto e ícono). """
+        for name, button in self._nav_btn.items():
+            activo = (name == active_name)
+            button.setProperty("active", activo)
+            # El ícono hereda el color del texto: oscuro si está activo (sobre la
+            # pastilla blanca), gris desactivado si no.
+            color = NAV_ICON_ACTIVO if activo else NAV_ICON_INACTIVO
+            button.setIcon(load_svg_icon_tinted(self._nav_icon_path[name], color))
             button.style().unpolish(button)
             button.style().polish(button)
-            button.update
+            button.update()
