@@ -2,7 +2,7 @@ import os
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QPushButton, QHBoxLayout,
-    QVBoxLayout, QStackedWidget, QSizePolicy
+    QVBoxLayout, QStackedWidget, QSizePolicy, QApplication
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon
@@ -97,6 +97,17 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
+        # Indicador de "cargando" (badge central que aparece mientras se consulta)
+        self._loading = QLabel("⏳  Cargando…", self)
+        self._loading.setObjectName("loadingOverlay")
+        self._loading.setAlignment(Qt.AlignCenter)
+        self._loading.setStyleSheet(
+            "#loadingOverlay{background: rgba(26,54,93,0.94); color: white;"
+            " font-size: 18px; font-weight: bold; border-radius: 12px;"
+            " padding: 16px 32px;}"
+        )
+        self._loading.hide()
+
         # Cargar estilos
         qss_path = os.path.join(STYLES_DIR, "main.qss") 
         load_styles(self, qss_path)
@@ -120,12 +131,32 @@ class MainWindow(QMainWindow):
             self.stack.setCurrentWidget(widget)
             self.highlight_active_button(name)
 
-            # Llama a refresh_view si existe
+            # Llama a refresh_view si existe, mostrando un cursor de espera
+            # (indicador de "cargando") mientras se consultan datos. Como las
+            # consultas bloquean el hilo de la UI, forzamos el repintado con
+            # processEvents() ANTES de bloquear para que el cursor sí se vea.
             if hasattr(widget, "refresh_view"):
+                QApplication.setOverrideCursor(Qt.WaitCursor)
+                self._show_loading()
+                QApplication.processEvents()   # pinta el cambio de vista + badge antes de bloquear
                 try:
                     widget.refresh_view()
                 except Exception as e:
                     print(f"❌ Error al refrescar vista '{name}': {e}")
+                finally:
+                    self._loading.hide()
+                    QApplication.restoreOverrideCursor()
+
+    def _show_loading(self):
+        """Muestra el badge de 'cargando' centrado sobre la ventana."""
+        if not self.isVisible():
+            return  # en el arranque la ventana aún no se ve
+        self._loading.adjustSize()
+        s = self._loading.size()
+        self._loading.move((self.width() - s.width()) // 2,
+                           (self.height() - s.height()) // 2)
+        self._loading.raise_()
+        self._loading.show()
 
             
     def highlight_active_button(self, active_name):
