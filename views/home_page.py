@@ -389,51 +389,69 @@ class HomePage(QWidget):
 
         body = QWidget()
         bl = QVBoxLayout(body)
-        bl.setContentsMargins(14, 12, 14, 12)
-        bl.setSpacing(6)
+        bl.setContentsMargins(14, 10, 14, 12)
+        bl.setSpacing(4)
+
+        def corto_socios(socios):
+            """Primer socio (dos palabras) + '+N' si hay más, para no envolver."""
+            if not socios:
+                return ""
+            partes = [p.strip() for p in socios.split(",") if p.strip()]
+            if not partes:
+                return ""
+            primero = " ".join(partes[0].split()[:2])
+            return primero if len(partes) == 1 else f"{primero} +{len(partes) - 1}"
+
+        def item_row(text, color=None):
+            lbl = QLabel(text)
+            lbl.setWordWrap(False)                 # una sola línea: nunca se empalma
+            lbl.setMinimumHeight(26)               # cada fila con su propio alto
+            lbl.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            estilo = "padding: 3px 2px;"
+            if color:
+                estilo += f" color: {color};"
+            lbl.setStyleSheet(estilo)
+            return lbl
 
         def seccion(titulo, items, formatter, vacio, color=None):
             t = QLabel(titulo)
-            t.setStyleSheet("font-weight: bold; color: #444; margin-top: 6px;")
+            t.setStyleSheet("font-weight: bold; color: #334155; margin-top: 8px; padding: 2px;")
             bl.addWidget(t)
             if not items:
                 e = QLabel(vacio)
-                e.setStyleSheet("color: #888;")
+                e.setStyleSheet("color: #94a3b8; padding: 3px 2px;")
                 bl.addWidget(e)
                 return
             for it in items:
-                row = QLabel(formatter(it))
-                row.setWordWrap(True)
-                if color:
-                    row.setStyleSheet(f"color: {color};")
-                bl.addWidget(row)
+                bl.addWidget(item_row(formatter(it), color))
 
         try:
-            proximos = self.db_manager.upcoming_installments(limit=5)
-            mora = self.db_manager.overdue_installments(limit=5)
-            movimientos = self.db_manager.recent_movements(limit=5)
+            proximos = self.db_manager.upcoming_installments(limit=4)
+            mora = self.db_manager.overdue_installments(limit=4)
+            movimientos = self.db_manager.recent_movements(limit=4)
         except Exception as e:
             print(f"❌ Error cargando notificaciones de inicio: {e}")
             proximos, mora, movimientos = [], [], []
 
         seccion(
             "🔔 Próximos pagos", proximos,
-            lambda c: (f"{c['fecha_vencimiento']} · Letra {c['credito_letra']} "
-                       f"(cuota {c['nro_cuota']}) · {c['socios']} · "
+            lambda c: (f"{c['fecha_vencimiento']}  ·  L{c['credito_letra']}  ·  "
+                       f"{corto_socios(c['socios'])}  ·  "
                        f"${format_miles_colombian_int(c['cuota_mensual'])}"),
             "No hay cuotas por vencer en los próximos 30 días.",
         )
         seccion(
             "⚠️ En mora", mora,
-            lambda c: (f"{c['fecha_vencimiento']} · Letra {c['credito_letra']} "
-                       f"(cuota {c['nro_cuota']}) · {c['socios']} · "
+            lambda c: (f"{c['fecha_vencimiento']}  ·  L{c['credito_letra']}  ·  "
+                       f"{corto_socios(c['socios'])}  ·  "
                        f"${format_miles_colombian_int(c['cuota_mensual'])}"),
             "Sin cuotas en mora. 🎉",
             color="#D32F2F",
         )
         seccion(
             "🧾 Movimientos recientes", movimientos,
-            lambda m: (f"{m['fecha']} · {m['tipo']} · {m['socio']} · "
+            lambda m: (f"{m['fecha']}  ·  {m['tipo']}  ·  "
+                       f"{corto_socios(m['socio'])}  ·  "
                        f"${format_miles_colombian_int(m['monto'])}"),
             "Sin movimientos recientes.",
         )
