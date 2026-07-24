@@ -9,12 +9,14 @@ QTableWidget#operationsTable {
 }
 
 QHeaderView::section {
-    background-color: #f1f5f9;
+    background-color: %(PRIMARY_COLOR)s;
     font-weight: bold;
-    font-size: 15px;
-    color: #333;
-    border: 1px solid #DADDE1;
-    padding: 10px 10px;
+    font-size: 14px;
+    color: #ffffff;
+    border: none;
+    border-right: 1px solid #2a4a80;
+    border-bottom: 3px solid #12294a;
+    padding: 14px 10px;
     text-align: center;
 }
 QHeaderView::section:first {
@@ -22,7 +24,7 @@ QHeaderView::section:first {
 }
 QHeaderView::section:last {
     border-top-right-radius: 8px;
-    border-right: 1px solid #DADDE1;
+    border-right: none;
 }
 
 QTableWidget#operationsTable::item {
