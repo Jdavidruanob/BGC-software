@@ -1,38 +1,38 @@
-/* Estilos solo para los botones del navbar */
+/* ============================================================
+   Barra de navegación superior — estética moderna
+   ============================================================ */
+
+/* Lienzo general (se mantiene claro para no afectar labels sobre tarjetas) */
 QWidget {
-    background: #fff;
+    background: #ffffff;
 }
 
-QPushButton#NavBarButton {
-    color: %(TEXT_COLOR)s;
+/* Barra superior */
+QWidget#TopBar {
     background-color: %(PRIMARY_COLOR)s;
-    padding: 10px;
-    font-weight: bold;
-    font-size: 18px;
-    border-radius: 6px;
-    margin-left: 10px; /* Espacio entre botones */
+    border-bottom: 3px solid #12294a;
+}
+
+/* Botones de navegación: transparentes sobre el azul, tipo "pill" */
+QPushButton#NavBarButton {
+    color: #cfddee;
+    background-color: transparent;
+    padding: 10px 22px;
+    font-weight: 600;
+    font-size: 16px;
+    border: none;
+    border-radius: 12px;
+    margin-left: 8px;
 }
 
 QPushButton#NavBarButton:hover {
     background-color: %(PRIMARY_HOVER_COLOR)s;
+    color: #ffffff;
 }
 
-/* Activo (la página actual) */
+/* Botón activo (pastilla blanca con texto azul) */
 QPushButton#NavBarButton[active="true"] {
-    background-color: %(SECONDARY_COLOR)s;
-    color: white;
+    background-color: #ffffff;
+    color: %(PRIMARY_COLOR)s;
+    font-weight: 800;
 }
-QWidget#TopBar {
-    background-color: %(PRIMARY_COLOR)s;
-    padding: 12px;
-    
-}
-
-QLabel#logoLabel {
-    margin-left: 80px;
-    background-color: %(PRIMARY_COLOR)s;
-    font-size: 3px;
-    font-weight: bold;
-}
-
-
