@@ -139,10 +139,13 @@ def load_styles(widget, qss_path):
     try:
         combined = ""
         shared_path = os.path.join(STYLES_DIR, "shared.qss")
+        # encoding="utf-8" explícito: sin esto, en Windows open() usa cp1252 y
+        # los .qss con tildes/ñ/emojis lanzan UnicodeDecodeError, dejando la
+        # vista sin estilos (fallaba sobre todo en auxiliar).
         if os.path.exists(shared_path):
-            with open(shared_path, "r") as f:
+            with open(shared_path, "r", encoding="utf-8") as f:
                 combined = f.read() % substitutions
-        with open(qss_path, "r") as f:
+        with open(qss_path, "r", encoding="utf-8") as f:
             combined += "\n" + f.read() % substitutions
         widget.setStyleSheet(combined)
     except Exception as e:
