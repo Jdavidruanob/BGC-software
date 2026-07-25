@@ -271,6 +271,73 @@ class DBManager:
             "mayores_deudores": mayores_deudores,
         }
 
+    def dashboard_charts(self, meses=12, top_n=10):
+        """Datasets para las gráficas ampliadas del tablero (solo lectura).
+
+        Devuelve, en pocas consultas:
+          - aportes_mes / intereses_mes: series mensuales (últimos `meses`).
+          - aportes_socio / intereses_socio: ranking por socio (Top `top_n`).
+          - aportes_total / intereses_total: acumulados históricos.
+
+        Aportes: se leen de `auxiliar`/`detalle_recibo` (tipo 'Aporte'/'aporte').
+        Intereses: la parte de interés de cada cuota pagada vive en
+        `liquidaciones.interes_mes`; el socio que paga se toma de
+        `detalle_recibo.socio_id` (tipo_operacion 'pago_credito').
+        """
+        cur = self.conn.cursor()
+
+        # 1) Aportes por mes.
+        cur.execute(
+            "SELECT substr(fecha,1,7) AS mes, COALESCE(SUM(monto),0) AS total "
+            "FROM auxiliar WHERE tipo = 'Aporte' "
+            "GROUP BY substr(fecha,1,7) ORDER BY mes DESC LIMIT %s", (meses,))
+        aportes_mes = [{"mes": r["mes"], "total": int(r["total"] or 0)}
+                       for r in cur.fetchall()][::-1]
+
+        # 2) Intereses pagados por mes (cuotas ya pagadas).
+        cur.execute(
+            "SELECT substr(fecha_pago,1,7) AS mes, COALESCE(SUM(interes_mes),0) AS total "
+            "FROM liquidaciones WHERE fecha_pago IS NOT NULL "
+            "GROUP BY substr(fecha_pago,1,7) ORDER BY mes DESC LIMIT %s", (meses,))
+        intereses_mes = [{"mes": r["mes"], "total": int(r["total"] or 0)}
+                         for r in cur.fetchall()][::-1]
+
+        # 3) Aportes por socio (Top N).
+        cur.execute(
+            "SELECT s.nombres || ' ' || s.apellidos AS socio, COALESCE(SUM(dr.monto),0) AS total "
+            "FROM detalle_recibo dr JOIN socios s ON s.id = dr.socio_id "
+            "WHERE dr.tipo_operacion = 'aporte' "
+            "GROUP BY s.id, s.nombres, s.apellidos ORDER BY total DESC LIMIT %s", (top_n,))
+        aportes_socio = [{"socio": r["socio"], "total": int(r["total"] or 0)}
+                         for r in cur.fetchall()]
+
+        # 4) Intereses pagados por socio (Top N): interés de cada cuota pagada,
+        #    atribuido al socio que registró el pago.
+        cur.execute(
+            "SELECT s.nombres || ' ' || s.apellidos AS socio, COALESCE(SUM(l.interes_mes),0) AS total "
+            "FROM detalle_recibo dr "
+            "JOIN liquidaciones l ON l.credito_letra = dr.credito_letra AND l.nro_cuota = dr.nro_cuota "
+            "JOIN socios s ON s.id = dr.socio_id "
+            "WHERE dr.tipo_operacion = 'pago_credito' AND dr.nro_cuota > 0 "
+            "GROUP BY s.id, s.nombres, s.apellidos ORDER BY total DESC LIMIT %s", (top_n,))
+        intereses_socio = [{"socio": r["socio"], "total": int(r["total"] or 0)}
+                           for r in cur.fetchall()]
+
+        # 5) Acumulados históricos.
+        cur.execute("SELECT COALESCE(SUM(interes_mes),0) AS t FROM liquidaciones WHERE fecha_pago IS NOT NULL")
+        intereses_total = int(cur.fetchone()["t"] or 0)
+        cur.execute("SELECT COALESCE(SUM(monto),0) AS t FROM detalle_recibo WHERE tipo_operacion = 'aporte'")
+        aportes_total = int(cur.fetchone()["t"] or 0)
+
+        return {
+            "aportes_mes": aportes_mes,
+            "intereses_mes": intereses_mes,
+            "aportes_socio": aportes_socio,
+            "intereses_socio": intereses_socio,
+            "aportes_total": aportes_total,
+            "intereses_total": intereses_total,
+        }
+
     def add_multiple_historical_credits(self, credits_list):
         print(f"\n📋 Iniciando carga masiva de {len(credits_list)} créditos...\n")
         resultados = []
