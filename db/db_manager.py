@@ -131,6 +131,9 @@ class DBManager:
     def rebalance_credit_installments(self, letra_id, overrides):
         return self._liquidaciones.rebalance_installments(letra_id, overrides)
 
+    def set_mora_exenta(self, letra_id, nro_cuota, exenta: bool):
+        return self._liquidaciones.set_mora_exenta(letra_id, nro_cuota, exenta)
+
     # --- Numeración: recibo y letra actuales ---------------------------------
     # Permite fijar "en qué número vamos" (recibo y letra). Una vez fijado, el
     # sistema sigue automático desde ahí. Útil para armar el historial.

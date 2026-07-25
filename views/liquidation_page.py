@@ -107,6 +107,12 @@ class CreditLiquidationPage(QWidget):
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setShowGrid(False) # Opcional: Quita la rejilla para un look más limpio
         self.table.setAlternatingRowColors(True)
+        self.table.cellDoubleClicked.connect(self.toggle_mora_exenta)
+
+        hint = QLabel("Doble clic en una cuota pendiente para forzar/quitar la exención de mora "
+                      "(no se cobra mora ni se muestra como VENCIDA).")
+        hint.setObjectName("liqInfoLabel")
+        main_layout.addWidget(hint)
 
         main_layout.addWidget(self.table)
         self.setLayout(main_layout)
@@ -123,16 +129,16 @@ class CreditLiquidationPage(QWidget):
         try:
             cursor = self.db_manager.conn.cursor()
             cursor.execute("""
-                SELECT fecha_vencimiento, nro_cuota, valor_cuota, interes_mes, 
-                       cuota_mensual, saldo_capital, fecha_pago
+                SELECT fecha_vencimiento, nro_cuota, valor_cuota, interes_mes,
+                       cuota_mensual, saldo_capital, fecha_pago, mora_exenta
                 FROM liquidaciones
                 WHERE credito_letra = %s
                 ORDER BY nro_cuota ASC
             """, (letra,))
-            
+
             cuotas = cursor.fetchall()
             self.table.setRowCount(len(cuotas))
-            
+
             hoy_str = get_hoy_str()
 
             for i, c in enumerate(cuotas):
@@ -143,8 +149,9 @@ class CreditLiquidationPage(QWidget):
                 v_int = f"${format_miles_colombian_int(c['interes_mes'])}"
                 v_total = f"${format_miles_colombian_int(c['cuota_mensual'])}"
                 v_saldo = f"${format_miles_colombian_int(c['saldo_capital'])}"
-                
+
                 f_pago = db_date_str(c["fecha_pago"]) if c["fecha_pago"] else None
+                exenta = bool(c["mora_exenta"])
 
                 # LÓGICA DE ESTADO
                 estado_text = "Pendiente"
@@ -155,6 +162,11 @@ class CreditLiquidationPage(QWidget):
                     # PAGADA: Verde y solo fecha
                     estado_text = f_pago
                     color_texto = QColor("#2E7D32") # Verde
+                    es_bold = True
+                elif exenta:
+                    # EXENTA DE MORA: nunca se muestra como vencida
+                    estado_text = "Pendiente (sin mora)"
+                    color_texto = QColor("#1565C0") # Azul
                     es_bold = True
                 else:
                     # NO PAGADA
@@ -173,23 +185,50 @@ class CreditLiquidationPage(QWidget):
                 for col, val in enumerate(row_data):
                     item = QTableWidgetItem(val)
                     item.setTextAlignment(Qt.AlignCenter)
-                    
+
                     # Aplicar color a toda la fila
                     item.setForeground(color_texto)
-                    
+
                     # Aplicar negrita si corresponde (Pagada o Vencida)
                     if es_bold:
                         font = item.font()
                         font.setBold(True)
                         item.setFont(font)
-                    
+
                     # Nos aseguramos de quitar flags de selección por si acaso
-                    item.setFlags(Qt.ItemIsEnabled) 
-                    
+                    item.setFlags(Qt.ItemIsEnabled)
+
+                    # Guardamos datos crudos para el toggle de doble clic
+                    item.setData(Qt.UserRole, c["nro_cuota"])
+                    item.setData(Qt.UserRole + 1, f_pago is not None)
+                    item.setData(Qt.UserRole + 2, exenta)
+
                     self.table.setItem(i, col, item)
 
         except Exception as e:
             print(f"❌ Error al cargar liquidación visual: {e}")
+
+    def toggle_mora_exenta(self, row, _col):
+        """Doble clic sobre una cuota pendiente: fuerza/quita la exención de mora."""
+        item = self.table.item(row, 0)
+        if item is None:
+            return
+        nro_cuota = item.data(Qt.UserRole)
+        ya_pagada = item.data(Qt.UserRole + 1)
+        exenta_actual = item.data(Qt.UserRole + 2)
+
+        if ya_pagada:
+            show_error(self, "Cuota pagada", "Esta cuota ya fue pagada; no se puede modificar.")
+            return
+
+        nueva_exenta = not exenta_actual
+        try:
+            self.db_manager.set_mora_exenta(self.credit["letra"], nro_cuota, nueva_exenta)
+            accion = "marcada como exenta de mora" if nueva_exenta else "vuelta a la normalidad"
+            show_success(self, "Cuota actualizada", f"La cuota #{nro_cuota} quedó {accion}.")
+            self.refresh_view()
+        except Exception as e:
+            show_error(self, "Error", f"No se pudo actualizar la cuota:\n{e}")
 
 
     def get_current_balance(self, credit_data):

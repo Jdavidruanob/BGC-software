@@ -31,6 +31,7 @@ class PagoService:
             letra_id = item["letra_id"]
             n_cuotas = item.get("n_cuotas", 0)
             abono_capital = item.get("abono_capital", 0)
+            sin_mora = item.get("sin_mora", False)
             nombre_socio = f"{socio_data['nombres']} {socio_data['apellidos']}"
 
             if n_cuotas > 0 and abono_capital > 0:
@@ -53,11 +54,11 @@ class PagoService:
 
             if n_cuotas > 0:
                 ops_pendientes.append(
-                    self._prepare_cuotas(socio_data, letra_id, n_cuotas, hoy, tasa_mora)
+                    self._prepare_cuotas(socio_data, letra_id, n_cuotas, hoy, tasa_mora, sin_mora)
                 )
             else:
                 ops_pendientes.append(
-                    self._prepare_abono(socio_data, letra_id, abono_capital, hoy, tasa_mora)
+                    self._prepare_abono(socio_data, letra_id, abono_capital, hoy, tasa_mora, sin_mora)
                 )
 
         if not ops_pendientes:
@@ -100,10 +101,11 @@ class PagoService:
 
     # --- Helpers privados ---
 
-    def _prepare_cuotas(self, socio_data, letra_id, n_cuotas, hoy, tasa_mora):
+    def _prepare_cuotas(self, socio_data, letra_id, n_cuotas, hoy, tasa_mora, sin_mora=False):
         cursor = self._db.conn.cursor()
         cursor.execute(
-            "SELECT nro_cuota, valor_cuota, interes_mes, cuota_mensual, saldo_capital, fecha_vencimiento "
+            "SELECT nro_cuota, valor_cuota, interes_mes, cuota_mensual, saldo_capital, "
+            "fecha_vencimiento, mora_exenta "
             "FROM liquidaciones WHERE credito_letra = %s AND fecha_pago IS NULL "
             "ORDER BY nro_cuota LIMIT %s",
             (letra_id, n_cuotas),
@@ -118,18 +120,21 @@ class PagoService:
         items = []
         mensajes = []
         for fila in filas:
-            mora = calculate_mora(fila["fecha_vencimiento"], hoy, fila["valor_cuota"], tasa_mora)
+            exenta = sin_mora or fila.get("mora_exenta")
+            mora = 0 if exenta else calculate_mora(
+                fila["fecha_vencimiento"], hoy, fila["valor_cuota"], tasa_mora
+            )
             costo_base = fila["valor_cuota"] + fila["interes_mes"]
             items.append({
                 "nro": fila["nro_cuota"], "monto_total": costo_base + mora,
-                "monto_base": costo_base, "mora": mora,
+                "monto_base": costo_base, "mora": mora, "sin_mora": sin_mora,
                 "cap": fila["valor_cuota"], "int": fila["interes_mes"],
             })
-            mensajes.append(f"Cuota #{fila['nro_cuota']}")
+            mensajes.append(f"Cuota #{fila['nro_cuota']}" + (" (sin mora)" if sin_mora else ""))
         return {"tipo": "CUOTAS_MANUAL", "socio_data": socio_data,
                 "letra_id": letra_id, "items": items, "mensajes": mensajes}
 
-    def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora):
+    def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora, sin_mora=False):
         nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
         pendientes = self._liquidaciones.find_pending(letra_id)
         vencidas = []
@@ -137,10 +142,13 @@ class PagoService:
             f_venc = parse_db_date(cuota["fecha_vencimiento"])
             if f_venc >= hoy:
                 break
-            mora = calculate_mora(cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora)
+            exenta = sin_mora or cuota.get("mora_exenta")
+            mora = 0 if exenta else calculate_mora(
+                cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora
+            )
             base = cuota["valor_cuota"] + cuota["interes_mes"]
             vencidas.append({"data": cuota, "costo_total": base + mora,
-                             "monto_base": base, "mora": mora})
+                             "monto_base": base, "mora": mora, "sin_mora": sin_mora})
 
         temp = dinero_abono
         pagables = 0
@@ -195,9 +203,11 @@ class PagoService:
                     VALUES (%s, 'pago_credito', %s, %s, %s, %s, %s)
                 """, (recibo_id, socio_data["id"], letra_id, it["nro"], it["monto_total"], it["mora"]))
                 cursor.execute("""
-                    UPDATE liquidaciones SET fecha_pago = %s, interes_mora = %s, mora_aplicada = %s
+                    UPDATE liquidaciones
+                    SET fecha_pago = %s, interes_mora = %s, mora_aplicada = %s,
+                        mora_exenta = CASE WHEN %s THEN 1 ELSE mora_exenta END
                     WHERE credito_letra = %s AND nro_cuota = %s
-                """, (fecha, it["mora"], 1 if it["mora"] > 0 else 0, letra_id, it["nro"]))
+                """, (fecha, it["mora"], 1 if it["mora"] > 0 else 0, it["sin_mora"], letra_id, it["nro"]))
                 saldo_caja += it["monto_base"]
                 mora_total += it["mora"]
                 dict_recibo["valor_capital_consolidado"] += it["cap"]
@@ -220,9 +230,11 @@ class PagoService:
                     VALUES (%s, 'pago_credito', %s, %s, %s, %s, %s)
                 """, (recibo_id, socio_data["id"], letra_id, nro, v["costo_total"], v["mora"]))
                 cursor.execute("""
-                    UPDATE liquidaciones SET fecha_pago = %s, interes_mora = %s, mora_aplicada = %s
+                    UPDATE liquidaciones
+                    SET fecha_pago = %s, interes_mora = %s, mora_aplicada = %s,
+                        mora_exenta = CASE WHEN %s THEN 1 ELSE mora_exenta END
                     WHERE credito_letra = %s AND nro_cuota = %s
-                """, (fecha, v["mora"], 1 if v["mora"] > 0 else 0, letra_id, nro))
+                """, (fecha, v["mora"], 1 if v["mora"] > 0 else 0, v["sin_mora"], letra_id, nro))
                 saldo_caja += v["monto_base"]
                 mora_total += v["mora"]
                 dict_recibo["valor_capital_consolidado"] += v["data"]["valor_cuota"]

@@ -37,7 +37,8 @@ class LiquidacionesRepository:
         try:
             cursor = self.db.conn.cursor()
             cursor.execute("""
-                SELECT nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual, saldo_capital
+                SELECT nro_cuota, fecha_vencimiento, valor_cuota, interes_mes, cuota_mensual,
+                       saldo_capital, mora_exenta
                 FROM liquidaciones
                 WHERE credito_letra = %s AND fecha_pago IS NULL
                 ORDER BY nro_cuota ASC
@@ -46,6 +47,25 @@ class LiquidacionesRepository:
         except Exception as e:
             print(f"❌ Error obteniendo cuotas pendientes: {e}")
             return []
+
+    def set_mora_exenta(self, letra_id, nro_cuota, exenta: bool):
+        """Marca/desmarca la exención de mora de una cuota puntual.
+
+        Si exenta=True: el sistema no cobra mora sobre esa cuota (aunque esté
+        vencida) ni la muestra como VENCIDA en la pantalla de liquidación.
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                UPDATE liquidaciones SET mora_exenta = %s
+                WHERE credito_letra = %s AND nro_cuota = %s
+            """, (1 if exenta else 0, letra_id, nro_cuota))
+            self.db.conn.commit()
+            return True
+        except Exception as e:
+            self.db.conn.rollback()
+            print(f"❌ Error actualizando mora_exenta: {e}")
+            return False
 
     def get_current_debt(self, letra_id):
         try:

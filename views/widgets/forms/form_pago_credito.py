@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
-    QHBoxLayout, QFrame, QSizePolicy
+    QHBoxLayout, QFrame, QSizePolicy, QCheckBox
 )
 from PySide6.QtCore import Qt, QSize, Signal
 
@@ -206,10 +206,15 @@ class FormPagoCredito(QWidget):
             cuotas_input.setFixedHeight(34)
             cuotas_input.setFixedWidth(90)
 
+            chk_sin_mora = QCheckBox("Sin mora")
+            chk_sin_mora.setObjectName("ChkSinMora")
+            chk_sin_mora.setToolTip("No cobrar interés de mora en esta cuota/pago")
+            chk_sin_mora.setCursor(Qt.PointingHandCursor)
+
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")
             btn_delete_letra.setIcon(load_svg_icon("icons/x.svg"))
-            btn_delete_letra.setIconSize(QSize(16,16))  
+            btn_delete_letra.setIconSize(QSize(16,16))
             btn_delete_letra.setFixedSize(25,25)
             btn_delete_letra.setToolTip("Eliminar esta letra")
             btn_delete_letra.clicked.connect(lambda: letra_row_widget.setParent(None))
@@ -217,6 +222,7 @@ class FormPagoCredito(QWidget):
             letra_row.addWidget(letra_combo)
             letra_row.addWidget(abono_input) # <--- AGREGAMOS EL INPUT AQUÍ
             letra_row.addWidget(cuotas_input)
+            letra_row.addWidget(chk_sin_mora)
             letra_row.addWidget(btn_delete_letra)
 
             letra_row_widget = QWidget()
@@ -279,6 +285,7 @@ class FormPagoCredito(QWidget):
                     continue
                 abono_text = w.findChild(QLineEdit, "AbonoInput").text()
                 cuotas_text = w.findChild(QLineEdit, "CuotasInput").text()
+                sin_mora = w.findChild(QCheckBox, "ChkSinMora").isChecked()
                 dinero_abono = parse_miles_colombian(abono_text) if abono_text else 0
                 try:
                     n_cuotas = int(cuotas_text) if cuotas_text else 0
@@ -291,6 +298,7 @@ class FormPagoCredito(QWidget):
                     "letra_id": letra_selected['letra'],
                     "n_cuotas": n_cuotas,
                     "abono_capital": dinero_abono,
+                    "sin_mora": sin_mora,
                 })
 
         if not pagos_input:
