@@ -9,4 +9,4 @@ GitHub con el mismo tag (ej. `v1.1.0`). El workflow de CI lo hace automático a
 partir de este valor.
 """
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
