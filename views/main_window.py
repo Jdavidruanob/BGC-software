@@ -14,6 +14,8 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter
 from config import load_styles, load_svg_icon, load_svg_icon_tinted, PRIMARY_COLOR, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR
 from version import APP_VERSION
 from views.widgets.update_banner import UpdateBanner
+from views.widgets.env_banner import EnvBanner
+import entorno
 
 NAV_ICON_INACTIVO = "#94a3b8"   # slate-400: gris desactivado
 NAV_ICON_ACTIVO = PRIMARY_COLOR  # azul oscuro (sobre la pastilla blanca)
@@ -21,7 +23,12 @@ NAV_ICON_ACTIVO = PRIMARY_COLOR  # azul oscuro (sobre la pastilla blanca)
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"bgc software v{APP_VERSION}")
+        # En pruebas el título lo dice también, para distinguir las ventanas en
+        # la barra de tareas si se abren las dos a la vez.
+        titulo = f"bgc software v{APP_VERSION}"
+        if entorno.es_pruebas():
+            titulo += "  —  🧪 PRUEBAS"
+        self.setWindowTitle(titulo)
         self.setWindowState(Qt.WindowMaximized) # inicializar en ventana completa 
         self.views = {} # Diccionario para almacenar vistas,  clave: nombre, valor: widget
         
@@ -107,8 +114,12 @@ class MainWindow(QMainWindow):
         # Aviso de actualización (oculto hasta que haya una versión nueva).
         self.update_banner = UpdateBanner()
 
+        # Aviso de entorno (solo visible en pruebas).
+        self.env_banner = EnvBanner()
+
         # Layout principal
         main_layout.addWidget(top_bar)
+        main_layout.addWidget(self.env_banner)
         main_layout.addWidget(self.update_banner)
         main_layout.addWidget(self.stack)
         central_widget.setLayout(main_layout)

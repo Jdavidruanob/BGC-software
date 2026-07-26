@@ -39,6 +39,7 @@ from config import (
     RECIBOS_OUTPUT_DIR,
 )
 from utils.sync_recibos import sincronizar_recibos
+import entorno
 
 def main():
     app = QApplication(sys.argv)
@@ -86,8 +87,12 @@ def main():
         )
         sys.exit(1)
 
-    # Bajar al computador los recibos que el bot haya generado (los que aún no
-    # estén en la carpeta). No bloquea el arranque si falla.
+    # Contra qué base se está trabajando. Se imprime DESPUÉS de conectar
+    # porque es `connect()` quien carga el .env (y con él APP_ENV).
+    print(f"🌐 Entorno: {entorno.resumen()}")
+
+    # Sincronizar la carpeta de recibos con la base: baja los que falten y
+    # borra los que ya no existan en la base. No bloquea el arranque si falla.
     sincronizar_recibos(db_manager.conn, RECIBOS_OUTPUT_DIR)
 
     # Construir servicios inyectando repos desde db_manager
