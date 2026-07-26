@@ -1,4 +1,5 @@
 from config import get_hoy, get_hoy_str, parse_db_date
+from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_combinado import generar_recibo_combinado
 
 PAPELERIA_POR_APORTE = 3000
@@ -108,6 +109,7 @@ class CombinadoService:
                 pagos_credito_info=list(pagos_para_recibo.values()),
                 num_aportes_cobrables=count_cobrables,
             )
+            guardar_recibo(self._db.conn, recibo_id, "combinado", excel_path)
             return recibo_id, excel_path, reporte_global
 
         except Exception:

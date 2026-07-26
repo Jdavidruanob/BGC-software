@@ -9,6 +9,7 @@ from PySide6.QtGui import QColor
 import os
 from datetime import datetime
 from config import load_styles, format_miles_colombian_int, get_hoy_str, db_date_str, STYLES_DIR
+from utils.archivos_db import guardar_liquidacion
 from utils.credit_liquidation_generator import generar_liquidacion_actual
 from utils.message_boxes import show_success, show_error
 from views.widgets.edit_installments_dialog import EditInstallmentsDialog
@@ -313,6 +314,9 @@ class CreditLiquidationPage(QWidget):
                 cuotas_rows=cuotas,
             )
             if path:
+                # Se guarda también en la base para que quede disponible desde
+                # cualquier equipo y el bot pueda enviarla.
+                guardar_liquidacion(self.db_manager.conn, letra, path)
                 show_success(self, "Liquidación generada",
                              f"Archivo Excel generado en:\n{path}")
             else:

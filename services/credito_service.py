@@ -1,4 +1,5 @@
 from config import get_hoy_str
+from utils.archivos_db import guardar_liquidacion
 from utils.credit_liquidation_generator import generar_liquidacion_credito
 
 
@@ -42,6 +43,7 @@ class CreditoService:
                 credit_data=credit_data,
                 socios_list=socios_data,
             )
+            guardar_liquidacion(self._db.conn, letra_id, excel_path)
             return letra_id, excel_path
 
         except Exception:

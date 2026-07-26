@@ -1,4 +1,5 @@
 from config import get_hoy_str
+from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_aporte import generar_recibo_solo_aportes
 
 PAPELERIA_POR_APORTE = 3000
@@ -68,6 +69,7 @@ class AporteService:
                 aportes_info=aportes_for_recibo,
                 num_aportes_cobrables=count_cobrables,
             )
+            guardar_recibo(self._db.conn, recibo_id, "aporte", excel_path)
             return recibo_id, excel_path
 
         except Exception:
