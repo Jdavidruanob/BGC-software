@@ -109,8 +109,9 @@ class CreditLiquidationPage(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.cellDoubleClicked.connect(self.toggle_mora_exenta)
 
-        hint = QLabel("Doble clic en una cuota pendiente para forzar/quitar la exención de mora "
-                      "(no se cobra mora ni se muestra como VENCIDA).")
+        hint = QLabel("Doble clic en una cuota para marcarla como PENDIENTE aunque ya esté vencida "
+                      "(no se muestra como VENCIDA y un abono a capital no la cobra). "
+                      "Doble clic otra vez para devolverla a la normalidad.")
         hint.setObjectName("liqInfoLabel")
         main_layout.addWidget(hint)
 
@@ -164,8 +165,8 @@ class CreditLiquidationPage(QWidget):
                     color_texto = QColor("#2E7D32") # Verde
                     es_bold = True
                 elif exenta:
-                    # EXENTA DE MORA: nunca se muestra como vencida
-                    estado_text = "Pendiente (sin mora)"
+                    # MARCADA A MANO: nunca se muestra ni se trata como vencida
+                    estado_text = "Pendiente (marcada)"
                     color_texto = QColor("#1565C0") # Azul
                     es_bold = True
                 else:
@@ -209,7 +210,8 @@ class CreditLiquidationPage(QWidget):
             print(f"❌ Error al cargar liquidación visual: {e}")
 
     def toggle_mora_exenta(self, row, _col):
-        """Doble clic sobre una cuota pendiente: fuerza/quita la exención de mora."""
+        """Doble clic sobre una cuota pendiente: la marca (o desmarca) como
+        pendiente forzada, para que nunca cuente como vencida."""
         item = self.table.item(row, 0)
         if item is None:
             return
@@ -224,7 +226,10 @@ class CreditLiquidationPage(QWidget):
         nueva_exenta = not exenta_actual
         try:
             self.db_manager.set_mora_exenta(self.credit["letra"], nro_cuota, nueva_exenta)
-            accion = "marcada como exenta de mora" if nueva_exenta else "vuelta a la normalidad"
+            accion = (
+                "marcada como PENDIENTE: no se tomará como vencida ni en un abono a capital"
+                if nueva_exenta else "vuelta a la normalidad (se rige por su fecha)"
+            )
             show_success(self, "Cuota actualizada", f"La cuota #{nro_cuota} quedó {accion}.")
             self.refresh_view()
         except Exception as e:

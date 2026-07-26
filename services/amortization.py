@@ -10,6 +10,10 @@ from config import parse_db_date
 def calculate_mora(fecha_venc_str, hoy: date, valor_cuota: int, tasa_mora: float) -> int:
     """Retorna el monto de mora si hoy supera el período de gracia de 1 mes.
 
+    TEMPORAL: hoy nadie la llama. Mientras se cargan los datos históricos, la
+    mora no se calcula: el operador digita el valor exacto en el formulario de
+    pago/combinado. Se conserva para reactivar el cobro automático después.
+
     `fecha_venc_str` puede venir como texto 'YYYY-MM-DD' (SQLite) o como objeto
     date/datetime (PostgreSQL); parse_db_date normaliza ambos.
     """

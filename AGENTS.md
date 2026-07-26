@@ -143,7 +143,8 @@ Estas reglas están en el código y no deben romperse nunca:
 | `mora → total_admin`, nunca a `saldo_en_caja` | `pago_service.py`, `combinado_service.py` |
 | `papelería ($3.000/aporte cobrable) → total_admin` | `aporte_service.py`, `combinado_service.py` |
 | `saldo_en_caja` refleja el efectivo real | Toda operación que mueve caja |
-| Mora: período de gracia de 1 mes | `services/amortization.py → calculate_mora` |
+| Mora: **temporalmente manual** — el operador digita el valor en el form; `calculate_mora` no se usa | `pago_service.py`, `combinado_service.py` |
+| Cuota marcada (`mora_exenta`) nunca cuenta como vencida, sin importar la fecha | `pago_service.py`, `combinado_service.py`, `liquidaciones_repo.py` |
 | Commit de caja y auxiliar en la misma transacción | Todos los servicios de escritura |
 
 ---

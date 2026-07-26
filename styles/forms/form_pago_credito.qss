@@ -10,7 +10,7 @@
     background-color: #f1f5f9;
 }
 
-#CuotasInput, #AbonoInput {
+#CuotasInput, #AbonoInput, #MoraInput {
     font-size: 15px;
     padding: 4px 8px;
     background-color: #f1f5f9;
@@ -18,4 +18,10 @@
     font-weight: bold;
     border: 1px solid #d2d2d2;
     border-radius: 4px;
+}
+
+/* Mora digitada a mano: se resalta porque ya no la calcula el sistema. */
+#MoraInput {
+    color: #B71C1C;
+    border: 1px solid #e0b4b4;
 }

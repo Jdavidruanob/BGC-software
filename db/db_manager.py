@@ -215,7 +215,8 @@ class DBManager:
               (SELECT COUNT(*) FROM socios) AS socios_activos,
               (SELECT COUNT(DISTINCT credito_letra) FROM liquidaciones WHERE fecha_pago IS NULL) AS creditos_vigentes,
               (SELECT COUNT(DISTINCT credito_letra) FROM liquidaciones
-                 WHERE fecha_pago IS NULL AND fecha_vencimiento < %s) AS creditos_en_mora,
+                 WHERE fecha_pago IS NULL AND fecha_vencimiento < %s
+                   AND COALESCE(mora_exenta, 0) = 0) AS creditos_en_mora,
               (SELECT COALESCE(SUM(monto),0) FROM auxiliar
                  WHERE tipo = ANY(%s) AND substr(fecha,1,7) = %s) AS recaudo_mes,
               (SELECT COALESCE(SUM(l.saldo_capital + l.valor_cuota),0)

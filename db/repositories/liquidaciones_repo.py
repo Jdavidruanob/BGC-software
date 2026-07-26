@@ -49,10 +49,12 @@ class LiquidacionesRepository:
             return []
 
     def set_mora_exenta(self, letra_id, nro_cuota, exenta: bool):
-        """Marca/desmarca la exención de mora de una cuota puntual.
+        """Marca/desmarca una cuota como PENDIENTE forzada.
 
-        Si exenta=True: el sistema no cobra mora sobre esa cuota (aunque esté
-        vencida) ni la muestra como VENCIDA en la pantalla de liquidación.
+        Si exenta=True la cuota nunca cuenta como vencida, sin importar su
+        fecha: no se muestra como VENCIDA en la liquidación, no aparece en el
+        panel de cuotas en mora y un abono a capital no la cobra. Manda la
+        marca del operador, no la fecha.
         """
         try:
             cursor = self.db.conn.cursor()
@@ -110,7 +112,11 @@ class LiquidacionesRepository:
             return []
 
     def find_overdue(self, hoy_str, limit=5):
-        """Cuotas en mora: no pagadas y ya vencidas (fecha_vencimiento < hoy)."""
+        """Cuotas en mora: no pagadas y ya vencidas (fecha_vencimiento < hoy).
+
+        Las cuotas marcadas a mano como pendientes (`mora_exenta`) quedan fuera:
+        el operador decidió que no cuentan como vencidas.
+        """
         try:
             cursor = self.db.conn.cursor()
             cursor.execute("""
@@ -120,6 +126,7 @@ class LiquidacionesRepository:
                 JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
                 JOIN socios s ON s.id = sc.socio_id
                 WHERE l.fecha_pago IS NULL AND l.fecha_vencimiento < %s
+                  AND COALESCE(l.mora_exenta, 0) = 0
                 GROUP BY l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual
                 ORDER BY l.fecha_vencimiento ASC, l.credito_letra ASC
                 LIMIT %s
