@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
-    QHBoxLayout, QFrame, QSizePolicy, QCheckBox, QMessageBox
+    QHBoxLayout, QFrame, QSizePolicy, QMessageBox
 )
 from PySide6.QtCore import Qt, QSize, Signal
 
@@ -206,17 +206,32 @@ class FormPagoCredito(QWidget):
             cuotas_input.setFixedHeight(34)
             cuotas_input.setFixedWidth(90)
 
-            chk_sin_mora = QCheckBox("🚫 Sin mora")
-            chk_sin_mora.setObjectName("ChkSinMora")
-            chk_sin_mora.setToolTip(
-                "Si se marca: NO se cobra interés de mora en esta cuota/abono,\n"
-                "sin importar cuánto tiempo lleve vencida."
+            # --- INPUT MORA MANUAL ---
+            # El sistema ya no calcula la mora: el operador digita aquí el valor
+            # exacto que se cobra en este recibo (vacío = no se cobra mora).
+            mora_input = QLineEdit()
+            mora_input.setObjectName("MoraInput")
+            mora_input.setPlaceholderText("$ Mora")
+            mora_input.setAlignment(Qt.AlignRight)
+            mora_input.setFixedHeight(34)
+            mora_input.setFixedWidth(110)
+            mora_input.setToolTip(
+                "Valor exacto de mora que se cobra en esta letra.\n"
+                "Déjalo vacío si no se cobra mora."
             )
-            chk_sin_mora.setCursor(Qt.PointingHandCursor)
-            chk_sin_mora.setStyleSheet(
-                "QCheckBox { font-weight: bold; color: #B71C1C; }"
-                "QCheckBox::indicator { width: 18px; height: 18px; }"
-            )
+
+            def on_mora_changed(text):
+                raw = parse_miles_colombian(text)
+                # Si borra todo, el campo queda vacío (y se ve el placeholder),
+                # no en "0": así se distingue "no cobro mora" de un valor puesto.
+                formatted = format_miles_colombian_int(raw) if any(c.isdigit() for c in text) else ""
+                if formatted != text:
+                    mora_input.blockSignals(True)
+                    mora_input.setText(formatted)
+                    mora_input.setCursorPosition(len(formatted))
+                    mora_input.blockSignals(False)
+
+            mora_input.textChanged.connect(on_mora_changed)
 
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")
@@ -229,7 +244,7 @@ class FormPagoCredito(QWidget):
             letra_row.addWidget(letra_combo)
             letra_row.addWidget(abono_input) # <--- AGREGAMOS EL INPUT AQUÍ
             letra_row.addWidget(cuotas_input)
-            letra_row.addWidget(chk_sin_mora)
+            letra_row.addWidget(mora_input)
             letra_row.addWidget(btn_delete_letra)
 
             letra_row_widget = QWidget()
@@ -292,20 +307,29 @@ class FormPagoCredito(QWidget):
                     continue
                 abono_text = w.findChild(QLineEdit, "AbonoInput").text()
                 cuotas_text = w.findChild(QLineEdit, "CuotasInput").text()
-                sin_mora = w.findChild(QCheckBox, "ChkSinMora").isChecked()
+                mora_text = w.findChild(QLineEdit, "MoraInput").text()
+                mora_manual = parse_miles_colombian(mora_text) if mora_text else 0
                 dinero_abono = parse_miles_colombian(abono_text) if abono_text else 0
                 try:
                     n_cuotas = int(cuotas_text) if cuotas_text else 0
                 except:
                     n_cuotas = 0
                 if dinero_abono == 0 and n_cuotas == 0:
+                    if mora_manual > 0:
+                        show_warning(
+                            self, "Mora sin pago",
+                            f"En la letra {letra_selected['letra']} escribió mora pero no "
+                            "un abono ni un número de cuotas. La mora se cobra junto con "
+                            "el pago, no sola."
+                        )
+                        return
                     continue
                 pagos_input.append({
                     "socio_data": socio_full,
                     "letra_id": letra_selected['letra'],
                     "n_cuotas": n_cuotas,
                     "abono_capital": dinero_abono,
-                    "sin_mora": sin_mora,
+                    "mora_manual": mora_manual,
                 })
 
         if not pagos_input:

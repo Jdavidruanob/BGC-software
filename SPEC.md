@@ -248,15 +248,24 @@ Archivos_BGC/
 - El usuario indica un monto. El sistema lo aplica primero a todas las cuotas
   **vencidas** (en orden cronológico) y el remanente se aplica como **abono a
   capital** en la tabla de amortización.
+- Una cuota marcada a mano en la liquidación (`mora_exenta = 1`) **no cuenta
+  como vencida**, sin importar su fecha: el abono la salta y la deja pendiente.
 - Si el monto no alcanza para cubrir todas las cuotas vencidas parcialmente,
   se lanza `ValueError`.
 - El abono a capital llama a `recalculate_amortization` que redistribuye el
   saldo entre las cuotas futuras.
 
-### Mora
-- Se aplica si `fecha_actual > fecha_vencimiento + 1 mes`.
-- `mora = int(valor_cuota * tasa_mora)` donde `tasa_mora` viene de `config.porcentaje_mora`.
+### Mora — **temporalmente manual**
+- El cálculo automático está **desactivado** mientras se cargan los datos
+  históricos. El operador digita el valor exacto en el campo `$ Mora` de cada
+  letra, en el formulario de pago de crédito o combinado.
+- Ese valor se cobra completo en la primera cuota que se paga de esa letra
+  (`detalle_recibo.abono_mora`), y solo puede cobrarse junto con una cuota:
+  un abono a capital sin cuotas vencidas no admite mora.
 - La mora va a `total_admin`, **no** a `saldo_en_caja`.
+- Para reactivar el cobro automático: `calculate_mora` sigue en
+  `services/amortization.py` (mora si `fecha_actual > fecha_vencimiento + 1 mes`,
+  `mora = int(valor_cuota * tasa_mora)` con `tasa_mora` de `config.porcentaje_mora`).
 
 ### Distribución financiera por operación
 | Operación | `saldo_en_caja` | `total_admin` |
