@@ -87,6 +87,16 @@ class ReversionService:
                     "y vuelve a quedar activo"
                 )
 
+            elif tipo == "salario":
+                # El salario salió de la caja, así que revertirlo la devuelve.
+                # El saldo del socio tesorero no se toca: el recibo va a su
+                # nombre, pero la plata es del administrador, no un aporte.
+                caja_delta += monto
+                lineas.append(
+                    f"Pago de salario: vuelven ${monto:,} a la caja y se "
+                    "descuentan del acumulado de salarios"
+                )
+
             elif tipo == "pago_credito":
                 letra = d["credito_letra"]
                 nro = d["nro_cuota"]
@@ -151,6 +161,7 @@ class ReversionService:
             detalles = self._detalles(cursor, recibo_id)
             papeleria_total = 0
             mora_total = 0
+            salario_total = 0
 
             for d in detalles:
                 tipo = d["tipo_operacion"]
@@ -175,6 +186,10 @@ class ReversionService:
                         (monto, d["socio_id"]),
                     )
 
+                elif tipo == "salario":
+                    # Solo se acumula: la caja se ajusta abajo con caja_delta.
+                    salario_total += monto
+
                 elif tipo == "pago_credito" and d["nro_cuota"] and d["nro_cuota"] > 0:
                     # La cuota vuelve a quedar pendiente. `mora_exenta` no se
                     # toca: es una decisión del operador, no un efecto del pago.
@@ -195,6 +210,9 @@ class ReversionService:
             if mora_total:
                 fondo_mora = self._get_config_int(cursor, "total_mora")
                 self._set_config(cursor, "total_mora", max(0, fondo_mora - mora_total))
+            if salario_total:
+                acumulado = self._get_config_int(cursor, "total_salarios")
+                self._set_config(cursor, "total_salarios", max(0, acumulado - salario_total))
 
             # Libro auxiliar: se borran las filas del recibo y se corrige el
             # saldo corrido de las posteriores (mismo criterio que al eliminar

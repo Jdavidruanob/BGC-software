@@ -35,14 +35,65 @@ class SociosRepository:
             return []
 
     def find_all_full(self):
+        """Socios activos con sus tres cifras: aportes, deuda e intereses.
+
+        - `saldo`          → lo que el socio tiene aportado (columna de socios).
+        - `saldo_credito`  → lo que le falta por pagar sumando todas sus letras.
+        - `intereses`      → lo que ya ha pagado de intereses en sus créditos.
+
+        Las dos últimas se calculan con las MISMAS fórmulas que el tablero de
+        datos usa para "Cartera por cobrar" e "Intereses recaudados", de modo
+        que sumar la columna de todos los socios da exactamente el total del
+        tablero. Si alguna de las dos definiciones cambia, hay que cambiarla en
+        los dos sitios a la vez (ver `db/db_manager.py`).
+
+        Un crédito puede tener varios socios. En ese caso el saldo y los
+        intereses se reparten en partes iguales entre ellos: es la única forma
+        de que la suma por socio siga cuadrando con el total, sin contar dos
+        veces la misma deuda.
+        """
         try:
             cursor = self.db.conn.cursor()
             cursor.execute("""
-                SELECT s.*, COUNT(sc.credito_letra) as creditos
+                WITH socios_por_letra AS (
+                    SELECT credito_letra, COUNT(*) AS n
+                    FROM socio_credito GROUP BY credito_letra
+                ),
+                -- Próxima cuota sin pagar de cada crédito: ahí está el saldo
+                -- pendiente (capital restante + la cuota que sigue).
+                prox AS (
+                    SELECT credito_letra, MIN(nro_cuota) AS nro
+                    FROM liquidaciones WHERE fecha_pago IS NULL
+                    GROUP BY credito_letra
+                ),
+                deuda_por_socio AS (
+                    SELECT sc.socio_id,
+                           SUM((l.saldo_capital + l.valor_cuota)::numeric / spl.n) AS deuda
+                    FROM prox p
+                    JOIN liquidaciones l
+                      ON l.credito_letra = p.credito_letra AND l.nro_cuota = p.nro
+                    JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
+                    JOIN socios_por_letra spl ON spl.credito_letra = l.credito_letra
+                    GROUP BY sc.socio_id
+                ),
+                intereses_por_socio AS (
+                    SELECT sc.socio_id,
+                           SUM(l.interes_mes::numeric / spl.n) AS intereses
+                    FROM liquidaciones l
+                    JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
+                    JOIN socios_por_letra spl ON spl.credito_letra = l.credito_letra
+                    WHERE l.fecha_pago IS NOT NULL
+                    GROUP BY sc.socio_id
+                )
+                SELECT s.*,
+                       (SELECT COUNT(*) FROM socio_credito sc WHERE sc.socio_id = s.id)
+                           AS creditos,
+                       COALESCE(ROUND(d.deuda), 0)::bigint      AS saldo_credito,
+                       COALESCE(ROUND(i.intereses), 0)::bigint  AS intereses
                 FROM socios s
-                LEFT JOIN socio_credito sc ON s.id = sc.socio_id
+                LEFT JOIN deuda_por_socio d     ON d.socio_id = s.id
+                LEFT JOIN intereses_por_socio i ON i.socio_id = s.id
                 WHERE COALESCE(s.activo, 1) = 1
-                GROUP BY s.id
                 ORDER BY s.nombres
             """)
             return [dict(row) for row in cursor.fetchall()]

@@ -75,6 +75,7 @@ CreditoService(db, creditos: CreditosRepository, auxiliar, config)
 PagoService(db, liquidaciones: LiquidacionesRepository, auxiliar, config)
 CombinadoService(db, liquidaciones, auxiliar, config)
 CajaService(config, auxiliar)          # ← no necesita DBConnection
+SalarioService(db, config, auxiliar, socios)
 ```
 
 Los **forms** reciben el servicio ya construido (llega desde `HomePage`):
@@ -146,6 +147,10 @@ Estas reglas están en el código y no deben romperse nunca:
 | Mora: **temporalmente manual** — el operador digita el valor en el form; `calculate_mora` no se usa | `pago_service.py`, `combinado_service.py` |
 | Cuota marcada (`mora_exenta`) nunca cuenta como vencida, sin importar la fecha | `pago_service.py`, `combinado_service.py`, `liquidaciones_repo.py` |
 | Commit de caja y auxiliar en la misma transacción | Todos los servicios de escritura |
+| El salario **sale de `saldo_en_caja`** y además se acumula en `total_salarios` | `salario_service.py` |
+| `total_salarios` se descuenta al eliminar un recibo de salario | `reversion_service.py` |
+| La suma de `saldo_credito` de los socios == "Cartera por cobrar" del tablero | `socios_repo.py`, `db_manager.py` |
+| La suma de `intereses` de los socios == "Intereses recaudados" del tablero | `socios_repo.py`, `db_manager.py` |
 
 ---
 

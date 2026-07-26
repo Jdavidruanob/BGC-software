@@ -17,6 +17,7 @@ from views.widgets.forms.form_combinado import FormCombinado
 from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.forms.form_devolucion_total import FormDevolucionTotal
+from views.widgets.forms.form_salario import FormSalario
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
 from views.widgets.edit_admin_dialog import EditAdminDialog 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
@@ -24,7 +25,8 @@ from utils.message_boxes import show_error, show_success, show_warning, show_inf
 
 class HomePage(QWidget):
     def __init__(self, aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc,
-                 caja_svc, db_manager, assistant_page, window, devolucion_total_svc=None):
+                 caja_svc, db_manager, assistant_page, window, devolucion_total_svc=None,
+                 salario_svc=None):
         super().__init__()
         self.setObjectName("HomePage")
         self.db_manager = db_manager
@@ -105,11 +107,19 @@ class HomePage(QWidget):
         self.btn_devolucion_total.setProperty("btnType", "operacion")
         self.btn_devolucion_total.clicked.connect(self.toggle_devolucion_total)
 
+        self.btn_salario = QPushButton(" Pagar Salario")
+        self.btn_salario.setIconSize(QSize(24, 24))
+        self.btn_salario.setIcon(load_svg_icon("icons/cash.svg"))
+        self.btn_salario.setCheckable(True)
+        self.btn_salario.setProperty("btnType", "operacion")
+        self.btn_salario.clicked.connect(self.toggle_salario)
+
         button_row.addWidget(self.btn_aporte)
         button_row.addWidget(self.btn_pago_credito)
         button_row.addWidget(self.btn_nuevo_credito)
         button_row.addWidget(self.btn_retiro)
         button_row.addWidget(self.btn_devolucion_total)
+        button_row.addWidget(self.btn_salario)
 
         # --- Stack de Formularios ---
         self.form_container = QFrame()
@@ -129,6 +139,7 @@ class HomePage(QWidget):
         self.form_retiro = FormRetiro(retiro_svc, self.db_manager)
         self.form_aporte_pago = FormCombinado(combinado_svc, self.db_manager, self.assistant_page)
         self.form_devolucion_total = FormDevolucionTotal(devolucion_total_svc, self.db_manager)
+        self.form_salario = FormSalario(salario_svc, self.db_manager)
 
         # Conectar señales de actualización
         self.form_aporte.operation_registered.connect(self.refresh_view)
@@ -137,6 +148,7 @@ class HomePage(QWidget):
         self.form_retiro.operation_registered.connect(self.refresh_view)
         self.form_aporte_pago.operation_registered.connect(self.refresh_view)
         self.form_devolucion_total.operation_registered.connect(self.refresh_view)
+        self.form_salario.operation_registered.connect(self.refresh_view)
 
         self.stack.addWidget(self.form_aporte)             # 0
         self.stack.addWidget(self.page_pago)               # 1
@@ -144,6 +156,7 @@ class HomePage(QWidget):
         self.stack.addWidget(self.form_retiro)             # 3
         self.stack.addWidget(self.form_aporte_pago)        # 4
         self.stack.addWidget(self.form_devolucion_total)   # 5
+        self.stack.addWidget(self.form_salario)            # 6
 
         scroll_area.setWidget(self.stack)
         self.form_layout.addWidget(scroll_area)
@@ -591,6 +604,10 @@ class HomePage(QWidget):
             self.stack.setCurrentIndex(5)
             self.form_container.setVisible(True)
             return
+        if self.btn_salario.isChecked():
+            self.stack.setCurrentIndex(6)
+            self.form_container.setVisible(True)
+            return
         if self.btn_aporte.isChecked() and self.btn_pago_credito.isChecked():
             self.stack.setCurrentIndex(4)
             self.form_container.setVisible(True)
@@ -615,6 +632,8 @@ class HomePage(QWidget):
             self.btn_retiro.setChecked(False)
         if self.btn_devolucion_total.isChecked():
             self.btn_devolucion_total.setChecked(False)
+        if self.btn_salario.isChecked():
+            self.btn_salario.setChecked(False)
         self.update_form()
         #print(f"Aporte seleccionado: {self.btn_aporte.isChecked()}")
 
@@ -625,6 +644,8 @@ class HomePage(QWidget):
             self.btn_retiro.setChecked(False)
         if self.btn_devolucion_total.isChecked():
             self.btn_devolucion_total.setChecked(False)
+        if self.btn_salario.isChecked():
+            self.btn_salario.setChecked(False)
         self.update_form()
         #print(f"Pago Crédito seleccionado: {self.btn_pago_credito.isChecked()}")
 
@@ -634,6 +655,7 @@ class HomePage(QWidget):
             self.btn_pago_credito.setChecked(False)
             self.btn_retiro.setChecked(False)
             self.btn_devolucion_total.setChecked(False)
+            self.btn_salario.setChecked(False)
         self.update_form()
         #print(f"Nuevo Crédito seleccionado: {self.btn_nuevo_credito.isChecked()}")
 
@@ -643,6 +665,7 @@ class HomePage(QWidget):
             self.btn_pago_credito.setChecked(False)
             self.btn_nuevo_credito.setChecked(False)
             self.btn_devolucion_total.setChecked(False)
+            self.btn_salario.setChecked(False)
         self.update_form()
         #print(f"Retiro seleccionado: {self.btn_retiro.isChecked()}")
 
@@ -652,6 +675,16 @@ class HomePage(QWidget):
             self.btn_pago_credito.setChecked(False)
             self.btn_nuevo_credito.setChecked(False)
             self.btn_retiro.setChecked(False)
+            self.btn_salario.setChecked(False)
+        self.update_form()
+
+    def toggle_salario(self):
+        if self.btn_salario.isChecked():
+            self.btn_aporte.setChecked(False)
+            self.btn_pago_credito.setChecked(False)
+            self.btn_nuevo_credito.setChecked(False)
+            self.btn_retiro.setChecked(False)
+            self.btn_devolucion_total.setChecked(False)
         self.update_form()
 
     def refresh_forms(self):
@@ -672,6 +705,8 @@ class HomePage(QWidget):
         self.form_devolucion_total.refresh()
         # Retiro (más adelante)
         self.form_retiro.refresh()
+        # Pago de salario
+        self.form_salario.refresh()
 
         
 

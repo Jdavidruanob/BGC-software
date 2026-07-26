@@ -28,6 +28,7 @@ from services.pago_service import PagoService
 from services.combinado_service import CombinadoService
 from services.caja_service import CajaService
 from services.reversion_service import ReversionService
+from services.salario_service import SalarioService
 # Importar configuraciones
 from config import (
     DYNAMIC_DATA_BASE_DIR,
@@ -107,6 +108,11 @@ def main():
         db_manager.socios_repo, db_manager.creditos_repo,
     )
 
+    salario_svc = SalarioService(
+        db_manager.db_conn, db_manager.config_repo, db_manager.auxiliar_repo,
+        db_manager.socios_repo,
+    )
+
     reversion_svc = ReversionService(db_manager.db_conn, db_manager.liquidaciones_repo)
 
     # Create main window
@@ -114,7 +120,8 @@ def main():
     assistant_page = AssistantPage(db_manager, reversion_svc)
     home_page = HomePage(aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc,
                          caja_svc, db_manager, assistant_page, window,
-                         devolucion_total_svc=devolucion_total_svc)
+                         devolucion_total_svc=devolucion_total_svc,
+                         salario_svc=salario_svc)
 
     # Create and add new views to the main window
     window.add_view("home", home_page)
