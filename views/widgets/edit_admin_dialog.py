@@ -8,7 +8,8 @@ from config import load_styles, format_miles_colombian_int, parse_miles_colombia
 
 class EditAdminDialog(QDialog):
     def __init__(self, current_papeleria, current_mora_pct,
-                 current_next_recibo=1, current_next_letra=1, parent=None):
+                 current_next_recibo=1, current_next_letra=1, parent=None,
+                 current_fondo_mora=0):
         super().__init__(parent)
         self.setWindowTitle("Configurar Administración")
         self.setModal(True)
@@ -34,7 +35,19 @@ class EditAdminDialog(QDialog):
         self.input_papeleria.textChanged.connect(self.on_papeleria_changed)
         layout.addWidget(self.input_papeleria)
 
-        # --- CAMPO 2: PORCENTAJE DE MORA ---
+        # --- CAMPO 2: FONDO ACUMULADO DE MORA ---
+        lbl_fondo_mora = QLabel("Fondo Acumulado Mora:")
+        lbl_fondo_mora.setObjectName("FormLabel")
+        layout.addWidget(lbl_fondo_mora)
+
+        self.input_fondo_mora = QLineEdit()
+        self.input_fondo_mora.setObjectName("InputField")
+        self.input_fondo_mora.setAlignment(Qt.AlignRight)
+        self.input_fondo_mora.setText(format_miles_colombian_int(current_fondo_mora))
+        self.input_fondo_mora.textChanged.connect(self.on_fondo_mora_changed)
+        layout.addWidget(self.input_fondo_mora)
+
+        # --- CAMPO 3: PORCENTAJE DE MORA ---
         lbl_mora = QLabel("Porcentaje Interés Mora (0.01 - 1.0):")
         lbl_mora.setObjectName("FormLabel")
         layout.addWidget(lbl_mora)
@@ -101,9 +114,21 @@ class EditAdminDialog(QDialog):
             self.input_papeleria.setCursorPosition(len(formatted))
             self.input_papeleria.blockSignals(False)
 
+    def on_fondo_mora_changed(self, text):
+        """Formato de miles en tiempo real para el fondo de mora"""
+        if not text: return
+        raw = parse_miles_colombian(text)
+        formatted = format_miles_colombian_int(raw)
+        if formatted != text:
+            self.input_fondo_mora.blockSignals(True)
+            self.input_fondo_mora.setText(formatted)
+            self.input_fondo_mora.setCursorPosition(len(formatted))
+            self.input_fondo_mora.blockSignals(False)
+
     def get_data(self):
-        """Retorna (int_papeleria, float_mora, int_next_recibo, int_next_letra)"""
+        """Retorna (papeleria, mora_pct, next_recibo, next_letra, fondo_mora)"""
         papeleria = parse_miles_colombian(self.input_papeleria.text())
+        fondo_mora = parse_miles_colombian(self.input_fondo_mora.text())
 
         try:
             mora = float(self.input_mora.text().replace(',', '.'))
@@ -119,4 +144,4 @@ class EditAdminDialog(QDialog):
         except ValueError:
             next_letra = self._orig_letra
 
-        return papeleria, mora, next_recibo, next_letra
+        return papeleria, mora, next_recibo, next_letra, fondo_mora

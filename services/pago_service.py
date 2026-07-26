@@ -10,6 +10,17 @@ class PagoService:
         self._auxiliar = auxiliar
         self._config = config
 
+    def preview(self, pagos_input: list) -> dict:
+        """Calcula (sin escribir nada) qué se va a cobrar, incluida la mora
+        exacta de cada cuota. Úsalo para mostrarle al operador un resumen
+        antes de confirmar el registro del recibo."""
+        ops_pendientes, _ = self._preparar_operaciones(pagos_input)
+        reporte = {}
+        for op in ops_pendientes:
+            nombre = f"{op['socio_data']['nombres']} {op['socio_data']['apellidos']}"
+            reporte.setdefault(nombre, []).extend(op["mensajes"])
+        return reporte
+
     def register(self, recibi_de_id: int, recibi_data: dict, pagos_input: list):
         """
         pagos_input: list de dicts {socio_data, letra_id, n_cuotas, abono_capital}
@@ -18,11 +29,55 @@ class PagoService:
         Retorna (recibo_id, excel_path, reporte_global).
         Lanza ValueError con mensaje descriptivo para errores de validación.
         """
+        fecha = get_hoy_str()
+        ops_pendientes, pagos_para_recibo = self._preparar_operaciones(pagos_input)
+
+        if not ops_pendientes:
+            raise ValueError("No hay operaciones válidas para registrar.")
+
+        # --- Fase 2: Ejecución ---
+        cursor = self._db.conn.cursor()
+        try:
+            cursor.execute("INSERT INTO recibos (socio_id) VALUES (%s) RETURNING id", (recibi_de_id,))
+            recibo_id = cursor.fetchone()["id"]
+
+            saldo_caja = self._config.get_int("saldo_en_caja")
+            fondo_mora = self._config.get_int("total_mora")
+            mora_total = 0
+            reporte_global = {}
+
+            for op in ops_pendientes:
+                saldo_caja, mora_total = self._execute_op(
+                    cursor, op, recibo_id, fecha, saldo_caja, mora_total,
+                    pagos_para_recibo, reporte_global,
+                )
+
+            self._config.set("saldo_en_caja", str(saldo_caja))
+            if mora_total > 0:
+                self._config.set("total_mora", str(fondo_mora + mora_total))
+
+            self._db.conn.commit()
+
+            excel_path = generar_recibo_solo_pagos(
+                get_total_cuotas=self._liquidaciones.get_total_cuotas,
+                recibo_id=recibo_id,
+                recibi_de_data=recibi_data,
+                pagos_credito_info=list(pagos_para_recibo.values()),
+            )
+            return recibo_id, excel_path, reporte_global
+
+        except Exception:
+            self._db.conn.rollback()
+            raise
+
+    # --- Helpers privados ---
+
+    def _preparar_operaciones(self, pagos_input: list):
+        """Fase 1 (solo lecturas): valida y calcula cada operación, incluida
+        la mora exacta. No escribe nada en la base."""
         tasa_mora = float(self._config.get("porcentaje_mora") or 0.02)
         hoy = get_hoy()
-        fecha = get_hoy_str()
 
-        # --- Fase 1: Validación y preparación ---
         ops_pendientes = []
         pagos_para_recibo = {}
 
@@ -61,45 +116,7 @@ class PagoService:
                     self._prepare_abono(socio_data, letra_id, abono_capital, hoy, tasa_mora, sin_mora)
                 )
 
-        if not ops_pendientes:
-            raise ValueError("No hay operaciones válidas para registrar.")
-
-        # --- Fase 2: Ejecución ---
-        cursor = self._db.conn.cursor()
-        try:
-            cursor.execute("INSERT INTO recibos (socio_id) VALUES (%s) RETURNING id", (recibi_de_id,))
-            recibo_id = cursor.fetchone()["id"]
-
-            saldo_caja = self._config.get_int("saldo_en_caja")
-            total_admin = self._config.get_int("total_admin")
-            mora_total = 0
-            reporte_global = {}
-
-            for op in ops_pendientes:
-                saldo_caja, mora_total = self._execute_op(
-                    cursor, op, recibo_id, fecha, saldo_caja, mora_total,
-                    pagos_para_recibo, reporte_global,
-                )
-
-            self._config.set("saldo_en_caja", str(saldo_caja))
-            if mora_total > 0:
-                self._config.set("total_admin", str(total_admin + mora_total))
-
-            self._db.conn.commit()
-
-            excel_path = generar_recibo_solo_pagos(
-                get_total_cuotas=self._liquidaciones.get_total_cuotas,
-                recibo_id=recibo_id,
-                recibi_de_data=recibi_data,
-                pagos_credito_info=list(pagos_para_recibo.values()),
-            )
-            return recibo_id, excel_path, reporte_global
-
-        except Exception:
-            self._db.conn.rollback()
-            raise
-
-    # --- Helpers privados ---
+        return ops_pendientes, pagos_para_recibo
 
     def _prepare_cuotas(self, socio_data, letra_id, n_cuotas, hoy, tasa_mora, sin_mora=False):
         cursor = self._db.conn.cursor()
@@ -120,17 +137,26 @@ class PagoService:
         items = []
         mensajes = []
         for fila in filas:
-            exenta = sin_mora or fila.get("mora_exenta")
-            mora = 0 if exenta else calculate_mora(
+            # `mora_calculada` es la que le correspondería por el atraso;
+            # `mora` es la que realmente se cobra (0 si está exenta).
+            mora_calculada = calculate_mora(
                 fila["fecha_vencimiento"], hoy, fila["valor_cuota"], tasa_mora
             )
+            exenta = bool(sin_mora or fila.get("mora_exenta"))
+            mora = 0 if exenta else mora_calculada
             costo_base = fila["valor_cuota"] + fila["interes_mes"]
             items.append({
                 "nro": fila["nro_cuota"], "monto_total": costo_base + mora,
                 "monto_base": costo_base, "mora": mora, "sin_mora": sin_mora,
+                "mora_calculada": mora_calculada, "exenta": exenta,
                 "cap": fila["valor_cuota"], "int": fila["interes_mes"],
             })
-            mensajes.append(f"Cuota #{fila['nro_cuota']}" + (" (sin mora)" if sin_mora else ""))
+            etiqueta = f"Cuota #{fila['nro_cuota']}"
+            if exenta and mora_calculada > 0:
+                etiqueta += f" (sin mora, se descartan ${mora_calculada:,})"
+            elif mora > 0:
+                etiqueta += f" (+ ${mora:,} de mora)"
+            mensajes.append(etiqueta)
         return {"tipo": "CUOTAS_MANUAL", "socio_data": socio_data,
                 "letra_id": letra_id, "items": items, "mensajes": mensajes}
 
@@ -142,13 +168,15 @@ class PagoService:
             f_venc = parse_db_date(cuota["fecha_vencimiento"])
             if f_venc >= hoy:
                 break
-            exenta = sin_mora or cuota.get("mora_exenta")
-            mora = 0 if exenta else calculate_mora(
+            mora_calculada = calculate_mora(
                 cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora
             )
+            exenta = bool(sin_mora or cuota.get("mora_exenta"))
+            mora = 0 if exenta else mora_calculada
             base = cuota["valor_cuota"] + cuota["interes_mes"]
             vencidas.append({"data": cuota, "costo_total": base + mora,
-                             "monto_base": base, "mora": mora, "sin_mora": sin_mora})
+                             "monto_base": base, "mora": mora, "sin_mora": sin_mora,
+                             "mora_calculada": mora_calculada, "exenta": exenta})
 
         temp = dinero_abono
         pagables = 0
@@ -174,9 +202,16 @@ class PagoService:
             deuda_futura = deuda - cap_vencidas
             remanente = min(temp, deuda_futura)
 
-        mensajes = [f"Vencida #{v['data']['nro_cuota']}" for v in vencidas[:pagables]]
+        mensajes = []
+        for v in vencidas[:pagables]:
+            etiqueta = f"Vencida #{v['data']['nro_cuota']}"
+            if v["exenta"] and v["mora_calculada"] > 0:
+                etiqueta += f" (sin mora, se descartan ${v['mora_calculada']:,})"
+            elif v["mora"] > 0:
+                etiqueta += f" (+ ${v['mora']:,} de mora)"
+            mensajes.append(etiqueta)
         if remanente > 0:
-            mensajes.append("Abono Capital")
+            mensajes.append(f"Abono Capital: ${remanente:,}")
         return {"tipo": "ABONO_CASCADA", "socio_data": socio_data,
                 "letra_id": letra_id, "vencidas": vencidas[:pagables],
                 "capital_puro": remanente, "mensajes": mensajes}

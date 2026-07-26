@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
-    QHBoxLayout, QFrame, QSizePolicy, QCheckBox
+    QHBoxLayout, QFrame, QSizePolicy, QCheckBox, QMessageBox
 )
 from PySide6.QtCore import Qt, QSize, Signal
 
@@ -304,10 +304,17 @@ class FormCombinado(QWidget):
             cuotas_input.setFixedHeight(34)
             cuotas_input.setFixedWidth(90)
 
-            chk_sin_mora = QCheckBox("Sin mora")
+            chk_sin_mora = QCheckBox("🚫 Sin mora")
             chk_sin_mora.setObjectName("ChkSinMora")
-            chk_sin_mora.setToolTip("No cobrar interés de mora en esta cuota/pago")
+            chk_sin_mora.setToolTip(
+                "Si se marca: NO se cobra interés de mora en esta cuota/abono,\n"
+                "sin importar cuánto tiempo lleve vencida."
+            )
             chk_sin_mora.setCursor(Qt.PointingHandCursor)
+            chk_sin_mora.setStyleSheet(
+                "QCheckBox { font-weight: bold; color: #B71C1C; }"
+                "QCheckBox::indicator { width: 18px; height: 18px; }"
+            )
 
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")
@@ -428,6 +435,15 @@ class FormCombinado(QWidget):
             return
 
         try:
+            preview = self._service.preview(aportes_input, pagos_input)
+        except ValueError as e:
+            show_error(self, "", str(e))
+            return
+
+        if not self._confirmar_cobro(preview):
+            return
+
+        try:
             recibo_id, excel_path, reporte_global = self._service.register(
                 recibi['id'], recibi, aportes_input, pagos_input, count_cobrables
             )
@@ -450,6 +466,29 @@ class FormCombinado(QWidget):
             import traceback
             traceback.print_exc()
 
+
+    def _confirmar_cobro(self, preview: dict) -> bool:
+        """Muestra exactamente qué se va a cobrar (incluida la mora) y pide
+        confirmación antes de registrar el recibo."""
+        if not preview:
+            return True
+        texto = ""
+        for nombre, acciones in preview.items():
+            texto += f"<b>{nombre}</b><br>"
+            for accion in acciones:
+                texto += f"&nbsp;&nbsp;• {accion}<br>"
+            texto += "<br>"
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Confirmar cobro")
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Se va a registrar este cobro:<br><br>" + texto)
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("Sí, registrar")
+        msg.button(QMessageBox.No).setText("Cancelar")
+        msg.setDefaultButton(QMessageBox.No)
+        msg.exec()
+        return msg.clickedButton() == msg.button(QMessageBox.Yes)
 
     def limpiar_formulario(self):
         """Limpia todos los campos y reinicia el formulario."""

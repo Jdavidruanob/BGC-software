@@ -10,7 +10,12 @@ class CajaService:
         return self._config.get_int("saldo_en_caja")
 
     def get_total_admin(self) -> int:
+        """Fondo de papelería acumulado."""
         return self._config.get_int("total_admin")
+
+    def get_total_mora(self) -> int:
+        """Fondo de mora cobrada acumulado."""
+        return self._config.get_int("total_mora")
 
     def get_porcentaje_mora(self) -> float:
         value = self._config.get("porcentaje_mora")
@@ -30,7 +35,10 @@ class CajaService:
             id_credito=None,
         )
 
-    def set_admin_config(self, new_papeleria: int, new_mora: float):
-        """Actualiza el fondo de papelería y la tasa de mora."""
+    def set_admin_config(self, new_papeleria: int, new_mora_pct: float,
+                         new_fondo_mora: int | None = None):
+        """Actualiza los fondos de administración y la tasa de mora."""
         self._config.set("total_admin", str(new_papeleria))
-        self._config.set("porcentaje_mora", str(new_mora))
+        self._config.set("porcentaje_mora", str(new_mora_pct))
+        if new_fondo_mora is not None:
+            self._config.set("total_mora", str(new_fondo_mora))

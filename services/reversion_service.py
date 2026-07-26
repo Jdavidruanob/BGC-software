@@ -189,10 +189,12 @@ class ReversionService:
             saldo_caja = self._saldo_caja(cursor)
             self._set_config(cursor, "saldo_en_caja", saldo_caja + info["caja_delta"])
 
-            devuelto_admin = papeleria_total + mora_total
-            if devuelto_admin:
+            if papeleria_total:
                 total_admin = self._get_config_int(cursor, "total_admin")
-                self._set_config(cursor, "total_admin", max(0, total_admin - devuelto_admin))
+                self._set_config(cursor, "total_admin", max(0, total_admin - papeleria_total))
+            if mora_total:
+                fondo_mora = self._get_config_int(cursor, "total_mora")
+                self._set_config(cursor, "total_mora", max(0, fondo_mora - mora_total))
 
             # Libro auxiliar: se borran las filas del recibo y se corrige el
             # saldo corrido de las posteriores (mismo criterio que al eliminar

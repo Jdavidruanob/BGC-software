@@ -304,7 +304,7 @@ class HomePage(QWidget):
             SELECT
               (SELECT value FROM config WHERE key = 'saldo_en_caja') AS caja,
               (SELECT value FROM config WHERE key = 'total_admin')   AS admin,
-              (SELECT COALESCE(SUM(abono_mora), 0) FROM detalle_recibo) AS mora,
+              (SELECT value FROM config WHERE key = 'total_mora')    AS mora,
               (SELECT COUNT(*) FROM creditos) AS ncred
         """)
         r = cursor.fetchone()
@@ -495,14 +495,17 @@ class HomePage(QWidget):
         (próximo recibo / próxima letra)."""
         current_papeleria = self._caja_service.get_total_admin()
         current_mora = self._caja_service.get_porcentaje_mora()
+        current_fondo_mora = self._caja_service.get_total_mora()
         cur_recibo = self.db_manager.get_next_recibo()
         cur_letra = self.db_manager.get_next_letra()
-        dlg = EditAdminDialog(current_papeleria, current_mora, cur_recibo, cur_letra, self)
+        dlg = EditAdminDialog(current_papeleria, current_mora, cur_recibo, cur_letra, self,
+                              current_fondo_mora=current_fondo_mora)
         if dlg.exec():
-            new_papeleria, new_mora, new_recibo, new_letra = dlg.get_data()
-            self._caja_service.set_admin_config(new_papeleria, new_mora)
+            new_papeleria, new_mora, new_recibo, new_letra, new_fondo_mora = dlg.get_data()
+            self._caja_service.set_admin_config(new_papeleria, new_mora, new_fondo_mora)
             mensajes = [
                 f"Papelería: $ {format_miles_colombian_int(new_papeleria)}",
+                f"Fondo mora: $ {format_miles_colombian_int(new_fondo_mora)}",
                 f"Tasa Mora: {new_mora}",
             ]
             # Solo se toca la numeración si el usuario la cambió (evita reinicios

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
-from config import parse_db_date
+from config import get_hoy_str, parse_db_date
 from services.amortization import rebalance_schedule
 
 
@@ -176,7 +176,11 @@ class LiquidacionesRepository:
     def recalculate_amortization(self, letra_id, abono_capital_recien_registrado):
         try:
             cursor = self.db.conn.cursor()
-            hoy = date.today().strftime("%Y-%m-%d")
+            # Debe ser la MISMA fecha con la que se registró el pago: si el
+            # operador está en modo viaje en el tiempo y aquí se usara la fecha
+            # real, se tomarían como vencidas cuotas que aún no lo están y el
+            # plan quedaría sin recalcular.
+            hoy = get_hoy_str()
 
             cursor.execute(
                 "SELECT capital, interes, no_cuotas, fecha_inicio FROM creditos WHERE letra = %s",

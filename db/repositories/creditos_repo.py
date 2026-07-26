@@ -1,6 +1,7 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
+from config import get_hoy
 from services.amortization import build_manual_schedule
 
 
@@ -123,7 +124,7 @@ class CreditosRepository:
             cursor.execute("""
                 INSERT INTO creditos (capital, interes, no_cuotas, fecha_inicio)
                 VALUES (%s, %s, %s, %s) RETURNING letra
-            """, (capital, interes_tasa, n_cuotas, date.today().strftime("%Y-%m-%d")))
+            """, (capital, interes_tasa, n_cuotas, get_hoy().strftime("%Y-%m-%d")))
             letra_id = cursor.fetchone()["letra"]
 
             for sid in socio_ids:
@@ -149,7 +150,7 @@ class CreditosRepository:
 
             cuotas_db = []
             saldo_temp = capital
-            fecha_inicio_dt = date.today()
+            fecha_inicio_dt = get_hoy()
             for i in range(n_cuotas):
                 nro = i + 1
                 fecha_venc = fecha_inicio_dt + relativedelta(months=+nro)
@@ -201,7 +202,7 @@ class CreditosRepository:
         if not socio_ids:
             raise ValueError("Selecciona al menos un socio.")
 
-        fecha_inicio = fecha_inicio or date.today()
+        fecha_inicio = fecha_inicio or get_hoy()
         try:
             cursor = self.db.conn.cursor()
             cursor.execute("""
