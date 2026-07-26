@@ -223,6 +223,41 @@ class ReversionService:
             cursor.execute("DELETE FROM detalle_recibo WHERE recibo_id = %s", (recibo_id,))
             cursor.execute("DELETE FROM recibos WHERE id = %s", (recibo_id,))
 
+            # El número vuelve a quedar libre. Postgres, por sí solo, nunca
+            # reutiliza un número de una secuencia: si se borra el recibo 7, el
+            # siguiente saldría 8 y el 7 se perdería para siempre. Como el
+            # recibo es un documento numerado que el operador entrega en papel,
+            # los huecos no son aceptables: se reapunta la secuencia al primer
+            # número libre después del último recibo que queda.
+            #
+            # Nota: esto recupera el número cuando se borra el ÚLTIMO recibo,
+            # que es el caso real (se elimina un recibo recién creado por
+            # error). Si se borra uno intermedio, ese hueco no se rellena:
+            # hacerlo exigiría asignar ids a mano y abriría condiciones de
+            # carrera sobre documentos contables.
+            cursor.execute("""
+                SELECT setval(
+                    pg_get_serial_sequence('recibos', 'id'),
+                    COALESCE((SELECT MAX(id) FROM recibos), 0) + 1,
+                    false
+                )
+            """)
+
+            # Como los números de recibo se reutilizan, una fila del auxiliar que
+            # siga apuntando a un recibo borrado es una bomba de tiempo: cuando
+            # ese número se vuelva a usar y ese nuevo recibo se elimine, el
+            # `DELETE FROM auxiliar WHERE recibo = ...` de arriba se llevaría por
+            # delante el movimiento viejo, que no tiene nada que ver.
+            #
+            # Se corta el vínculo en el mismo momento en que el recibo deja de
+            # existir. La fila del auxiliar se conserva —es historia contable
+            # real— pero deja de estar asociada a un número que ya no es suyo.
+            cursor.execute("""
+                UPDATE auxiliar SET recibo = NULL
+                WHERE recibo IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM recibos r WHERE r.id = auxiliar.recibo)
+            """)
+
             self._db.conn.commit()
         except Exception:
             self._db.conn.rollback()

@@ -1,4 +1,5 @@
 from config import get_hoy_str
+from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_devolucion_total import generar_recibo_devolucion_total
 
 
@@ -68,6 +69,7 @@ class DevolucionTotalService:
                 socio_data={"nombres": socio_data["nombres"], "apellidos": socio_data["apellidos"]},
                 valor=saldo,
             )
+            guardar_recibo(self._db.conn, recibo_id, "devolucion_total", excel_path)
             return recibo_id, excel_path, nuevo_saldo_caja
 
         except Exception:

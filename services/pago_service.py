@@ -1,4 +1,5 @@
 from config import get_hoy, get_hoy_str, parse_db_date
+from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_pago import generar_recibo_solo_pagos
 
 
@@ -63,6 +64,7 @@ class PagoService:
                 recibi_de_data=recibi_data,
                 pagos_credito_info=list(pagos_para_recibo.values()),
             )
+            guardar_recibo(self._db.conn, recibo_id, "pago", excel_path)
             return recibo_id, excel_path, reporte_global
 
         except Exception:

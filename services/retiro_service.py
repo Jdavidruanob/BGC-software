@@ -1,4 +1,5 @@
 from config import get_hoy_str
+from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_retiro import generar_recibo_retiro
 
 
@@ -48,6 +49,7 @@ class RetiroService:
                 socio_data={"nombres": socio_data["nombres"], "apellidos": socio_data["apellidos"]},
                 monto_retiro=monto,
             )
+            guardar_recibo(self._db.conn, recibo_id, "retiro", excel_path)
             return recibo_id, excel_path, nuevo_saldo_caja
 
         except Exception:

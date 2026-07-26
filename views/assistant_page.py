@@ -481,6 +481,9 @@ class AssistantPage(QWidget):
             return
 
         self.db_manager.invalidate_members()
+        # El Excel del recibo eliminado tiene que desaparecer también de la
+        # carpeta: si no, queda un archivo de un recibo que ya no existe.
+        sincronizar_recibos(self.db_manager.conn, RECIBOS_OUTPUT_DIR)
         aviso = f"El recibo #{recibo_id} se eliminó y sus movimientos se revirtieron."
         if resultado["letras_fallidas"]:
             letras = ", ".join(str(l) for l in resultado["letras_fallidas"])
@@ -540,17 +543,19 @@ class AssistantPage(QWidget):
                 QMessageBox.critical(self, "Error", "No se pudo eliminar la operación.")
 
     def on_refrescar(self):
-        """Baja los recibos nuevos del bot al computador y recarga la lista."""
+        """Deja la carpeta de recibos igual a la base y recarga la lista."""
         self.db_manager.invalidate_members()
-        nuevos = sincronizar_recibos(self.db_manager.conn, RECIBOS_OUTPUT_DIR)
+        nuevos, borrados = sincronizar_recibos(self.db_manager.conn, RECIBOS_OUTPUT_DIR)
         self.apply_filters()
-        if nuevos:
-            show_info(
-                self, "",
-                f"Se descargaron {nuevos} recibo(s) nuevo(s) a la carpeta de recibos.",
-            )
+        if nuevos or borrados:
+            partes = []
+            if nuevos:
+                partes.append(f"se descargaron {nuevos} recibo(s) nuevo(s)")
+            if borrados:
+                partes.append(f"se quitaron {borrados} que ya no están en la base")
+            show_info(self, "", f"Carpeta de recibos actualizada: {' y '.join(partes)}.")
         else:
-            show_info(self, "", "Todo actualizado. No hay recibos nuevos por descargar.")
+            show_info(self, "", "Todo actualizado. La carpeta ya coincide con la base.")
 
     def refresh_view(self):
         """
