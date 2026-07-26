@@ -210,6 +210,7 @@ class DBManager:
             SELECT
               (SELECT value FROM config WHERE key = 'saldo_en_caja') AS saldo_caja,
               (SELECT value FROM config WHERE key = 'total_admin')   AS papeleria,
+              (SELECT value FROM config WHERE key = 'total_salarios') AS total_salarios,
               (SELECT COALESCE(SUM(abono_mora),0) FROM detalle_recibo) AS mora_acumulada,
               (SELECT COALESCE(SUM(saldo),0) FROM socios) AS aportes_socios,
               (SELECT COUNT(*) FROM socios) AS socios_activos,
@@ -227,6 +228,7 @@ class DBManager:
 
         saldo_caja = _i(m["saldo_caja"])
         papeleria = _i(m["papeleria"])
+        total_salarios = _i(m["total_salarios"])
         mora_acumulada = _i(m["mora_acumulada"])
         aportes_socios = _i(m["aportes_socios"])
         socios_activos = _i(m["socios_activos"])
@@ -266,6 +268,10 @@ class DBManager:
             "administracion": papeleria + mora_acumulada,
             "papeleria": papeleria,
             "mora_acumulada": mora_acumulada,
+            # Acumulado de salarios pagados al administrador. Es una suma única
+            # que lleva `SalarioService`; sirve para saber a fin de año cuánto
+            # se destinó a esto sin recorrer todo el histórico.
+            "total_salarios": total_salarios,
             "socios_activos": socios_activos,
             "creditos_vigentes": creditos_vigentes,
             "creditos_en_mora": creditos_en_mora,
@@ -316,13 +322,24 @@ class DBManager:
                          for r in cur.fetchall()]
 
         # 4) Intereses pagados por socio (Top N): interés de cada cuota pagada,
-        #    atribuido al socio que registró el pago.
+        #    atribuido a los socios dueños del crédito.
+        #
+        #    Antes esto se calculaba cruzando por `detalle_recibo`, es decir por
+        #    quién registró el pago. Eso dejaba fuera todas las cuotas pagadas
+        #    que no tienen un recibo asociado —el histórico cargado a mano, o
+        #    cualquier recibo que se haya eliminado— así que la suma por socio
+        #    no coincidía con `intereses_total`. Cruzando por `socio_credito`
+        #    ambas cifras salen de la misma fuente y siempre cuadran.
         cur.execute(
-            "SELECT s.nombres || ' ' || s.apellidos AS socio, COALESCE(SUM(l.interes_mes),0) AS total "
-            "FROM detalle_recibo dr "
-            "JOIN liquidaciones l ON l.credito_letra = dr.credito_letra AND l.nro_cuota = dr.nro_cuota "
-            "JOIN socios s ON s.id = dr.socio_id "
-            "WHERE dr.tipo_operacion = 'pago_credito' AND dr.nro_cuota > 0 "
+            "WITH socios_por_letra AS ("
+            "  SELECT credito_letra, COUNT(*) AS n FROM socio_credito GROUP BY credito_letra) "
+            "SELECT s.nombres || ' ' || s.apellidos AS socio, "
+            "       COALESCE(ROUND(SUM(l.interes_mes::numeric / spl.n)),0)::bigint AS total "
+            "FROM liquidaciones l "
+            "JOIN socio_credito sc ON sc.credito_letra = l.credito_letra "
+            "JOIN socios_por_letra spl ON spl.credito_letra = l.credito_letra "
+            "JOIN socios s ON s.id = sc.socio_id "
+            "WHERE l.fecha_pago IS NOT NULL "
             "GROUP BY s.id, s.nombres, s.apellidos ORDER BY total DESC LIMIT %s", (top_n,))
         intereses_socio = [{"socio": r["socio"], "total": int(r["total"] or 0)}
                            for r in cur.fetchall()]

@@ -270,6 +270,15 @@ class DataPage(QWidget):
             f"Papelería {money(m['papeleria'])} · Mora {money(m['mora_acumulada'])}"), 0, 3)
         root.addLayout(row1)
 
+        # Salarios pagados: acumulado del año. Va en su propia fila porque no
+        # es un activo de la cooperativa como los de arriba, sino un gasto.
+        row1b = QGridLayout()
+        row1b.setSpacing(14)
+        row1b.addWidget(self._kpi(
+            "Salarios pagados (acumulado)", money(m["total_salarios"]), ROJO,
+            "Sale de la caja"), 0, 0)
+        root.addLayout(row1b)
+
         # --- Medio: salud de cartera ---
         root.addWidget(self._seccion_titulo("Salud de la cartera"))
         row2 = QGridLayout()

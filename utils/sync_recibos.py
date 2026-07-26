@@ -16,8 +16,28 @@ dejado ahí se respeta.
 import os
 import re
 
-# Solo se administran los archivos que genera el propio sistema.
-_PATRON_RECIBO = re.compile(r"^Recibo_(\d+)\.xlsx$", re.IGNORECASE)
+# Solo se administran los archivos que genera el propio sistema. El mismo
+# recibo puede estar en disco con tres nombres distintos:
+#
+#   Recibo_7.xlsx                     → el que baja de la base (lo generó el bot)
+#   Recibo_7_20260726.xlsx            → el que escribe la app al crearlo
+#   Devolucion_total_7_20260726.xlsx  → idem, para devoluciones totales
+#
+# Reconocer las tres formas es lo que evita que un recibo creado en la app se
+# vuelva a descargar bajo otro nombre y quede duplicado en la carpeta.
+_PATRONES_RECIBO = (
+    re.compile(r"^Recibo_(\d+)(?:_\d{8})?\.xlsx$", re.IGNORECASE),
+    re.compile(r"^Devolucion_total_(\d+)(?:_\d{8})?\.xlsx$", re.IGNORECASE),
+)
+
+
+def _id_de_recibo(nombre):
+    """Número de recibo al que pertenece el archivo, o None si no es nuestro."""
+    for patron in _PATRONES_RECIBO:
+        m = patron.match(nombre)
+        if m:
+            return int(m.group(1))
+    return None
 
 
 def sincronizar_recibos(conn, output_dir):
@@ -34,12 +54,14 @@ def sincronizar_recibos(conn, output_dir):
         cur.execute("SELECT recibo_id FROM recibos_archivos ORDER BY recibo_id")
         ids_remotos = {row["recibo_id"] for row in cur.fetchall()}
 
-        # 2) Lo que hay en disco, solo archivos con nombre de recibo.
+        # 2) Lo que hay en disco, solo archivos con nombre de recibo. Un mismo
+        #    recibo puede tener más de un archivo (distintas formas del nombre),
+        #    así que se guardan todos para poder borrarlos todos.
         en_disco = {}
         for nombre in os.listdir(output_dir):
-            m = _PATRON_RECIBO.match(nombre)
-            if m:
-                en_disco[int(m.group(1))] = os.path.join(output_dir, nombre)
+            rid = _id_de_recibo(nombre)
+            if rid is not None:
+                en_disco.setdefault(rid, []).append(os.path.join(output_dir, nombre))
 
         # 3) Descargar los que faltan.
         faltantes = sorted(ids_remotos - set(en_disco))
@@ -65,11 +87,12 @@ def sincronizar_recibos(conn, output_dir):
         sobrantes = sorted(set(en_disco) - ids_remotos)
         borrados = 0
         for rid in sobrantes:
-            try:
-                os.remove(en_disco[rid])
-                borrados += 1
-            except Exception as e:
-                print(f"❌ No se pudo borrar el recibo {rid} de la carpeta: {e}")
+            for ruta in en_disco[rid]:
+                try:
+                    os.remove(ruta)
+                    borrados += 1
+                except Exception as e:
+                    print(f"❌ No se pudo borrar el recibo {rid} de la carpeta: {e}")
 
         if descargados:
             print(f"📥 {descargados} recibo(s) nuevo(s) descargado(s) a {output_dir}")

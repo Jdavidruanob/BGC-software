@@ -40,7 +40,8 @@ class MembersPage(QWidget):
     """Sección de socios estilo POS: tabla con saldo, créditos y acciones
     (ver, editar, eliminar), búsqueda tolerante a tildes y orden por columnas."""
 
-    COL_FOTO, COL_NOMBRE, COL_SALDO, COL_CREDITOS, COL_ACCIONES = range(5)
+    (COL_FOTO, COL_NOMBRE, COL_SALDO, COL_SALDO_CREDITO, COL_INTERESES,
+     COL_CREDITOS, COL_ACCIONES) = range(7)
 
     def __init__(self, db_manager, main_window):
         super().__init__()
@@ -94,9 +95,12 @@ class MembersPage(QWidget):
         main_layout.addLayout(top_bar)
 
         # --- Tabla POS ---
-        self.table = QTableWidget(0, 5)
+        self.table = QTableWidget(0, 7)
         self.table.setObjectName("membersTable")
-        self.table.setHorizontalHeaderLabels(["", "Socio", "Saldo de aportes", "Créditos", "Acciones"])
+        self.table.setHorizontalHeaderLabels(
+            ["", "Socio", "Saldo de aportes", "Saldo crédito", "Intereses",
+             "Créditos", "Acciones"]
+        )
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -111,6 +115,8 @@ class MembersPage(QWidget):
         header.setSectionResizeMode(self.COL_FOTO, QHeaderView.Fixed)
         header.setSectionResizeMode(self.COL_NOMBRE, QHeaderView.Stretch)
         header.setSectionResizeMode(self.COL_SALDO, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(self.COL_SALDO_CREDITO, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(self.COL_INTERESES, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(self.COL_CREDITOS, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(self.COL_ACCIONES, QHeaderView.Fixed)
         self.table.setColumnWidth(self.COL_FOTO, 56)
@@ -152,6 +158,8 @@ class MembersPage(QWidget):
             member_id = m["id"]
             nombre = f"{m['nombres']} {m['apellidos']}"
             saldo = m.get("saldo") or 0
+            saldo_credito = m.get("saldo_credito") or 0
+            intereses = m.get("intereses") or 0
             creditos = m.get("creditos") or 0
 
             # Foto (miniatura). NOTA: hoy se lee de photo_path; cuando la API
@@ -170,6 +178,26 @@ class MembersPage(QWidget):
             saldo_item = _NumericItem(f"${format_miles_colombian_int(saldo)}", saldo)
             saldo_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.table.setItem(row, self.COL_SALDO, saldo_item)
+
+            # Lo que le falta por pagar sumando todas sus letras.
+            deuda_item = _NumericItem(
+                f"${format_miles_colombian_int(saldo_credito)}", saldo_credito)
+            deuda_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            deuda_item.setToolTip(
+                "Lo que le falta por pagar en todos sus créditos.\n"
+                "La suma de esta columna es la «Cartera por cobrar» del tablero."
+            )
+            self.table.setItem(row, self.COL_SALDO_CREDITO, deuda_item)
+
+            # Lo que YA pagó de intereses (no lo que debe).
+            int_item = _NumericItem(
+                f"${format_miles_colombian_int(intereses)}", intereses)
+            int_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            int_item.setToolTip(
+                "Intereses que el socio ya ha pagado en sus créditos.\n"
+                "La suma de esta columna son los «Intereses recaudados» del tablero."
+            )
+            self.table.setItem(row, self.COL_INTERESES, int_item)
 
             cred_item = _NumericItem(str(creditos), creditos)
             cred_item.setTextAlignment(Qt.AlignCenter)
