@@ -12,9 +12,10 @@ from utils.sync_recibos import sincronizar_recibos
 from utils.message_boxes import show_info
 
 class AssistantPage(QWidget):
-    def __init__(self, db_manager):
+    def __init__(self, db_manager, reversion_service=None):
         super().__init__()
         self.db_manager = db_manager
+        self._reversion = reversion_service
         self.page_size = 100        # ajuste razonable
         self.current_page = 0
         self.no_more_pages = False
@@ -395,12 +396,100 @@ class AssistantPage(QWidget):
         # Crear menú
         menu = QMenu()
         delete_action = menu.addAction("🗑️ Eliminar Operación")
-        
+
+        # Si la fila viene de un recibo, se ofrece deshacerlo completo.
+        recibo_id = self._recibo_de_fila(item.row())
+        anular_action = None
+        if recibo_id is not None and self._reversion is not None:
+            anular_action = menu.addAction(
+                f"↩️ Eliminar el recibo #{recibo_id} completo (deshace todo)"
+            )
+
         # Ejecutar y esperar acción
         action = menu.exec(self.table_widget.mapToGlobal(position))
-        
+
         if action == delete_action:
             self.delete_current_operation()
+        elif anular_action is not None and action == anular_action:
+            self.delete_receipt(recibo_id)
+
+    def _recibo_de_fila(self, row):
+        """Número de recibo de una fila de la tabla, o None si no tiene."""
+        item = self.table_widget.item(row, 3)
+        if not item or not item.text().strip():
+            return None
+        try:
+            return int(item.text().strip())
+        except ValueError:
+            return None
+
+    def delete_receipt(self, recibo_id):
+        """Elimina un recibo completo revirtiendo todo lo que hizo."""
+        try:
+            info = self._reversion.preview(recibo_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo leer el recibo:\n{e}")
+            return
+
+        if not info["existe"] or info["bloqueos"]:
+            QMessageBox.warning(
+                self, "No se puede eliminar este recibo",
+                "\n".join(f"• {b}" for b in info["bloqueos"]),
+            )
+            return
+
+        detalle = "\n".join(f"  • {l}" for l in info["lineas"])
+        caja = info["caja_delta"]
+        movimiento_caja = (
+            f"salen ${-caja:,} de la caja" if caja < 0 else f"entran ${caja:,} a la caja"
+        )
+
+        texto = (
+            f"Se va a eliminar el recibo #{recibo_id} y a deshacer todo lo que hizo:\n\n"
+            f"{detalle}\n\n"
+            f"Con esto {movimiento_caja}."
+        )
+        if info["letras_recalculo"]:
+            letras = ", ".join(str(l) for l in info["letras_recalculo"])
+            texto += (
+                f"\n\n⚠️ El recibo incluye un abono a capital (letra {letras}). "
+                "Al deshacerlo, el plan de cuotas futuras de esa letra se "
+                "recalculará automáticamente."
+            )
+        texto += "\n\nEsta acción no se puede deshacer. ¿Continuar?"
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Eliminar recibo completo")
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText(texto)
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("Sí, eliminar el recibo")
+        msg.button(QMessageBox.No).setText("Cancelar")
+        msg.setDefaultButton(QMessageBox.No)
+        msg.exec()
+
+        if msg.clickedButton() != msg.button(QMessageBox.Yes):
+            return
+
+        try:
+            resultado = self._reversion.delete(recibo_id)
+        except ValueError as e:
+            QMessageBox.warning(self, "No se puede eliminar este recibo", str(e))
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo eliminar el recibo:\n{e}")
+            return
+
+        self.db_manager.invalidate_members()
+        aviso = f"El recibo #{recibo_id} se eliminó y sus movimientos se revirtieron."
+        if resultado["letras_fallidas"]:
+            letras = ", ".join(str(l) for l in resultado["letras_fallidas"])
+            aviso += (
+                f"\n\n⚠️ No se pudo recalcular el plan de cuotas de la letra {letras}. "
+                "Revísalo en la liquidación del crédito."
+            )
+        show_info(self, "Recibo eliminado", aviso)
+        self.refresh_view()
 
     def delete_current_operation(self):
         """Lógica para confirmar y borrar."""

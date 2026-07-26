@@ -31,12 +31,21 @@ class AporteService:
             saldo_caja = self._config.get_int("saldo_en_caja")
             saldo_admin = self._config.get_int("total_admin")
 
+            # Se deja registrada la papelería cobrada para poder devolverla al
+            # fondo si luego se elimina el recibo. El formulario solo informa
+            # cuántos aportes la pagan, así que se marca en los primeros: lo que
+            # importa es que el total del recibo cuadre con lo cobrado.
+            cobrables_restantes = count_cobrables
+
             for socio_data, monto in aportes:
                 socio_id = socio_data["id"]
+                papeleria = PAPELERIA_POR_APORTE if cobrables_restantes > 0 else 0
+                cobrables_restantes -= 1
                 cursor.execute("""
-                    INSERT INTO detalle_recibo (recibo_id, tipo_operacion, socio_id, monto)
-                    VALUES (%s, 'aporte', %s, %s)
-                """, (recibo_id, socio_id, monto))
+                    INSERT INTO detalle_recibo
+                        (recibo_id, tipo_operacion, socio_id, monto, papeleria)
+                    VALUES (%s, 'aporte', %s, %s, %s)
+                """, (recibo_id, socio_id, monto, papeleria))
                 cursor.execute(
                     "UPDATE socios SET saldo = saldo + %s WHERE id = %s", (monto, socio_id)
                 )

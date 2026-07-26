@@ -27,6 +27,7 @@ from services.credito_service import CreditoService
 from services.pago_service import PagoService
 from services.combinado_service import CombinadoService
 from services.caja_service import CajaService
+from services.reversion_service import ReversionService
 # Importar configuraciones
 from config import (
     DYNAMIC_DATA_BASE_DIR,
@@ -101,9 +102,11 @@ def main():
         db_manager.socios_repo, db_manager.creditos_repo,
     )
 
+    reversion_svc = ReversionService(db_manager.db_conn, db_manager.liquidaciones_repo)
+
     # Create main window
     window = MainWindow()
-    assistant_page = AssistantPage(db_manager)
+    assistant_page = AssistantPage(db_manager, reversion_svc)
     home_page = HomePage(aporte_svc, retiro_svc, pago_svc, credito_svc, combinado_svc,
                          caja_svc, db_manager, assistant_page, window,
                          devolucion_total_svc=devolucion_total_svc)
