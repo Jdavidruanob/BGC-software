@@ -37,19 +37,14 @@ class SalarioService:
         """Paga el salario del administrador.
 
         Retorna (recibo_id, excel_path, nuevo_saldo_caja).
-        Lanza ValueError si el monto no es válido, si no hay caja suficiente o
-        si el socio tesorero configurado no existe.
+        Lanza ValueError si el monto no es válido o si el socio tesorero
+        configurado no existe.
         """
         monto = int(monto or 0)
         if monto <= 0:
             raise ValueError("El valor del salario debe ser mayor que cero.")
 
         saldo_caja = self._config.get_int("saldo_en_caja")
-        if monto > saldo_caja:
-            raise ValueError(
-                f"No hay suficiente dinero en caja. "
-                f"Disponible: ${saldo_caja:,}, salario: ${monto:,}."
-            )
 
         tesorero_id = self._config.get_int("tesorero_socio_id")
         tesorero = self._socios.find_by_id(tesorero_id)
