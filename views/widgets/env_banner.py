@@ -7,7 +7,7 @@ propósito— indicando el entorno y contra qué base se está trabajando.
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QSizePolicy, QWidget
 
 import entorno
 
@@ -25,6 +25,14 @@ class EnvBanner(QWidget):
             f"{entorno.descripcion_conexion()}"
         )
         self.label.setObjectName("EnvBannerLabel")
+        # El texto es largo y no debe obligar a la ventana a ensancharse: en
+        # pantallas pequeñas se recorta por la derecha, donde va el host. Lo
+        # importante ("MODO PRUEBAS") queda siempre visible, y el detalle
+        # completo se ve en el tooltip.
+        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.label.setToolTip(
+            f"Entorno: {entorno.etiqueta()}\nBase: {entorno.descripcion_conexion()}"
+        )
 
         layout.addWidget(self.label)
         layout.addStretch()
