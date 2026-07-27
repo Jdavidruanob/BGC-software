@@ -73,7 +73,11 @@ class HomePage(QWidget):
         # QHBoxLayout el ancho mínimo de la ventana era la SUMA de los botones,
         # y al llegar al sexto la ventana empezó a pedir más ancho que la
         # pantalla. Ver views/widgets/flow_layout.py.
-        button_row = FlowWidget(margenes=(20, 20, 20, 20), espaciado=8)
+        # espaciado=0 a propósito: la QSS ya da `margin: 0 4px` a cada botón,
+        # que es exactamente la separación que tenían con el QHBoxLayout
+        # original (que usaba setSpacing(0)). Añadir espaciado aquí los
+        # separaría más de lo que estaban.
+        button_row = FlowWidget(margenes=(20, 20, 20, 20), espaciado=0)
 
         self.btn_aporte = QPushButton(" Aporte")
         self.btn_aporte.setIconSize(QSize(24, 24))

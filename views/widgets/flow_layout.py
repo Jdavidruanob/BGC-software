@@ -51,11 +51,29 @@ class FlowLayout(QLayout):
         self._acomodar(rect, solo_medir=False)
 
     def sizeHint(self):
-        return self.minimumSize()
+        """Tamaño PREFERIDO: todo en una sola fila.
+
+        Es distinto del mínimo a propósito. Los layouts que contienen a esta
+        barra reparten el espacio a partir del sizeHint, así que si aquí se
+        devolviera el mínimo, el contenedor entero se encogería a lo ancho —
+        que es exactamente lo que pasó la primera vez: el panel de operaciones
+        bajó de 995 a 714 px y con él todos los formularios y sus combos.
+
+        Declarando el ancho de una sola fila, la barra se comporta igual que el
+        QHBoxLayout de siempre cuando hay sitio, y solo envuelve cuando no lo
+        hay.
+        """
+        if not self._items:
+            return self.minimumSize()
+        ancho = sum(item.sizeHint().width() for item in self._items)
+        ancho += self._espaciado * (len(self._items) - 1)
+        alto = max(item.sizeHint().height() for item in self._items)
+        m = self.contentsMargins()
+        return QSize(ancho + m.left() + m.right(), alto + m.top() + m.bottom())
 
     def minimumSize(self):
-        """El del ítem más ancho, NO la suma. Es lo que evita que la ventana
-        crezca más allá de la pantalla."""
+        """El del ítem más ancho, NO la suma: es lo que permite que la barra
+        pueda encogerse y envolver en vez de desbordarse."""
         size = QSize()
         for item in self._items:
             size = size.expandedTo(item.minimumSize())
@@ -117,6 +135,8 @@ class FlowWidget(QWidget):
         return self._flow.heightForWidth(ancho)
 
     def sizeHint(self):
+        # El preferido es "todo en una fila"; el mínimo permite encogerse y
+        # envolver. Son distintos a propósito (ver FlowLayout.sizeHint).
         return self._flow.sizeHint()
 
     def minimumSizeHint(self):
