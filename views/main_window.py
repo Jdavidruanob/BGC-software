@@ -15,7 +15,6 @@ from config import load_styles, load_svg_icon, load_svg_icon_tinted, PRIMARY_COL
 from version import APP_VERSION
 from views.widgets.update_banner import UpdateBanner
 from views.widgets.env_banner import EnvBanner
-from views.widgets.margenes import MARGEN_ESTRECHO, margen_lateral
 import entorno
 
 NAV_ICON_INACTIVO = "#94a3b8"   # slate-400: gris desactivado
@@ -41,10 +40,7 @@ class MainWindow(QMainWindow):
         top_bar = QWidget()
         top_bar.setObjectName("TopBar")
         top_layout = QHBoxLayout()
-        # Margen estrecho de arranque; se ensancha a 80 en `resizeEvent` cuando
-        # hay sitio. Ver views/widgets/margenes.py.
-        self._top_layout = top_layout
-        top_layout.setContentsMargins(MARGEN_ESTRECHO, 17, MARGEN_ESTRECHO, 17)
+        top_layout.setContentsMargins(80, 17.5, 80, 17.5) # Margen Topbar, right, top, left, bottom
 
        # ----- Logo con QSvgWidget (Vectorial y Nítido) -----
         logo_relative_path = "logo/BGC_logo_noche.svg"
@@ -153,13 +149,6 @@ class MainWindow(QMainWindow):
         self.btn_members.setObjectName("NavBarButton")
         self.btn_data.setObjectName("NavBarButton")
 
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        lateral = margen_lateral(event.size().width())
-        m = self._top_layout.contentsMargins()
-        if m.left() != lateral:
-            self._top_layout.setContentsMargins(lateral, m.top(), lateral, m.bottom())
 
     def add_view(self, name, widget):
         """ Agrega una vista al stack y al diccionario de vistas. """
