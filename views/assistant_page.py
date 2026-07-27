@@ -10,28 +10,8 @@ import os
 from config import load_styles, format_miles_colombian_int, STYLES_DIR, ASSETS_DIR, DYNAMIC_DATA_BASE_DIR, FISCAL_YEAR, RECIBOS_OUTPUT_DIR
 from utils.sync_recibos import sincronizar_recibos
 from utils.message_boxes import show_info
-from views.widgets.flow_layout import FlowWidget
-from views.widgets.margenes import MARGEN_ESTRECHO, aplicar_margenes_adaptativos
 
 class AssistantPage(QWidget):
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        aplicar_margenes_adaptativos(self, event.size().width())
-
-    @staticmethod
-    def _campo(etiqueta, widget):
-        """Etiqueta y campo pegados en un solo bloque.
-
-        Se agrupan para que la barra de filtros pueda envolver sin que una
-        etiqueta acabe en una fila y su campo en la siguiente."""
-        caja = QWidget()
-        lay = QHBoxLayout(caja)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(6)
-        lay.addWidget(QLabel(etiqueta))
-        lay.addWidget(widget)
-        return caja
-
     def __init__(self, db_manager, reversion_service=None):
         super().__init__()
         self.db_manager = db_manager
@@ -52,9 +32,7 @@ class AssistantPage(QWidget):
 
         self.setObjectName("assistantPage")
         main_layout = QVBoxLayout(self)
-        # Margen estrecho de arranque; `resizeEvent` lo ensancha si hay sitio.
-        # Ver views/widgets/margenes.py.
-        main_layout.setContentsMargins(MARGEN_ESTRECHO, 50, MARGEN_ESTRECHO, 30)
+        main_layout.setContentsMargins(80, 50, 80, 30)
         main_layout.setSpacing(15)
 
 
@@ -69,78 +47,77 @@ class AssistantPage(QWidget):
         # filters_title.setObjectName("filtersTitle")
         # filters_layout.addWidget(filters_title)
 
-        # Los filtros van en dos barras que ENVUELVEN. Antes eran QHBoxLayout,
-        # que exige como ancho mínimo la suma de todo lo que contiene: esta
-        # zona pedía ~1100 px y era lo que obligaba a la ventana a ser más
-        # ancha que la pantalla en monitores pequeños o con escalado de
-        # Windows al 125%. Cada etiqueta viaja pegada a su campo (`_campo`),
-        # así que al bajar de fila nunca se separan.
-
         # Fila 1 de filtros: Fechas, Número y Cuota/Letra
-        fila_campos = FlowWidget(margenes=(0, 0, 0, 0), espaciado=12)
+        date_number_cuota_layout = QHBoxLayout()
 
+        date_number_cuota_layout.addWidget(QLabel("Desde:"))
         self.date_start_edit = QDateEdit(calendarPopup=True)
         self.date_start_edit.setDate(QDate(int(FISCAL_YEAR)-1, 12, 1)) # 30 noviembre del año pasado
         self.date_start_edit.setDisplayFormat("yyyy-MM-dd")
-        fila_campos.addWidget(self._campo("Desde:", self.date_start_edit))
+        date_number_cuota_layout.addWidget(self.date_start_edit)
 
+        date_number_cuota_layout.addWidget(QLabel("Hasta:"))
         self.date_end_edit = QDateEdit(calendarPopup=True)
         self.date_end_edit.setDate(QDate(int(FISCAL_YEAR), 11, 30))
         self.date_end_edit.setDisplayFormat("yyyy-MM-dd")
-        fila_campos.addWidget(self._campo("Hasta:", self.date_end_edit))
+        date_number_cuota_layout.addWidget(self.date_end_edit)
 
         # Filtro por Número Recibo
+        date_number_cuota_layout.addWidget(QLabel("Número Recibo:"))
         self.numero_search_input = QLineEdit()
         self.numero_search_input.setPlaceholderText("Recibo")
         self.numero_search_input.setValidator(QIntValidator())
         self.numero_search_input.setFixedWidth(80)
-        fila_campos.addWidget(self._campo("Número Recibo:", self.numero_search_input))
+        date_number_cuota_layout.addWidget(self.numero_search_input)
 
         # --- NUEVO: Filtro por Cuota/Letra (que usará id_credito para la DB) ---
+        date_number_cuota_layout.addWidget(QLabel("Letra:")) # Etiqueta para el usuario
         self.cuota_letra_search_input = QLineEdit()
         self.cuota_letra_search_input.setPlaceholderText("ID o número de cuota")
         # ¡IMPORTANTE!: Removemos QIntValidator aquí, ya que id_credito es TEXT (alfanumérica)
         # Esto permite buscar por "CR001", "Letra A", etc.
         self.cuota_letra_search_input.setFixedWidth(120)
-        fila_campos.addWidget(self._campo("Letra:", self.cuota_letra_search_input))
+        date_number_cuota_layout.addWidget(self.cuota_letra_search_input)
         # --- FIN NUEVO ---
 
+        date_number_cuota_layout.addStretch() # Espaciador
+
+        date_number_cuota_layout.addWidget(QLabel("Tipo Operación:"))
         self.type_combo = QComboBox()
         self.type_combo.addItem("Todos", None)
         self.type_combo.addItem("Aporte", "Aporte")
         self.type_combo.addItem("Retiro", "Retiro")
         self.type_combo.addItem("Nuevo Credito", "Nuevo Credito")
         self.type_combo.addItem("Pago Credito", "Pago Credito")
-        fila_campos.addWidget(self._campo("Tipo Operación:", self.type_combo))
+        date_number_cuota_layout.addWidget(self.type_combo)
 
-        filters_layout.addWidget(fila_campos)
+        filters_layout.addLayout(date_number_cuota_layout)
 
         # Fila 2 de filtros: Socio y Botones
-        fila_acciones = FlowWidget(margenes=(0, 0, 0, 0), espaciado=12)
-
+        socio_buttons_layout = QHBoxLayout()
+        socio_buttons_layout.addWidget(QLabel("Socio:"))
         self.socio_search_input = QLineEdit()
         self.socio_search_input.setPlaceholderText("Buscar por nombre o apellido del socio")
-        self.socio_search_input.setMinimumWidth(240)
-        fila_acciones.addWidget(self._campo("Socio:", self.socio_search_input))
+        socio_buttons_layout.addWidget(self.socio_search_input)
 
         self.apply_filters_btn = QPushButton("Aplicar Filtros")
         self.apply_filters_btn.setObjectName("applyFiltersButton")
         self.apply_filters_btn.clicked.connect(self.apply_filters)
-        fila_acciones.addWidget(self.apply_filters_btn)
+        socio_buttons_layout.addWidget(self.apply_filters_btn)
 
         self.clear_filters_btn = QPushButton("Limpiar Filtros")
         self.clear_filters_btn.setObjectName("clearFiltersButton")
         self.clear_filters_btn.clicked.connect(self.clear_filters)
-        fila_acciones.addWidget(self.clear_filters_btn)
+        socio_buttons_layout.addWidget(self.clear_filters_btn)
 
         # Refrescar: recarga la lista y baja al computador los recibos que el
         # bot haya generado y que aún no estén en la carpeta.
         self.refresh_btn = QPushButton("🔄 Refrescar")
         self.refresh_btn.setObjectName("applyFiltersButton")
         self.refresh_btn.clicked.connect(self.on_refrescar)
-        fila_acciones.addWidget(self.refresh_btn)
+        socio_buttons_layout.addWidget(self.refresh_btn)
 
-        filters_layout.addWidget(fila_acciones)
+        filters_layout.addLayout(socio_buttons_layout)
 
         main_layout.addWidget(filters_frame)
         # --- Fin Zona de Filtros ---

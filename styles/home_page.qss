@@ -37,7 +37,10 @@ QPushButton[btnType="operacion"] {
     border-radius: 10px;
     font-size: 18px;
     font-weight: 600;
-    padding: 12px 20px;
+    /* Relleno lateral ajustado (era 20px) para que las seis operaciones
+       quepan en una sola fila dentro de la tarjeta. El texto y el tamaño de
+       letra no cambian: la letra es grande a propósito. */
+    padding: 12px 10px;
     margin: 0 4px;
 }
 
