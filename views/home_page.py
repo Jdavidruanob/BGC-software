@@ -18,6 +18,8 @@ from views.widgets.forms.form_nuevo_credito import FormNuevoCredito
 from views.widgets.forms.form_retiro import FormRetiro
 from views.widgets.forms.form_devolucion_total import FormDevolucionTotal
 from views.widgets.forms.form_salario import FormSalario
+from views.widgets.flow_layout import FlowWidget
+from views.widgets.margenes import MARGEN_ESTRECHO, aplicar_margenes_adaptativos
 from views.widgets.adjust_balance_dialog import EditSaldoDialog
 from views.widgets.edit_admin_dialog import EditAdminDialog 
 from utils.message_boxes import show_error, show_success, show_warning, show_info
@@ -35,7 +37,12 @@ class HomePage(QWidget):
         self._caja_service = caja_svc
 
         main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(80, 40, 80, 20)
+        # Se arranca con el margen estrecho y `resizeEvent` lo ensancha en
+        # cuanto hay sitio. Al revés no funciona: el tamaño mínimo de la
+        # ventana se calcula con los márgenes que haya en ese momento, así que
+        # si empezara en 80 la ventana ya habría nacido demasiado ancha para
+        # una pantalla pequeña, y ensancharla después no la encoge.
+        main_layout.setContentsMargins(MARGEN_ESTRECHO, 40, MARGEN_ESTRECHO, 20)
         main_layout.setSpacing(30)
 
         # =================================================
@@ -68,9 +75,11 @@ class HomePage(QWidget):
         header.setLayout(header_layout)
 
         # --- Botones de Operación ---
-        button_row = QHBoxLayout()
-        button_row.setContentsMargins(20, 20, 20, 20)
-        button_row.setSpacing(0)
+        # Envuelven a una segunda fila si no caben a lo ancho. Con un
+        # QHBoxLayout el ancho mínimo de la ventana era la SUMA de los botones,
+        # y al llegar al sexto la ventana empezó a pedir más ancho que la
+        # pantalla. Ver views/widgets/flow_layout.py.
+        button_row = FlowWidget(margenes=(20, 20, 20, 20), espaciado=8)
 
         self.btn_aporte = QPushButton(" Aporte")
         self.btn_aporte.setIconSize(QSize(24, 24))
@@ -164,7 +173,7 @@ class HomePage(QWidget):
 
         # --- Armado del Panel Izquierdo ---
         container_layout.addWidget(header)
-        container_layout.addLayout(button_row)
+        container_layout.addWidget(button_row)
         container_layout.addWidget(self.form_container)
         self.container.setLayout(container_layout)
 
@@ -284,6 +293,9 @@ class HomePage(QWidget):
         self.right_panel.setLayout(right_layout)
         main_layout.addWidget(self.left_panel, 2.5)
         main_layout.addWidget(self.right_panel, 1.5)
+        # Los 80 px de margen a cada lado se reducen si la ventana es angosta,
+        # para que no obliguen a la ventana a ser más ancha que la pantalla.
+        self._main_layout = main_layout
         
         self.setLayout(main_layout)
         qss_path = os.path.join(STYLES_DIR , "home_page.qss")
@@ -590,6 +602,10 @@ class HomePage(QWidget):
             
         except Exception as e:
             show_error(self, "Error", f"Error al cambiar la base de datos:\n{str(e)}")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        aplicar_margenes_adaptativos(self, event.size().width())
 
     def update_form(self):
         if self.btn_nuevo_credito.isChecked():
