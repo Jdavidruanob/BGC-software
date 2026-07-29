@@ -1,4 +1,5 @@
 from config import get_hoy, get_hoy_str, parse_db_date
+from services.amortization import calculate_mora
 from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_pago import generar_recibo_solo_pagos
 
@@ -75,8 +76,9 @@ class PagoService:
 
     def _preparar_operaciones(self, pagos_input: list):
         """Fase 1 (solo lecturas): valida y calcula cada operación, incluida
-        la mora que el operador digitó. No escribe nada en la base."""
+        la mora automática de cada cuota. No escribe nada en la base."""
         hoy = get_hoy()
+        tasa_mora = float(self._config.get("porcentaje_mora") or 0.02)
 
         ops_pendientes = []
         pagos_para_recibo = {}
@@ -86,13 +88,8 @@ class PagoService:
             letra_id = item["letra_id"]
             n_cuotas = item.get("n_cuotas", 0)
             abono_capital = item.get("abono_capital", 0)
-            mora_manual = int(item.get("mora_manual") or 0)
+            cobrar_mora = item.get("cobrar_mora", True)
             nombre_socio = f"{socio_data['nombres']} {socio_data['apellidos']}"
-
-            if mora_manual < 0:
-                raise ValueError(
-                    f"La mora de {nombre_socio} (Letra {letra_id}) no puede ser negativa."
-                )
 
             if n_cuotas > 0 and abono_capital > 0:
                 raise ValueError(
@@ -114,16 +111,16 @@ class PagoService:
 
             if n_cuotas > 0:
                 ops_pendientes.append(
-                    self._prepare_cuotas(socio_data, letra_id, n_cuotas, mora_manual)
+                    self._prepare_cuotas(socio_data, letra_id, n_cuotas, hoy, tasa_mora, cobrar_mora)
                 )
             else:
                 ops_pendientes.append(
-                    self._prepare_abono(socio_data, letra_id, abono_capital, hoy, mora_manual)
+                    self._prepare_abono(socio_data, letra_id, abono_capital, hoy, tasa_mora, cobrar_mora)
                 )
 
         return ops_pendientes, pagos_para_recibo
 
-    def _prepare_cuotas(self, socio_data, letra_id, n_cuotas, mora_manual=0):
+    def _prepare_cuotas(self, socio_data, letra_id, n_cuotas, hoy, tasa_mora, cobrar_mora=True):
         cursor = self._db.conn.cursor()
         cursor.execute(
             "SELECT nro_cuota, valor_cuota, interes_mes, cuota_mensual, saldo_capital, "
@@ -141,10 +138,10 @@ class PagoService:
             )
         items = []
         mensajes = []
-        for pos, fila in enumerate(filas):
-            # La mora ya no se calcula: es el valor que digitó el operador para
-            # toda la letra y se registra completo en la primera cuota cobrada.
-            mora = mora_manual if pos == 0 else 0
+        for fila in filas:
+            mora = 0
+            if cobrar_mora and not fila["mora_exenta"]:
+                mora = calculate_mora(fila["fecha_vencimiento"], hoy, fila["valor_cuota"], tasa_mora)
             costo_base = fila["valor_cuota"] + fila["interes_mes"]
             items.append({
                 "nro": fila["nro_cuota"], "monto_total": costo_base + mora,
@@ -153,12 +150,12 @@ class PagoService:
             })
             etiqueta = f"Cuota #{fila['nro_cuota']}"
             if mora > 0:
-                etiqueta += f" (+ ${mora:,} de mora digitada)"
+                etiqueta += f" (+ ${mora:,} de mora)"
             mensajes.append(etiqueta)
         return {"tipo": "CUOTAS_MANUAL", "socio_data": socio_data,
                 "letra_id": letra_id, "items": items, "mensajes": mensajes}
 
-    def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, mora_manual=0):
+    def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora, cobrar_mora=True):
         nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
         pendientes = self._liquidaciones.find_pending(letra_id)
         vencidas = []
@@ -171,15 +168,9 @@ class PagoService:
             if f_venc >= hoy:
                 break
             base = cuota["valor_cuota"] + cuota["interes_mes"]
-            mora = mora_manual if not vencidas else 0
+            mora = calculate_mora(cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora) if cobrar_mora else 0
             vencidas.append({"data": cuota, "costo_total": base + mora,
                              "monto_base": base, "mora": mora})
-
-        if mora_manual > 0 and not vencidas:
-            raise ValueError(
-                f"En la letra {letra_id} de {nombre} no hay cuotas vencidas: "
-                "un abono a capital solo, sin cuota vencida, no puede cobrar mora."
-            )
 
         temp = dinero_abono
         pagables = 0
@@ -209,7 +200,7 @@ class PagoService:
         for v in vencidas[:pagables]:
             etiqueta = f"Vencida #{v['data']['nro_cuota']}"
             if v["mora"] > 0:
-                etiqueta += f" (+ ${v['mora']:,} de mora digitada)"
+                etiqueta += f" (+ ${v['mora']:,} de mora)"
             mensajes.append(etiqueta)
         if remanente > 0:
             mensajes.append(f"Abono Capital: ${remanente:,}")

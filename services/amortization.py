@@ -1,25 +1,35 @@
 """
 Funciones matemáticas puras para créditos. Sin estado, sin DB.
 """
-from datetime import date
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 
 from config import parse_db_date
 
+DIAS_GRACIA_MORA = 5
 
-def calculate_mora(fecha_venc_str, hoy: date, valor_cuota: int, tasa_mora: float) -> int:
-    """Retorna el monto de mora si hoy supera el período de gracia de 1 mes.
 
-    TEMPORAL: hoy nadie la llama. Mientras se cargan los datos históricos, la
-    mora no se calcula: el operador digita el valor exacto en el formulario de
-    pago/combinado. Se conserva para reactivar el cobro automático después.
+def calculate_mora(fecha_venc_str, hoy: date, valor_cuota: int, tasa_mora: float,
+                    dias_gracia: int = DIAS_GRACIA_MORA) -> int:
+    """Calcula la mora acumulada de una cuota, cobrada por cada mes de atraso.
+
+    Se dan `dias_gracia` días desde el vencimiento antes de empezar a cobrar
+    (por defecto 5: la cuota vence el 1, el 6 ya cobra mora). Pasado ese
+    plazo, la mora es `tasa_mora` del valor de la cuota MULTIPLICADA por los
+    meses completos de atraso, no un cobro único: si vence el 1 de enero y se
+    paga el 6 de julio, van 7 meses de atraso (si se paga antes del 6 de
+    julio, son 6).
 
     `fecha_venc_str` puede venir como texto 'YYYY-MM-DD' (SQLite) o como objeto
     date/datetime (PostgreSQL); parse_db_date normaliza ambos.
     """
     f_venc = parse_db_date(fecha_venc_str)
-    f_limite = f_venc + relativedelta(months=+1)
-    return int(valor_cuota * tasa_mora) if hoy > f_limite else 0
+    f_limite = f_venc + timedelta(days=dias_gracia)
+    if hoy < f_limite:
+        return 0
+    rd = relativedelta(hoy, f_limite)
+    meses_atraso = rd.years * 12 + rd.months + 1
+    return int(valor_cuota * tasa_mora * meses_atraso)
 
 
 def round_installments(capital: int, n_cuotas: int) -> tuple[int, int]:

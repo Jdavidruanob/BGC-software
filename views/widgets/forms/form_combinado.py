@@ -304,32 +304,17 @@ class FormCombinado(QWidget):
             cuotas_input.setFixedHeight(34)
             cuotas_input.setFixedWidth(90)
 
-            # --- INPUT MORA MANUAL ---
-            # El sistema ya no calcula la mora: el operador digita aquí el valor
-            # exacto que se cobra en este recibo (vacío = no se cobra mora).
-            mora_input = QLineEdit()
-            mora_input.setObjectName("MoraInput")
-            mora_input.setPlaceholderText("$ Mora")
-            mora_input.setAlignment(Qt.AlignRight)
-            mora_input.setFixedHeight(34)
-            mora_input.setFixedWidth(110)
-            mora_input.setToolTip(
-                "Valor exacto de mora que se cobra en esta letra.\n"
-                "Déjalo vacío si no se cobra mora."
+            # --- CHECKBOX COBRAR MORA ---
+            # La mora se calcula automática (services/amortization.calculate_mora).
+            # Marcado por defecto: si el operador lo desmarca, esta letra no
+            # cobra mora en este recibo, sin importar cuánto atraso tenga.
+            chk_mora = QCheckBox("Cobrar mora")
+            chk_mora.setObjectName("ChkMora")
+            chk_mora.setChecked(True)
+            chk_mora.setCursor(Qt.PointingHandCursor)
+            chk_mora.setToolTip(
+                "Desmárcalo para no cobrar mora en esta letra en este recibo."
             )
-
-            def on_mora_changed(text):
-                raw = parse_miles_colombian(text)
-                # Si borra todo, el campo queda vacío (y se ve el placeholder),
-                # no en "0": así se distingue "no cobro mora" de un valor puesto.
-                formatted = format_miles_colombian_int(raw) if any(c.isdigit() for c in text) else ""
-                if formatted != text:
-                    mora_input.blockSignals(True)
-                    mora_input.setText(formatted)
-                    mora_input.setCursorPosition(len(formatted))
-                    mora_input.blockSignals(False)
-
-            mora_input.textChanged.connect(on_mora_changed)
 
             btn_delete_letra = QPushButton("")
             btn_delete_letra.setObjectName("DeleteLetraButton")
@@ -342,7 +327,7 @@ class FormCombinado(QWidget):
             letra_row.addWidget(letra_combo)
             letra_row.addWidget(abono_input) # <--- AGREGAMOS EL INPUT AQUÍ
             letra_row.addWidget(cuotas_input)
-            letra_row.addWidget(mora_input)
+            letra_row.addWidget(chk_mora)
             letra_row.addWidget(btn_delete_letra)
 
             letra_row_widget = QWidget()
@@ -429,29 +414,21 @@ class FormCombinado(QWidget):
                     return
                 abono_txt = w.findChild(QLineEdit, "AbonoInput").text()
                 cuotas_txt = w.findChild(QLineEdit, "CuotasInput").text()
-                mora_txt = w.findChild(QLineEdit, "MoraInput").text()
-                mora_manual = parse_miles_colombian(mora_txt) if mora_txt else 0
+                chk_mora = w.findChild(QCheckBox, "ChkMora")
+                cobrar_mora = chk_mora.isChecked() if chk_mora else True
                 dinero_abono = parse_miles_colombian(abono_txt) if abono_txt else 0
                 try:
                     n_cuotas = int(cuotas_txt) if cuotas_txt else 0
                 except:
                     n_cuotas = 0
                 if dinero_abono == 0 and n_cuotas == 0:
-                    if mora_manual > 0:
-                        show_warning(
-                            self, "Mora sin pago",
-                            f"En la letra {letra_selected['letra']} escribió mora pero no "
-                            "un abono ni un número de cuotas. La mora se cobra junto con "
-                            "el pago, no sola."
-                        )
-                        return
                     continue
                 pagos_input.append({
                     "socio_data": socio_full,
                     "letra_id": letra_selected['letra'],
                     "n_cuotas": n_cuotas,
                     "abono_capital": dinero_abono,
-                    "mora_manual": mora_manual,
+                    "cobrar_mora": cobrar_mora,
                 })
 
         if not aportes_input and not pagos_input:

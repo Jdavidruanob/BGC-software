@@ -48,7 +48,6 @@ class EditAdminDialog(QDialog):
         layout.addWidget(self.input_fondo_mora)
 
         # --- CAMPO 3: PORCENTAJE DE MORA ---
-        # Guardado pero sin efecto por ahora: la mora se digita en cada pago.
         lbl_mora = QLabel("Porcentaje Interés Mora (0.01 - 1.0):")
         lbl_mora.setObjectName("FormLabel")
         layout.addWidget(lbl_mora)
@@ -59,13 +58,17 @@ class EditAdminDialog(QDialog):
         self.input_mora.setText(str(current_mora_pct))
         self.input_mora.setPlaceholderText("Ej: 0.02")
         self.input_mora.setToolTip(
-            "Por ahora no se usa: la mora se escribe a mano en cada pago.\n"
-            "El valor queda guardado para cuando se reactive el cobro automático."
+            "Se cobra automático por cada cuota vencida, con 5 días de gracia\n"
+            "desde el vencimiento. Se multiplica por los meses de atraso."
         )
         layout.addWidget(self.input_mora)
 
-        lbl_mora_nota = QLabel("⚠️ Sin efecto por ahora: la mora se digita en cada pago.")
-        lbl_mora_nota.setStyleSheet("color: #B71C1C; font-size: 12px;")
+        lbl_mora_nota = QLabel(
+            "El sistema cobra esta mora automático (5 días de gracia, luego se "
+            "multiplica por los meses de atraso). Puede desmarcarse por letra al "
+            "registrar un pago, o por cuota en la liquidación."
+        )
+        lbl_mora_nota.setObjectName("HelpText")
         lbl_mora_nota.setWordWrap(True)
         layout.addWidget(lbl_mora_nota)
 

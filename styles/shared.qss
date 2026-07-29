@@ -85,27 +85,27 @@
     background-color: #fef2f2;
 }
 
-/* Checkbox de papelería */
-QCheckBox#ChkPapeleria {
+/* Checkbox de papelería / mora */
+QCheckBox#ChkPapeleria, QCheckBox#ChkMora {
     background: transparent;
     border: none;
-    spacing: 0px;
+    spacing: 6px;
     padding: 0px;
     min-height: 34px;
 }
-QCheckBox#ChkPapeleria::indicator {
+QCheckBox#ChkPapeleria::indicator, QCheckBox#ChkMora::indicator {
     width: 27px;
     height: 27px;
     background-color: white;
     border: 2px solid #d1d5db;
     border-radius: 5px;
 }
-QCheckBox#ChkPapeleria:hover,
-QCheckBox#ChkPapeleria::indicator:hover {
+QCheckBox#ChkPapeleria:hover, QCheckBox#ChkMora:hover,
+QCheckBox#ChkPapeleria::indicator:hover, QCheckBox#ChkMora::indicator:hover {
     background: transparent;
     border-color: #d1d5db;
 }
-QCheckBox#ChkPapeleria::indicator:checked {
+QCheckBox#ChkPapeleria::indicator:checked, QCheckBox#ChkMora::indicator:checked {
     background-color: white;
     border: 1px solid #3b82f6;
     image: url(%(ASSETS_DIR)s/icons/check.svg);
