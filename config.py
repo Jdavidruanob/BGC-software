@@ -117,26 +117,6 @@ DB_PATH = os.path.join(YEAR_DATA_DIR, "BGC-software.db")
 RECIBOS_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Recibos")
 LIQUIDACIONES_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Liquidaciones")
 
-MESES = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-]
-
-
-def carpeta_mes(fecha=None) -> str:
-    """Nombre 'NN-Mes' de la subcarpeta donde va un recibo de esa fecha (hoy por defecto).
-
-    Se usa tanto al generar un recibo nuevo como al sincronizar/reorganizar los
-    existentes, para que ambos caminos queden consistentes.
-    """
-    fecha = fecha or get_hoy()
-    return f"{fecha.month:02d}-{MESES[fecha.month - 1]}"
-
-
-def ruta_recibos_mes(fecha=None) -> str:
-    """Carpeta de recibos del mes de `fecha` (hoy por defecto), dentro del año fiscal."""
-    return os.path.join(RECIBOS_OUTPUT_DIR, carpeta_mes(fecha))
-
 # Asegura que la carpeta del año fiscal exista (la primera vez que se ejecuta)
 if not os.path.exists(YEAR_DATA_DIR):
     os.makedirs(YEAR_DATA_DIR)
