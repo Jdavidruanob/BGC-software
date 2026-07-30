@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from db.connection import DBConnection
-from config import get_hoy_str, parse_db_date
+from config import get_hoy_str, parse_db_date, fecha_limite_vencida
 from services.amortization import rebalance_schedule
 
 
@@ -112,12 +112,14 @@ class LiquidacionesRepository:
             return []
 
     def find_overdue(self, hoy_str, limit=5):
-        """Cuotas en mora: no pagadas y ya vencidas (fecha_vencimiento < hoy).
+        """Cuotas en mora: no pagadas y ya vencidas, dando
+        `config.DIAS_GRACIA_VENCIDA` días de plazo desde el vencimiento.
 
         Las cuotas marcadas a mano como pendientes (`mora_exenta`) quedan fuera:
         el operador decidió que no cuentan como vencidas.
         """
         try:
+            limite = fecha_limite_vencida(parse_db_date(hoy_str))
             cursor = self.db.conn.cursor()
             cursor.execute("""
                 SELECT l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual,
@@ -125,12 +127,12 @@ class LiquidacionesRepository:
                 FROM liquidaciones l
                 JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
                 JOIN socios s ON s.id = sc.socio_id
-                WHERE l.fecha_pago IS NULL AND l.fecha_vencimiento < %s
+                WHERE l.fecha_pago IS NULL AND l.fecha_vencimiento <= %s
                   AND COALESCE(l.mora_exenta, 0) = 0
                 GROUP BY l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual
                 ORDER BY l.fecha_vencimiento ASC, l.credito_letra ASC
                 LIMIT %s
-            """, (hoy_str, limit))
+            """, (limite, limit))
             return [dict(r) for r in cursor.fetchall()]
         except Exception as e:
             print(f"❌ Error obteniendo cuotas en mora: {e}")
@@ -188,6 +190,7 @@ class LiquidacionesRepository:
             # real, se tomarían como vencidas cuotas que aún no lo están y el
             # plan quedaría sin recalcular.
             hoy = get_hoy_str()
+            limite = fecha_limite_vencida(parse_db_date(hoy))
 
             cursor.execute(
                 "SELECT capital, interes, no_cuotas, fecha_inicio FROM creditos WHERE letra = %s",
@@ -247,16 +250,16 @@ class LiquidacionesRepository:
 
             cursor.execute("""
                 SELECT id, valor_cuota FROM liquidaciones
-                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento < %s
-            """, (letra_id, hoy))
+                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento <= %s
+            """, (letra_id, limite))
             vencidas = cursor.fetchall()
             capital_en_vencidas = sum(v["valor_cuota"] for v in vencidas)
             capital_para_futuro = max(saldo_real_nuevo - capital_en_vencidas, 0)
 
             cursor.execute("""
                 DELETE FROM liquidaciones
-                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento >= %s
-            """, (letra_id, hoy))
+                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento > %s
+            """, (letra_id, limite))
 
             if capital_para_futuro == 0:
                 _update_no_cuotas()

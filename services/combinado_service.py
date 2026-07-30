@@ -1,4 +1,4 @@
-from config import get_hoy, get_hoy_str, parse_db_date
+from config import get_hoy, get_hoy_str, esta_vencida
 from services.amortization import calculate_mora
 from utils.archivos_db import guardar_recibo
 from utils.recibo_generator_combinado import generar_recibo_combinado
@@ -219,8 +219,7 @@ class CombinadoService:
             # importar la fecha: la marca del operador es la que manda.
             if cuota["mora_exenta"]:
                 continue
-            f_venc = parse_db_date(cuota["fecha_vencimiento"])
-            if f_venc >= hoy:
+            if not esta_vencida(cuota["fecha_vencimiento"], hoy):
                 break
             base = cuota["valor_cuota"] + cuota["interes_mes"]
             mora = calculate_mora(cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora) if cobrar_mora else 0

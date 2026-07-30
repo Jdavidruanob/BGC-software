@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 import os
 from datetime import datetime
-from config import load_styles, format_miles_colombian_int, get_hoy_str, db_date_str, STYLES_DIR
+from config import load_styles, format_miles_colombian_int, get_hoy, db_date_str, esta_vencida, STYLES_DIR
 from utils.archivos_db import guardar_liquidacion
 from utils.credit_liquidation_generator import generar_liquidacion_actual
 from utils.message_boxes import show_success, show_error
@@ -141,7 +141,7 @@ class CreditLiquidationPage(QWidget):
             cuotas = cursor.fetchall()
             self.table.setRowCount(len(cuotas))
 
-            hoy_str = get_hoy_str()
+            hoy = get_hoy()
 
             for i, c in enumerate(cuotas):
                 # Datos básicos (fecha normalizada a 'YYYY-MM-DD' venga como texto o date)
@@ -172,7 +172,7 @@ class CreditLiquidationPage(QWidget):
                     es_bold = True
                 else:
                     # NO PAGADA
-                    if f_venc < hoy_str:
+                    if esta_vencida(c["fecha_vencimiento"], hoy):
                         # VENCIDA: Rojo
                         estado_text = "VENCIDA"
                         color_texto = QColor("#D32F2F") # Rojo

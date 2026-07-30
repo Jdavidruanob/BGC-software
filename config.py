@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PySide6.QtSvg import QSvgRenderer
 import os
 import sys # <-- Importa sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 # --- Definición de BASE_APP_DIR para desarrollo y ejecutable ---
@@ -61,6 +61,34 @@ def db_date_str(value):
     """Como parse_db_date pero retorna 'YYYY-MM-DD' (o '' si el valor es nulo)."""
     d = parse_db_date(value)
     return d.strftime("%Y-%m-%d") if d else ""
+
+
+# Días de plazo desde el vencimiento antes de tomar una cuota como VENCIDA
+# (se le dan 10 días de gracia: si vence el 1, se toma como vencida a partir
+# del día 11, no del día siguiente). No confundir con DIAS_GRACIA_MORA en
+# `services/amortization.py`, que es el plazo aparte antes de empezar a
+# cobrar el interés de mora sobre una cuota que ya es vencida.
+DIAS_GRACIA_VENCIDA = 10
+
+
+def esta_vencida(fecha_vencimiento, hoy=None) -> bool:
+    """True si una cuota con esta fecha de vencimiento ya está vencida, dando
+    DIAS_GRACIA_VENCIDA días de plazo desde el vencimiento."""
+    f_venc = parse_db_date(fecha_vencimiento)
+    if f_venc is None:
+        return False
+    if hoy is None:
+        hoy = get_hoy()
+    return hoy >= f_venc + timedelta(days=DIAS_GRACIA_VENCIDA)
+
+
+def fecha_limite_vencida(hoy=None) -> str:
+    """Fecha 'YYYY-MM-DD' tal que una cuota con fecha_vencimiento <= este
+    valor ya está vencida. Pensada para usar directo en consultas SQL (ver
+    `esta_vencida` para el equivalente en Python)."""
+    if hoy is None:
+        hoy = get_hoy()
+    return (hoy - timedelta(days=DIAS_GRACIA_VENCIDA)).strftime("%Y-%m-%d")
 
 # Mantenemos estas constantes por compatibilidad, pero 
 # RECOMENDACIÓN: Usar get_hoy() dentro de las funciones.

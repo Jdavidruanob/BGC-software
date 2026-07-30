@@ -191,9 +191,10 @@ class DBManager:
         subconsultas (un único viaje a la base en vez de ~9), y la tendencia y
         los mayores deudores en una consulta cada una: 3 viajes en total.
         """
-        from config import get_hoy_str
+        from config import get_hoy_str, parse_db_date, fecha_limite_vencida
         hoy = get_hoy_str()
         mes = hoy[:7]
+        limite_vencida = fecha_limite_vencida(parse_db_date(hoy))
         cur = self.conn.cursor()
 
         recaudo_tipos = ["Aporte", "Pago Credito", "Abono Capital"]
@@ -216,14 +217,14 @@ class DBManager:
               (SELECT COUNT(*) FROM socios) AS socios_activos,
               (SELECT COUNT(DISTINCT credito_letra) FROM liquidaciones WHERE fecha_pago IS NULL) AS creditos_vigentes,
               (SELECT COUNT(DISTINCT credito_letra) FROM liquidaciones
-                 WHERE fecha_pago IS NULL AND fecha_vencimiento < %s
+                 WHERE fecha_pago IS NULL AND fecha_vencimiento <= %s
                    AND COALESCE(mora_exenta, 0) = 0) AS creditos_en_mora,
               (SELECT COALESCE(SUM(monto),0) FROM auxiliar
                  WHERE tipo = ANY(%s) AND substr(fecha,1,7) = %s) AS recaudo_mes,
               (SELECT COALESCE(SUM(l.saldo_capital + l.valor_cuota),0)
                  FROM prox p JOIN liquidaciones l
                  ON l.credito_letra = p.credito_letra AND l.nro_cuota = p.nro) AS cartera
-        """, (hoy, recaudo_tipos, mes))
+        """, (limite_vencida, recaudo_tipos, mes))
         m = cur.fetchone()
 
         saldo_caja = _i(m["saldo_caja"])
