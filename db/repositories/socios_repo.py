@@ -39,19 +39,25 @@ class SociosRepository:
 
         - `saldo`          → lo que el socio tiene aportado (columna de socios).
         - `saldo_credito`  → lo que le falta por pagar sumando todas sus letras.
-        - `intereses`      → lo que ya ha pagado de intereses en sus créditos.
+        - `intereses`      → lo que ya ha pagado de intereses en sus créditos
+                             DURANTE EL AÑO FISCAL EN CURSO (no histórico).
 
-        Las dos últimas se calculan con las MISMAS fórmulas que el tablero de
-        datos usa para "Cartera por cobrar" e "Intereses recaudados", de modo
-        que sumar la columna de todos los socios da exactamente el total del
-        tablero. Si alguna de las dos definiciones cambia, hay que cambiarla en
-        los dos sitios a la vez (ver `db/db_manager.py`).
+        `saldo_credito` se calcula con la MISMA fórmula que el tablero de datos
+        usa para "Cartera por cobrar", e `intereses` con la misma fórmula (ya
+        limitada al año fiscal) que usa "Intereses recaudados" en
+        `dashboard_charts`, de modo que sumar la columna de todos los socios da
+        exactamente el total del tablero. Si alguna de las dos definiciones
+        cambia, hay que cambiarla en los dos sitios a la vez (ver
+        `db/db_manager.py`). `saldo` (aportes) en cambio sí es histórico: no se
+        toca acá.
 
         Un crédito puede tener varios socios. En ese caso el saldo y los
         intereses se reparten en partes iguales entre ellos: es la única forma
         de que la suma por socio siga cuadrando con el total, sin contar dos
         veces la misma deuda.
         """
+        from config import fiscal_year_bounds
+        inicio, fin = fiscal_year_bounds()
         try:
             cursor = self.db.conn.cursor()
             cursor.execute("""
@@ -82,7 +88,7 @@ class SociosRepository:
                     FROM liquidaciones l
                     JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
                     JOIN socios_por_letra spl ON spl.credito_letra = l.credito_letra
-                    WHERE l.fecha_pago IS NOT NULL
+                    WHERE l.fecha_pago BETWEEN %s AND %s
                     GROUP BY sc.socio_id
                 )
                 SELECT s.*,
@@ -95,7 +101,7 @@ class SociosRepository:
                 LEFT JOIN intereses_por_socio i ON i.socio_id = s.id
                 WHERE COALESCE(s.activo, 1) = 1
                 ORDER BY s.nombres
-            """)
+            """, (inicio, fin))
             return [dict(row) for row in cursor.fetchall()]
         except Exception as e:
             print(f"❌ Error obteniendo socios completos: {e}")

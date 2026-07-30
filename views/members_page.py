@@ -98,7 +98,7 @@ class MembersPage(QWidget):
         self.table = QTableWidget(0, 7)
         self.table.setObjectName("membersTable")
         self.table.setHorizontalHeaderLabels(
-            ["", "Socio", "Saldo de aportes", "Saldo crédito", "Intereses",
+            ["", "Socio", "Saldo de aportes", "Saldo crédito", "Intereses (año)",
              "Créditos", "Acciones"]
         )
         self.table.verticalHeader().setVisible(False)
@@ -189,12 +189,13 @@ class MembersPage(QWidget):
             )
             self.table.setItem(row, self.COL_SALDO_CREDITO, deuda_item)
 
-            # Lo que YA pagó de intereses (no lo que debe).
+            # Lo que YA pagó de intereses en el año fiscal en curso (no lo que
+            # debe, ni lo pagado en años anteriores).
             int_item = _NumericItem(
                 f"${format_miles_colombian_int(intereses)}", intereses)
             int_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             int_item.setToolTip(
-                "Intereses que el socio ya ha pagado en sus créditos.\n"
+                "Intereses que el socio ya ha pagado en sus créditos este año.\n"
                 "La suma de esta columna son los «Intereses recaudados» del tablero."
             )
             self.table.setItem(row, self.COL_INTERESES, int_item)

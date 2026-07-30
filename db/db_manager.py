@@ -281,82 +281,113 @@ class DBManager:
             "mayores_deudores": mayores_deudores,
         }
 
-    def dashboard_charts(self, meses=12, top_n=10):
+    def dashboard_charts(self, meses=12):
         """Datasets para las gráficas ampliadas del tablero (solo lectura).
 
         Devuelve, en pocas consultas:
-          - aportes_mes / intereses_mes: series mensuales (últimos `meses`).
-          - aportes_socio / intereses_socio: ranking por socio (Top `top_n`).
-          - aportes_total / intereses_total: acumulados históricos.
+          - aportes_mes / intereses_mes: series mensuales del año fiscal en curso.
+          - aportes_total / intereses_total: acumulados del año fiscal en curso.
 
-        Aportes: se leen de `auxiliar`/`detalle_recibo` (tipo 'Aporte'/'aporte').
+        Todo se limita al año fiscal actual (ver `config.fiscal_year_bounds`):
+        la cooperativa reinicia numeración cada año, pero el histórico de años
+        anteriores (créditos cargados a mano con cuotas ya pagadas antes de
+        empezar el año fiscal) no debe mezclarse en estas cifras. Esto es
+        distinto del "Saldo de aportes" del tablero (`aportes_socios` en
+        `dashboard_metrics`), que sí es histórico acumulado.
+
+        Aportes: se leen de `auxiliar` (tipo 'Aporte') y `detalle_recibo`
+        (tipo_operacion 'aporte', usando la fecha del recibo al que pertenece).
         Intereses: la parte de interés de cada cuota pagada vive en
-        `liquidaciones.interes_mes`; el socio que paga se toma de
-        `detalle_recibo.socio_id` (tipo_operacion 'pago_credito').
+        `liquidaciones.interes_mes`.
         """
+        from config import fiscal_year_bounds
+        inicio, fin = fiscal_year_bounds()
         cur = self.conn.cursor()
 
         # 1) Aportes por mes.
         cur.execute(
             "SELECT substr(fecha,1,7) AS mes, COALESCE(SUM(monto),0) AS total "
-            "FROM auxiliar WHERE tipo = 'Aporte' "
-            "GROUP BY substr(fecha,1,7) ORDER BY mes DESC LIMIT %s", (meses,))
+            "FROM auxiliar WHERE tipo = 'Aporte' AND fecha BETWEEN %s AND %s "
+            "GROUP BY substr(fecha,1,7) ORDER BY mes DESC LIMIT %s", (inicio, fin, meses))
         aportes_mes = [{"mes": r["mes"], "total": int(r["total"] or 0)}
                        for r in cur.fetchall()][::-1]
 
         # 2) Intereses pagados por mes (cuotas ya pagadas).
         cur.execute(
             "SELECT substr(fecha_pago,1,7) AS mes, COALESCE(SUM(interes_mes),0) AS total "
-            "FROM liquidaciones WHERE fecha_pago IS NOT NULL "
-            "GROUP BY substr(fecha_pago,1,7) ORDER BY mes DESC LIMIT %s", (meses,))
+            "FROM liquidaciones WHERE fecha_pago BETWEEN %s AND %s "
+            "GROUP BY substr(fecha_pago,1,7) ORDER BY mes DESC LIMIT %s", (inicio, fin, meses))
         intereses_mes = [{"mes": r["mes"], "total": int(r["total"] or 0)}
                          for r in cur.fetchall()][::-1]
 
-        # 3) Aportes por socio (Top N).
+        # 3) Acumulados del año fiscal en curso.
         cur.execute(
-            "SELECT s.nombres || ' ' || s.apellidos AS socio, COALESCE(SUM(dr.monto),0) AS total "
-            "FROM detalle_recibo dr JOIN socios s ON s.id = dr.socio_id "
-            "WHERE dr.tipo_operacion = 'aporte' "
-            "GROUP BY s.id, s.nombres, s.apellidos ORDER BY total DESC LIMIT %s", (top_n,))
-        aportes_socio = [{"socio": r["socio"], "total": int(r["total"] or 0)}
-                         for r in cur.fetchall()]
-
-        # 4) Intereses pagados por socio (Top N): interés de cada cuota pagada,
-        #    atribuido a los socios dueños del crédito.
-        #
-        #    Antes esto se calculaba cruzando por `detalle_recibo`, es decir por
-        #    quién registró el pago. Eso dejaba fuera todas las cuotas pagadas
-        #    que no tienen un recibo asociado —el histórico cargado a mano, o
-        #    cualquier recibo que se haya eliminado— así que la suma por socio
-        #    no coincidía con `intereses_total`. Cruzando por `socio_credito`
-        #    ambas cifras salen de la misma fuente y siempre cuadran.
-        cur.execute(
-            "WITH socios_por_letra AS ("
-            "  SELECT credito_letra, COUNT(*) AS n FROM socio_credito GROUP BY credito_letra) "
-            "SELECT s.nombres || ' ' || s.apellidos AS socio, "
-            "       COALESCE(ROUND(SUM(l.interes_mes::numeric / spl.n)),0)::bigint AS total "
-            "FROM liquidaciones l "
-            "JOIN socio_credito sc ON sc.credito_letra = l.credito_letra "
-            "JOIN socios_por_letra spl ON spl.credito_letra = l.credito_letra "
-            "JOIN socios s ON s.id = sc.socio_id "
-            "WHERE l.fecha_pago IS NOT NULL "
-            "GROUP BY s.id, s.nombres, s.apellidos ORDER BY total DESC LIMIT %s", (top_n,))
-        intereses_socio = [{"socio": r["socio"], "total": int(r["total"] or 0)}
-                           for r in cur.fetchall()]
-
-        # 5) Acumulados históricos.
-        cur.execute("SELECT COALESCE(SUM(interes_mes),0) AS t FROM liquidaciones WHERE fecha_pago IS NOT NULL")
+            "SELECT COALESCE(SUM(interes_mes),0) AS t FROM liquidaciones "
+            "WHERE fecha_pago BETWEEN %s AND %s", (inicio, fin))
         intereses_total = int(cur.fetchone()["t"] or 0)
-        cur.execute("SELECT COALESCE(SUM(monto),0) AS t FROM detalle_recibo WHERE tipo_operacion = 'aporte'")
+        cur.execute(
+            "SELECT COALESCE(SUM(dr.monto),0) AS t FROM detalle_recibo dr "
+            "JOIN recibos r ON r.id = dr.recibo_id "
+            "WHERE dr.tipo_operacion = 'aporte' AND r.fecha::date BETWEEN %s AND %s",
+            (inicio, fin))
         aportes_total = int(cur.fetchone()["t"] or 0)
 
         return {
             "aportes_mes": aportes_mes,
             "intereses_mes": intereses_mes,
-            "aportes_socio": aportes_socio,
-            "intereses_socio": intereses_socio,
             "aportes_total": aportes_total,
             "intereses_total": intereses_total,
+        }
+
+    def calcular_utilidades(self):
+        """Utilidades por socio del año fiscal en curso.
+
+            factor = (intereses del año - salarios pagados del año) / total de
+                      aportes de socios (histórico, `socios.saldo`)
+            utilidad_socio = saldo de aportes del socio (histórico) * factor
+
+        El factor se redondea a 5 decimales (así lo pidió el usuario); la
+        utilidad de cada socio se redondea a pesos enteros, igual que el resto
+        de cifras de dinero de la app.
+        """
+        from config import fiscal_year_bounds, FISCAL_YEAR
+        inicio, fin = fiscal_year_bounds()
+        cur = self.conn.cursor()
+
+        cur.execute("""
+            SELECT
+              (SELECT value FROM config WHERE key = 'total_salarios') AS salarios,
+              (SELECT COALESCE(SUM(saldo),0) FROM socios) AS total_aportes,
+              (SELECT COALESCE(SUM(interes_mes),0) FROM liquidaciones
+                 WHERE fecha_pago BETWEEN %s AND %s) AS intereses
+        """, (inicio, fin))
+        row = cur.fetchone()
+        salarios = int(row["salarios"] or 0)
+        total_aportes = int(row["total_aportes"] or 0)
+        intereses = int(row["intereses"] or 0)
+
+        factor = round((intereses - salarios) / total_aportes, 5) if total_aportes else 0.0
+
+        cur.execute("""
+            SELECT nombres, apellidos, COALESCE(saldo,0) AS saldo
+            FROM socios WHERE COALESCE(activo,1) = 1 ORDER BY nombres
+        """)
+        detalle = [
+            {
+                "socio": f"{r['nombres']} {r['apellidos']}",
+                "saldo": int(r["saldo"] or 0),
+                "utilidad": round(int(r["saldo"] or 0) * factor),
+            }
+            for r in cur.fetchall()
+        ]
+
+        return {
+            "anio": FISCAL_YEAR,
+            "intereses": intereses,
+            "salarios": salarios,
+            "total_aportes": total_aportes,
+            "factor": factor,
+            "detalle": detalle,
         }
 
     def add_multiple_historical_credits(self, credits_list):

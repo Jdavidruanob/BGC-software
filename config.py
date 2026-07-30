@@ -91,6 +91,19 @@ else:
     FISCAL_YEAR = str(today.year)
 
 
+def fiscal_year_bounds():
+    """Rango (inicio, fin) del año fiscal actual, como 'YYYY-MM-DD'.
+
+    El año fiscal FISCAL_YEAR va del 1 de diciembre del año calendario
+    anterior al 30 de noviembre de FISCAL_YEAR. Se usa para limitar los
+    reportes (aportes, intereses) a lo transcurrido en el año fiscal en
+    curso, sin arrastrar historial de años anteriores.
+    """
+    inicio = date(int(FISCAL_YEAR) - 1, 12, 1)
+    fin = date(int(FISCAL_YEAR), 11, 30)
+    return inicio.strftime("%Y-%m-%d"), fin.strftime("%Y-%m-%d")
+
+
 # Rutas que necesitan sys._MEIPASS para funcionar
 ASSETS_DIR = os.path.join(STATIC_BASE_DIR, "assets")
 STYLES_DIR = os.path.join(STATIC_BASE_DIR, "styles")
@@ -103,6 +116,26 @@ YEAR_DATA_DIR = os.path.join(DATA_ROOT_FOLDER, FISCAL_YEAR)
 DB_PATH = os.path.join(YEAR_DATA_DIR, "BGC-software.db")
 RECIBOS_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Recibos")
 LIQUIDACIONES_OUTPUT_DIR = os.path.join(YEAR_DATA_DIR, "Liquidaciones")
+
+MESES = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+]
+
+
+def carpeta_mes(fecha=None) -> str:
+    """Nombre 'NN-Mes' de la subcarpeta donde va un recibo de esa fecha (hoy por defecto).
+
+    Se usa tanto al generar un recibo nuevo como al sincronizar/reorganizar los
+    existentes, para que ambos caminos queden consistentes.
+    """
+    fecha = fecha or get_hoy()
+    return f"{fecha.month:02d}-{MESES[fecha.month - 1]}"
+
+
+def ruta_recibos_mes(fecha=None) -> str:
+    """Carpeta de recibos del mes de `fecha` (hoy por defecto), dentro del año fiscal."""
+    return os.path.join(RECIBOS_OUTPUT_DIR, carpeta_mes(fecha))
 
 # Asegura que la carpeta del año fiscal exista (la primera vez que se ejecuta)
 if not os.path.exists(YEAR_DATA_DIR):

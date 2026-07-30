@@ -2,12 +2,14 @@ import os
 
 from PySide6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame,
-    QScrollArea, QSizePolicy
+    QScrollArea, QSizePolicy, QToolTip, QPushButton
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor, QFont
 
-from config import load_styles, format_miles_colombian_int, STYLES_DIR, PRIMARY_COLOR
+from config import load_styles, format_miles_colombian_int, STYLES_DIR, PRIMARY_COLOR, FISCAL_YEAR
+from views.widgets.utilidades_dialog import UtilidadesDialog
+from utils.message_boxes import show_error
 
 VERDE = "#2E7D32"
 ROJO = "#D32F2F"
@@ -77,13 +79,17 @@ class _GroupedBarChart(QWidget):
         super().__init__(parent)
         self._labels = labels
         self._series = series
+        self._bar_rects = []  # [(QRect, serie_name, mes_label, valor), ...] para el tooltip al pasar el mouse.
         self.setMinimumHeight(240)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setMouseTracking(True)
 
     def paintEvent(self, event):
+        from PySide6.QtCore import QRect
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         w, h = self.width(), self.height()
+        self._bar_rects = []
         if not self._labels:
             p.setPen(QColor("#888"))
             p.drawText(self.rect(), Qt.AlignCenter, "Sin datos aún")
@@ -114,57 +120,34 @@ class _GroupedBarChart(QWidget):
                 val = s["values"][i]
                 bh = (base_y - top) * (val / max_v)
                 x = cx - group_w / 2 + j * bar_w
-                p.fillRect(int(x), int(base_y - bh), int(max(bar_w - 2, 1)), int(bh),
-                           QColor(s["color"]))
+                rect = QRect(int(x), int(base_y - bh), int(max(bar_w - 2, 1)), int(bh))
+                p.fillRect(rect, QColor(s["color"]))
+                # Zona sensible al mouse: desde el techo del gráfico hasta la
+                # base, no solo el alto de la barra, para poder leer el valor
+                # aunque sea pequeño frente a las demás series.
+                hit_rect = QRect(int(x), int(top), int(max(bar_w - 2, 1)), int(base_y - top))
+                self._bar_rects.append((hit_rect, s["name"], label, val))
             p.setPen(QColor("#333"))
             p.drawText(int(cx - slot / 2), int(base_y + 6), int(slot), 16,
                        Qt.AlignCenter, label)
         p.setPen(QColor("#DDD"))
         p.drawLine(pad_x, base_y, w - pad_x, base_y)
 
+    def mouseMoveEvent(self, event):
+        pos = event.position().toPoint()
+        for rect, name, label, val in self._bar_rects:
+            if rect.contains(pos):
+                QToolTip.showText(
+                    event.globalPosition().toPoint(),
+                    f"{name} · {label}: ${format_miles_colombian_int(val)}",
+                    self,
+                )
+                return
+        QToolTip.hideText()
 
-class _HBarChart(QWidget):
-    """Barras horizontales para ranking por socio (Top N)."""
-
-    def __init__(self, data, color=PRIMARY_COLOR, parent=None):
-        super().__init__(parent)
-        self._data = data  # lista de (label, value)
-        self._color = color
-        self.setMinimumHeight(max(160, 30 * len(data) + 16))
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        if not self._data:
-            p.setPen(QColor("#888"))
-            p.drawText(self.rect(), Qt.AlignCenter, "Sin datos aún")
-            return
-
-        max_v = max((v for _, v in self._data), default=1) or 1
-        n = len(self._data)
-        pad = 8
-        row_h = (h - 2 * pad) / n
-        bar_h = min(row_h * 0.6, 22)
-        label_w = 160
-        bar_x = label_w + 8
-        val_w = 96
-        bar_max_w = max(w - bar_x - val_w, 10)
-
-        p.setFont(QFont("", 9))
-        for i, (label, val) in enumerate(self._data):
-            cy = pad + i * row_h + row_h / 2
-            name = label if len(label) <= 24 else label[:23] + "…"
-            p.setPen(QColor("#374151"))
-            p.drawText(0, int(cy - row_h / 2), label_w, int(row_h),
-                       Qt.AlignVCenter | Qt.AlignRight, name)
-            bw = bar_max_w * (val / max_v)
-            p.fillRect(int(bar_x), int(cy - bar_h / 2), int(max(bw, 1)), int(bar_h),
-                       QColor(self._color))
-            p.setPen(QColor("#555"))
-            p.drawText(int(bar_x + bw + 6), int(cy - row_h / 2), val_w, int(row_h),
-                       Qt.AlignVCenter | Qt.AlignLeft, f"${format_miles_colombian_int(val)}")
+    def leaveEvent(self, event):
+        QToolTip.hideText()
+        super().leaveEvent(event)
 
 
 class DataPage(QWidget):
@@ -239,9 +222,22 @@ class DataPage(QWidget):
         root.setSpacing(16)
         root.setAlignment(Qt.AlignTop)
 
+        header = QHBoxLayout()
         titulo = QLabel("Tablero de datos")
         titulo.setStyleSheet("font-size:24px;font-weight:bold;color:#111827;")
-        root.addWidget(titulo)
+        header.addWidget(titulo)
+        header.addStretch()
+
+        btn_utilidades = QPushButton("Calcular Utilidades")
+        btn_utilidades.setCursor(Qt.PointingHandCursor)
+        btn_utilidades.setStyleSheet(
+            f"QPushButton{{background:{AMBAR};color:white;font-size:15px;"
+            f"font-weight:bold;padding:12px 22px;border-radius:8px;border:none;}}"
+            f"QPushButton:hover{{background:#C77C02;}}"
+        )
+        btn_utilidades.clicked.connect(self._on_calcular_utilidades)
+        header.addWidget(btn_utilidades)
+        root.addLayout(header)
 
         if not self.db_manager:
             root.addWidget(QLabel("Sin conexión a datos."))
@@ -278,6 +274,43 @@ class DataPage(QWidget):
             "Salarios pagados (acumulado)", money(m["total_salarios"]), ROJO,
             "Sale de la caja"), 0, 0)
         root.addLayout(row1b)
+
+        # --- Aportes e intereses (año fiscal en curso) ---
+        try:
+            extra = self.db_manager.dashboard_charts()
+        except Exception as e:
+            print(f"❌ Error cargando gráficas de aportes/intereses: {e}")
+            extra = None
+
+        if extra:
+            root.addWidget(self._seccion_titulo(f"Aportes e intereses (año {FISCAL_YEAR})"))
+
+            # KPIs del año fiscal en curso (no histórico: ver docstring de
+            # dashboard_charts en db_manager.py).
+            rowk = QGridLayout()
+            rowk.setSpacing(14)
+            rowk.addWidget(self._kpi(
+                f"Aportes registrados ({FISCAL_YEAR})", money(extra["aportes_total"]), VERDE), 0, 0)
+            rowk.addWidget(self._kpi(
+                f"Intereses recaudados ({FISCAL_YEAR})", money(extra["intereses_total"]), PRIMARY_COLOR), 0, 1)
+            root.addLayout(rowk)
+
+            # Comparativo mensual: Aportes vs Intereses (barras agrupadas).
+            meses_union = sorted(
+                {d["mes"] for d in extra["aportes_mes"]}
+                | {d["mes"] for d in extra["intereses_mes"]}
+            )
+            ap_map = {d["mes"]: d["total"] for d in extra["aportes_mes"]}
+            it_map = {d["mes"]: d["total"] for d in extra["intereses_mes"]}
+            labels = [_mes_label(mm) for mm in meses_union]
+            series = [
+                {"name": "Aportes", "color": VERDE,
+                 "values": [ap_map.get(mm, 0) for mm in meses_union]},
+                {"name": "Intereses", "color": PRIMARY_COLOR,
+                 "values": [it_map.get(mm, 0) for mm in meses_union]},
+            ]
+            root.addWidget(self._chart_card(
+                "Aportes vs. Intereses por mes", _GroupedBarChart(labels, series), PRIMARY_COLOR))
 
         # --- Medio: salud de cartera ---
         root.addWidget(self._seccion_titulo("Salud de la cartera"))
@@ -323,54 +356,16 @@ class DataPage(QWidget):
 
         root.addLayout(row3)
 
-        # --- Aportes e intereses (gráficas ampliadas) ---
-        try:
-            extra = self.db_manager.dashboard_charts()
-        except Exception as e:
-            print(f"❌ Error cargando gráficas de aportes/intereses: {e}")
-            extra = None
-
-        if extra:
-            root.addWidget(self._seccion_titulo("Aportes e intereses"))
-
-            # KPIs acumulados.
-            rowk = QGridLayout()
-            rowk.setSpacing(14)
-            rowk.addWidget(self._kpi(
-                "Aportes registrados (histórico)", money(extra["aportes_total"]), VERDE), 0, 0)
-            rowk.addWidget(self._kpi(
-                "Intereses recaudados (histórico)", money(extra["intereses_total"]), PRIMARY_COLOR), 0, 1)
-            root.addLayout(rowk)
-
-            # Comparativo mensual: Aportes vs Intereses (barras agrupadas).
-            meses_union = sorted(
-                {d["mes"] for d in extra["aportes_mes"]}
-                | {d["mes"] for d in extra["intereses_mes"]}
-            )
-            ap_map = {d["mes"]: d["total"] for d in extra["aportes_mes"]}
-            it_map = {d["mes"]: d["total"] for d in extra["intereses_mes"]}
-            labels = [_mes_label(mm) for mm in meses_union]
-            series = [
-                {"name": "Aportes", "color": VERDE,
-                 "values": [ap_map.get(mm, 0) for mm in meses_union]},
-                {"name": "Intereses", "color": PRIMARY_COLOR,
-                 "values": [it_map.get(mm, 0) for mm in meses_union]},
-            ]
-            root.addWidget(self._chart_card(
-                "Aportes vs. Intereses por mes", _GroupedBarChart(labels, series), PRIMARY_COLOR))
-
-            # Por socio: dos rankings horizontales lado a lado (Top 10).
-            row_soc = QHBoxLayout()
-            row_soc.setSpacing(20)
-            ap_data = [(d["socio"], d["total"]) for d in extra["aportes_socio"]]
-            it_data = [(d["socio"], d["total"]) for d in extra["intereses_socio"]]
-            row_soc.addWidget(self._chart_card(
-                "Aportes por socio (Top 10)", _HBarChart(ap_data, VERDE), VERDE), 1)
-            row_soc.addWidget(self._chart_card(
-                "Intereses por socio (Top 10)", _HBarChart(it_data, PRIMARY_COLOR), PRIMARY_COLOR), 1)
-            root.addLayout(row_soc)
-
         self.scroll.setWidget(content)
+
+    def _on_calcular_utilidades(self):
+        try:
+            data = self.db_manager.calcular_utilidades()
+        except Exception as e:
+            print(f"❌ Error calculando utilidades: {e}")
+            show_error(self, "Calcular Utilidades", "No se pudieron calcular las utilidades.")
+            return
+        UtilidadesDialog(data, parent=self).exec()
 
     def refresh_view(self):
         print("🔁 Refrescando vista data")
