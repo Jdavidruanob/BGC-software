@@ -156,7 +156,6 @@ class PagoService:
                 "letra_id": letra_id, "items": items, "mensajes": mensajes}
 
     def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora, cobrar_mora=True):
-        nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
         pendientes = self._liquidaciones.find_pending(letra_id)
         vencidas = []
         for cuota in pendientes:
@@ -172,41 +171,33 @@ class PagoService:
             vencidas.append({"data": cuota, "costo_total": base + mora,
                              "monto_base": base, "mora": mora})
 
-        temp = dinero_abono
-        pagables = 0
-        for v in vencidas:
-            if temp >= v["costo_total"]:
-                temp -= v["costo_total"]
-                pagables += 1
-            else:
-                if pagables == 0:
-                    raise ValueError(
-                        f"Abono insuficiente para {nombre} (Letra {letra_id}): "
-                        "no cubre la primera cuota vencida."
-                    )
-                raise ValueError(
-                    f"Abono incompleto en letra {letra_id} para {nombre}. "
-                    "El monto no alcanza para cubrir las cuotas vencidas parcialmente."
-                )
-
-        remanente = 0
-        if temp > 0:
-            deuda = self._liquidaciones.get_current_debt(letra_id)
-            cap_vencidas = sum(v["data"]["valor_cuota"] for v in vencidas[:pagables])
-            deuda_futura = deuda - cap_vencidas
-            remanente = min(temp, deuda_futura)
+        # dinero_abono es el abono a capital puro digitado por el operador:
+        # las cuotas vencidas se cobran aparte, sumadas encima, no restadas
+        # de lo que se digita.
+        deuda = self._liquidaciones.get_current_debt(letra_id)
+        cap_vencidas = sum(v["data"]["valor_cuota"] for v in vencidas)
+        deuda_futura = deuda - cap_vencidas
+        capital_puro = max(0, min(dinero_abono, deuda_futura))
 
         mensajes = []
-        for v in vencidas[:pagables]:
-            etiqueta = f"Vencida #{v['data']['nro_cuota']}"
+        for v in vencidas:
+            etiqueta = (
+                f"⚠️ Cuota #{v['data']['nro_cuota']} vencida "
+                f"(se cobra aparte: ${v['costo_total']:,}"
+            )
             if v["mora"] > 0:
-                etiqueta += f" (+ ${v['mora']:,} de mora)"
+                etiqueta += f", incluye ${v['mora']:,} de mora"
+            etiqueta += ")"
             mensajes.append(etiqueta)
-        if remanente > 0:
-            mensajes.append(f"Abono Capital: ${remanente:,}")
+        if capital_puro > 0:
+            mensajes.append(f"Abono Capital: ${capital_puro:,}")
+        if vencidas:
+            total_cobrar = sum(v["costo_total"] for v in vencidas) + capital_puro
+            mensajes.append(f"Total a cobrar: ${total_cobrar:,}")
+
         return {"tipo": "ABONO_CASCADA", "socio_data": socio_data,
-                "letra_id": letra_id, "vencidas": vencidas[:pagables],
-                "capital_puro": remanente, "mensajes": mensajes}
+                "letra_id": letra_id, "vencidas": vencidas,
+                "capital_puro": capital_puro, "mensajes": mensajes}
 
     def _execute_op(self, cursor, op, recibo_id, fecha, saldo_caja, mora_total,
                     pagos_para_recibo, reporte_global):

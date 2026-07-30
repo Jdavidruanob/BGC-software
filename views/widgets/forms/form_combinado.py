@@ -282,7 +282,11 @@ class FormCombinado(QWidget):
             abono_input.setPlaceholderText("$ Abono capital")
             abono_input.setAlignment(Qt.AlignRight)
             abono_input.setFixedHeight(34)
-            abono_input.setFixedWidth(140) 
+            abono_input.setFixedWidth(140)
+            abono_input.setToolTip(
+                "Solo el abono a capital. Si hay cuotas vencidas, su interés "
+                "(y mora) se cobra aparte automáticamente, sumado a este valor."
+            )
 
             def on_abono_changed(text):
                 # Usamos las funciones de config.py para limpiar y formatear
