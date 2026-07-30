@@ -14,17 +14,16 @@ QFrame#HomeCardHeader {
 
 QLabel#homeTitle {
     background-color: %(PRIMARY_COLOR)s;
-    font-size: 32px;
-    margin-bottom: 10px;
+    font-size: 24px;
     font-weight: bold;
     color: white;
 }
 
 QLabel#homeSubtitle {
     background-color: %(PRIMARY_COLOR)s;
-    font-size: 16px;
-    color: white;
-    margin-left: 10px;
+    font-size: 14px;
+    color: #cbd5e1;
+    margin-top: 2px;
 }
 
 
@@ -56,6 +55,25 @@ QPushButton[btnType="operacion"]:checked {
     font-weight: bold;
 }
 
+/* Caja de la barra de operaciones: fondo y borde propios (antes era
+   transparente y se confundía visualmente con el formulario que despliega
+   justo debajo). El alto extra viene de los márgenes del FlowWidget en
+   home_page.py. */
+QWidget#OperationsBar {
+    background-color: #f1f5f9;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+/* Caja del formulario dinámico (Aporte, Pago, etc.): borde propio para que
+   quede claramente separada de la barra de operaciones de arriba. */
+QFrame#DynamicForm {
+    background-color: #ffffff;
+    border-top: 2px solid #cbd5e1;
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    padding-top: 6px;
+}
+
 #summaryCard {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
@@ -84,12 +102,12 @@ QPushButton[btnType="operacion"]:checked {
     margin: 2px;
 }
 #notifScroll QScrollBar::handle:vertical {
-    background: #cbd5e1;
+    background: #334155;
     border-radius: 4px;
     min-height: 24px;
 }
 #notifScroll QScrollBar::handle:vertical:hover {
-    background: #94a3b8;
+    background: #1e293b;
 }
 #notifScroll QScrollBar::add-line:vertical,
 #notifScroll QScrollBar::sub-line:vertical {

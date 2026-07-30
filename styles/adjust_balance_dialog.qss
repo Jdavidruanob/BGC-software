@@ -25,30 +25,8 @@
     background-color: white;
 }
 
-/* Botones de Seleccion de Tipo */
-QPushButton[class="modeButton"] {
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #555;
-    background-color: #f0f0f0;
-}
-
-/* Estado Activo: INGRESO (Verde) */
-QPushButton[class="modeButton"][active="true"][mode="ingreso"] {
-    background-color: #e6fffa;
-    border: 1px solid #28a745;
-    color: #28a745;
-}
-
-/* Estado Activo: EGRESO (Rojo) */
-QPushButton[class="modeButton"][active="true"][mode="egreso"] {
-    background-color: #fff5f5;
-    border: 1px solid #dc3545;
-    color: #dc3545;
-}
+/* Botones de Seleccion de Tipo: estilo "modeButton" ahora en shared.qss,
+   compartido con otros diálogos de ajuste (ver EditAdminDialog). */
 
 /* Contador de caracteres */
 #CharCounter {

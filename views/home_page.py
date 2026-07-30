@@ -57,11 +57,11 @@ class HomePage(QWidget):
         header = QFrame()
         header.setObjectName("HomeCardHeader")
         header_layout = QVBoxLayout()
-        header_layout.setContentsMargins(20, 20, 20, 20)
+        header_layout.setContentsMargins(20, 20, 20, 12)
 
         title = QLabel("Operaciones")
         title.setObjectName("homeTitle")
-        subtitle = QLabel("Realice aportes, nuevos créditos o pagos de crédito")
+        subtitle = QLabel("Aportes, créditos, pagos y retiros")
         subtitle.setObjectName("homeSubtitle")
 
         header_layout.addWidget(title)
@@ -77,7 +77,11 @@ class HomePage(QWidget):
         # que es exactamente la separación que tenían con el QHBoxLayout
         # original (que usaba setSpacing(0)). Añadir espaciado aquí los
         # separaría más de lo que estaban.
-        button_row = FlowWidget(margenes=(20, 20, 20, 20), espaciado=0)
+        button_row = FlowWidget(margenes=(20, 10, 20, 44), espaciado=0)
+        button_row.setObjectName("OperationsBar")
+        # QWidget (a diferencia de QFrame) no pinta fondo/borde de QSS a menos
+        # que se active esto explícitamente.
+        button_row.setAttribute(Qt.WA_StyledBackground, True)
 
         self.btn_aporte = QPushButton(" Aporte")
         self.btn_aporte.setIconSize(QSize(24, 24))

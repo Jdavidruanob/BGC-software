@@ -134,11 +134,21 @@ class SearchableComboBox(QComboBox):
             self.lineEdit().clear()
 
     def populate_socios(self, socios):
-        """Conveniencia: llena el combo con dicts de socio y lo deja sin selección."""
+        """Conveniencia: llena el combo con dicts de socio.
+
+        Si ya había un socio seleccionado y sigue en la lista nueva, se
+        mantiene seleccionado (por ejemplo al refrescar el formulario al
+        navegar de vuelta a la página, para no perder el "Recibí de" de un
+        recibo a medio llenar). Si no había selección o el socio ya no
+        existe, queda sin selección como antes.
+        """
+        previous = self.currentData()
+        prev_id = previous.get("id") if previous else None
         self.clear()
         for socio in socios:
             self.addItem(f"{socio['nombres']} {socio['apellidos']}", userData=socio)
-        self.setCurrentIndex(-1)
+        if prev_id is None or not self.set_socio_by_id(prev_id):
+            self.setCurrentIndex(-1)
 
     def currentData(self, role=Qt.UserRole):
         # Nos apoyamos en la fila comprometida (independiente del texto a medias).

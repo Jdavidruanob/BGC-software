@@ -117,12 +117,12 @@ QTableWidget#membersTable QScrollBar:vertical {
     margin: 4px;
 }
 QTableWidget#membersTable QScrollBar::handle:vertical {
-    background: #cbd5e1;
+    background: #334155;
     border-radius: 5px;
     min-height: 30px;
 }
 QTableWidget#membersTable QScrollBar::handle:vertical:hover {
-    background: #94a3b8;
+    background: #1e293b;
 }
 QTableWidget#membersTable QScrollBar::add-line:vertical,
 QTableWidget#membersTable QScrollBar::sub-line:vertical {

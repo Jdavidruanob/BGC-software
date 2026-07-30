@@ -111,6 +111,29 @@ QCheckBox#ChkPapeleria::indicator:checked, QCheckBox#ChkMora::indicator:checked 
     image: url(%(ASSETS_DIR)s/icons/check.svg);
 }
 
+/* Botones toggle "Sumar / Restar" (ajustes de caja, papelería, mora, etc.).
+   Vive en shared.qss (no en el .qss de cada diálogo) para que cualquier
+   diálogo de ajuste tenga el mismo look sin repetir las reglas. */
+QPushButton[class="modeButton"] {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    background-color: #f0f0f0;
+}
+QPushButton[class="modeButton"][active="true"][mode="ingreso"] {
+    background-color: #e6fffa;
+    border: 1px solid #28a745;
+    color: #28a745;
+}
+QPushButton[class="modeButton"][active="true"][mode="egreso"] {
+    background-color: #fff5f5;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+}
+
 /* Dropdown de QComboBox */
 QComboBox QAbstractItemView {
     font-size: 16px;
@@ -120,6 +143,56 @@ QComboBox QAbstractItemView {
 QComboBox QAbstractItemView::item {
     min-height: 30px;
     padding: 4px 8px;
+}
+
+/* =====================================================
+   SCROLLBAR — diseño único y oscuro para toda la app.
+   Va en shared.qss (no en main.qss) porque cada widget carga este archivo
+   por su cuenta vía load_styles(), así que el mismo look aplica en
+   cualquier pantalla/formulario sin repetirlo en cada .qss.
+   ===================================================== */
+QScrollBar:vertical {
+    background: transparent;
+    width: 12px;
+    margin: 2px 1px;
+}
+QScrollBar::handle:vertical {
+    background: #334155;
+    border-radius: 6px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #1e293b;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+    border: none;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 12px;
+    margin: 1px 2px;
+}
+QScrollBar::handle:horizontal {
+    background: #334155;
+    border-radius: 6px;
+    min-width: 30px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #1e293b;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    background: none;
+    border: none;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
 }
 
 /* =====================================================
