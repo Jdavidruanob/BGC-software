@@ -211,6 +211,7 @@ class CombinadoService:
                 "letra_id": letra_id, "items": items, "mensajes": mensajes}
 
     def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora, cobrar_mora=True):
+        nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
         pendientes = self._liquidaciones.find_pending(letra_id)
         vencidas = []
         for cuota in pendientes:
@@ -226,29 +227,53 @@ class CombinadoService:
             vencidas.append({"data": cuota, "costo_total": base + mora,
                              "monto_base": base, "mora": mora})
 
-        # dinero_abono es el abono a capital puro digitado por el operador:
-        # las cuotas vencidas se cobran aparte, sumadas encima, no restadas
-        # de lo que se digita.
+        # El abono a capital digitado nunca se reduce: primero salda el
+        # CAPITAL de las cuotas vencidas (en orden, porque ya se deben) y lo
+        # que sobra es el abono real a cuotas futuras. El interés (y la
+        # mora) de cada vencida se cobra aparte, sumado encima, jamás
+        # restado de lo digitado.
+        temp_capital = dinero_abono
+        for i, v in enumerate(vencidas):
+            capital_cuota = v["data"]["valor_cuota"]
+            if temp_capital < capital_cuota:
+                if i == 0:
+                    raise ValueError(
+                        f"Abono insuficiente para {nombre} (Letra {letra_id}): "
+                        f"no cubre el capital (${capital_cuota:,}) de la cuota "
+                        f"vencida #{v['data']['nro_cuota']}."
+                    )
+                raise ValueError(
+                    f"Abono incompleto en letra {letra_id} para {nombre}. "
+                    f"No alcanza para cubrir el capital de la cuota vencida "
+                    f"#{v['data']['nro_cuota']}."
+                )
+            temp_capital -= capital_cuota
+
         deuda = self._liquidaciones.get_current_debt(letra_id)
         cap_vencidas = sum(v["data"]["valor_cuota"] for v in vencidas)
         deuda_futura = deuda - cap_vencidas
-        capital_puro = max(0, min(dinero_abono, deuda_futura))
+        capital_puro = min(temp_capital, deuda_futura)
 
+        # El resumen se cuenta como se ve en el recibo: el abono a capital
+        # completo (capital de vencidas + a futuro, sin desglosar) y aparte
+        # el interés (y mora) de cada vencida, que se suma al total.
+        cap_total_aplicado = capital_puro + cap_vencidas
         mensajes = []
+        if cap_total_aplicado > 0:
+            mensajes.append(f"Abono Capital: ${cap_total_aplicado:,}")
         for v in vencidas:
             etiqueta = (
-                f"⚠️ Cuota #{v['data']['nro_cuota']} vencida "
-                f"(se cobra aparte: ${v['costo_total']:,}"
+                f"⚠️ Cuota #{v['data']['nro_cuota']} vencida: se cobra su "
+                f"interés ${v['data']['interes_mes']:,}"
             )
             if v["mora"] > 0:
-                etiqueta += f", incluye ${v['mora']:,} de mora"
-            etiqueta += ")"
+                etiqueta += f" + ${v['mora']:,} de mora"
             mensajes.append(etiqueta)
-        if capital_puro > 0:
-            mensajes.append(f"Abono Capital: ${capital_puro:,}")
         if vencidas:
-            total_cobrar = sum(v["costo_total"] for v in vencidas) + capital_puro
-            mensajes.append(f"Total a cobrar: ${total_cobrar:,}")
+            total_pagar = cap_total_aplicado + sum(
+                v["data"]["interes_mes"] + v["mora"] for v in vencidas
+            )
+            mensajes.append(f"Total a pagar: ${total_pagar:,}")
 
         return {"tipo": "ABONO_CASCADA", "socio_data": socio_data,
                 "letra_id": letra_id, "vencidas": vencidas,
@@ -311,11 +336,6 @@ class CombinadoService:
                 dict_recibo["valor_capital_consolidado"] += v["data"]["valor_cuota"]
                 dict_recibo["interes_consolidado"] += v["data"]["interes_mes"]
                 dict_recibo["mora_consolidada"] += v["mora"]
-                self._auxiliar.add(
-                    fecha=fecha, tipo="Pago Credito", socio=nombre,
-                    monto=v["monto_base"], saldo=saldo_caja,
-                    recibo=recibo_id, cuota=nro, id_credito=str(letra_id),
-                )
             if capital_puro > 0:
                 cursor.execute("""
                     INSERT INTO detalle_recibo
@@ -325,11 +345,18 @@ class CombinadoService:
                 saldo_caja += capital_puro
                 self._liquidaciones.recalculate_amortization(letra_id, capital_puro)
                 dict_recibo["valor_capital_consolidado"] += capital_puro
+
+            # Un solo movimiento de caja "Abono Capital" con todo sumado
+            # (capital de vencidas + capital a futuro + interés de las
+            # vencidas): la mora no entra porque no va a caja.
+            monto_abono_total = capital_puro + sum(v["monto_base"] for v in vencidas)
+            if monto_abono_total > 0:
                 self._auxiliar.add(
                     fecha=fecha, tipo="Abono Capital", socio=nombre,
-                    monto=capital_puro, saldo=saldo_caja,
+                    monto=monto_abono_total, saldo=saldo_caja,
                     recibo=recibo_id, cuota=0, id_credito=str(letra_id),
                 )
+
             if vencidas:
                 dict_recibo["nro_cuotas_pagadas_start"] = vencidas[0]["data"]["nro_cuota"]
                 dict_recibo["nro_cuotas_pagadas_end"] = (
