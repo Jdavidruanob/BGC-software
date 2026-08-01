@@ -212,14 +212,14 @@ class CombinadoService:
 
     def _prepare_abono(self, socio_data, letra_id, dinero_abono, hoy, tasa_mora, cobrar_mora=True):
         nombre = f"{socio_data['nombres']} {socio_data['apellidos']}"
-        pendientes = self._liquidaciones.find_pending(letra_id)
+        pendientes = self._liquidaciones.find_pending_with_reference(letra_id)
         vencidas = []
         for cuota in pendientes:
             # Una cuota marcada a mano en la liquidación NO es vencida, sin
             # importar la fecha: la marca del operador es la que manda.
             if cuota["mora_exenta"]:
                 continue
-            if not esta_vencida(cuota["fecha_vencimiento"], hoy):
+            if not esta_vencida(cuota["fecha_referencia"], hoy):
                 break
             base = cuota["valor_cuota"] + cuota["interes_mes"]
             mora = calculate_mora(cuota["fecha_vencimiento"], hoy, cuota["valor_cuota"], tasa_mora) if cobrar_mora else 0

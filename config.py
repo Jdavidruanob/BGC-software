@@ -63,29 +63,32 @@ def db_date_str(value):
     return d.strftime("%Y-%m-%d") if d else ""
 
 
-# Días de plazo desde el vencimiento antes de tomar una cuota como VENCIDA
-# (se le dan 10 días de gracia: si vence el 1, se toma como vencida a partir
-# del día 11, no del día siguiente). No confundir con DIAS_GRACIA_MORA en
-# `services/amortization.py`, que es el plazo aparte antes de empezar a
-# cobrar el interés de mora sobre una cuota que ya es vencida.
+# Días de plazo antes de tomar una cuota como VENCIDA, contados desde el
+# vencimiento de la cuota ANTERIOR (o la fecha de inicio del crédito si es la
+# cuota #1) — NO desde el vencimiento de la cuota misma: si la cuota anterior
+# vencía el 25 de junio, la siguiente ya se toma como vencida el 6 de julio,
+# aunque su propia fecha de vencimiento sea el 25 de julio. No confundir con
+# DIAS_GRACIA_MORA en `services/amortization.py`, que es el plazo aparte antes
+# de empezar a cobrar el interés de mora sobre una cuota que ya es vencida.
 DIAS_GRACIA_VENCIDA = 10
 
 
-def esta_vencida(fecha_vencimiento, hoy=None) -> bool:
-    """True si una cuota con esta fecha de vencimiento ya está vencida, dando
-    DIAS_GRACIA_VENCIDA días de plazo desde el vencimiento."""
-    f_venc = parse_db_date(fecha_vencimiento)
-    if f_venc is None:
+def esta_vencida(fecha_referencia, hoy=None) -> bool:
+    """True si ya está vencida una cuota cuya cuota ANTERIOR (o el inicio del
+    crédito, si es la #1) vence en `fecha_referencia`, dando
+    DIAS_GRACIA_VENCIDA días de plazo desde esa fecha."""
+    f_ref = parse_db_date(fecha_referencia)
+    if f_ref is None:
         return False
     if hoy is None:
         hoy = get_hoy()
-    return hoy >= f_venc + timedelta(days=DIAS_GRACIA_VENCIDA)
+    return hoy >= f_ref + timedelta(days=DIAS_GRACIA_VENCIDA)
 
 
 def fecha_limite_vencida(hoy=None) -> str:
-    """Fecha 'YYYY-MM-DD' tal que una cuota con fecha_vencimiento <= este
-    valor ya está vencida. Pensada para usar directo en consultas SQL (ver
-    `esta_vencida` para el equivalente en Python)."""
+    """Fecha 'YYYY-MM-DD' tal que una cuota cuya fecha de referencia (ver
+    `esta_vencida`) sea <= este valor ya está vencida. Pensada para usar
+    directo en consultas SQL."""
     if hoy is None:
         hoy = get_hoy()
     return (hoy - timedelta(days=DIAS_GRACIA_VENCIDA)).strftime("%Y-%m-%d")

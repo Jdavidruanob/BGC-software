@@ -142,6 +142,10 @@ class CreditLiquidationPage(QWidget):
             self.table.setRowCount(len(cuotas))
 
             hoy = get_hoy()
+            # El plazo de gracia se cuenta desde el vencimiento de la cuota
+            # ANTERIOR (o desde el inicio del crédito para la cuota #1), no
+            # desde el vencimiento de la cuota misma (ver config.esta_vencida).
+            fecha_referencia = self.credit["fecha_inicio"]
 
             for i, c in enumerate(cuotas):
                 # Datos básicos (fecha normalizada a 'YYYY-MM-DD' venga como texto o date)
@@ -172,7 +176,7 @@ class CreditLiquidationPage(QWidget):
                     es_bold = True
                 else:
                     # NO PAGADA
-                    if esta_vencida(c["fecha_vencimiento"], hoy):
+                    if esta_vencida(fecha_referencia, hoy):
                         # VENCIDA: Rojo
                         estado_text = "VENCIDA"
                         color_texto = QColor("#D32F2F") # Rojo
@@ -180,6 +184,8 @@ class CreditLiquidationPage(QWidget):
                     else:
                         # PENDIENTE: Negro
                         estado_text = "Pendiente"
+
+                fecha_referencia = c["fecha_vencimiento"]
 
                 # Armar fila
                 row_data = [f_venc, nro, v_cap, v_int, v_total, v_saldo, estado_text]

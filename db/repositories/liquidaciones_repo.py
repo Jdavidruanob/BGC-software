@@ -48,6 +48,33 @@ class LiquidacionesRepository:
             print(f"❌ Error obteniendo cuotas pendientes: {e}")
             return []
 
+    def find_pending_with_reference(self, letra_id):
+        """Como find_pending, pero agrega `fecha_referencia`: la fecha de
+        vencimiento de la cuota ANTERIOR (o la fecha de inicio del crédito si
+        es la cuota #1). Los DIAS_GRACIA_VENCIDA de plazo para considerar una
+        cuota vencida se cuentan desde esa fecha de referencia, no desde el
+        vencimiento de la cuota misma (ver `config.esta_vencida`): si la
+        cuota anterior venció el 25 de junio, la siguiente (venza cuando
+        venza) ya se toma como vencida el 6 de julio.
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                SELECT l.nro_cuota, l.fecha_vencimiento, l.valor_cuota, l.interes_mes,
+                       l.cuota_mensual, l.saldo_capital, l.mora_exenta,
+                       COALESCE(prev.fecha_vencimiento, c.fecha_inicio) AS fecha_referencia
+                FROM liquidaciones l
+                JOIN creditos c ON c.letra = l.credito_letra
+                LEFT JOIN liquidaciones prev
+                  ON prev.credito_letra = l.credito_letra AND prev.nro_cuota = l.nro_cuota - 1
+                WHERE l.credito_letra = %s AND l.fecha_pago IS NULL
+                ORDER BY l.nro_cuota ASC
+            """, (letra_id,))
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Error obteniendo cuotas pendientes con referencia: {e}")
+            return []
+
     def set_mora_exenta(self, letra_id, nro_cuota, exenta: bool):
         """Marca/desmarca una cuota como PENDIENTE forzada.
 
@@ -113,7 +140,9 @@ class LiquidacionesRepository:
 
     def find_overdue(self, hoy_str, limit=5):
         """Cuotas en mora: no pagadas y ya vencidas, dando
-        `config.DIAS_GRACIA_VENCIDA` días de plazo desde el vencimiento.
+        `config.DIAS_GRACIA_VENCIDA` días de plazo desde el vencimiento de la
+        cuota ANTERIOR (o la fecha de inicio del crédito si es la cuota #1),
+        no desde el vencimiento de la cuota misma.
 
         Las cuotas marcadas a mano como pendientes (`mora_exenta`) quedan fuera:
         el operador decidió que no cuentan como vencidas.
@@ -122,15 +151,24 @@ class LiquidacionesRepository:
             limite = fecha_limite_vencida(parse_db_date(hoy_str))
             cursor = self.db.conn.cursor()
             cursor.execute("""
-                SELECT l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual,
+                WITH ref AS (
+                    SELECT l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual,
+                           l.fecha_pago, l.mora_exenta,
+                           COALESCE(prev.fecha_vencimiento, c.fecha_inicio) AS fecha_referencia
+                    FROM liquidaciones l
+                    JOIN creditos c ON c.letra = l.credito_letra
+                    LEFT JOIN liquidaciones prev
+                      ON prev.credito_letra = l.credito_letra AND prev.nro_cuota = l.nro_cuota - 1
+                )
+                SELECT r.credito_letra, r.nro_cuota, r.fecha_vencimiento, r.cuota_mensual,
                        STRING_AGG(s.nombres || ' ' || s.apellidos, ', ') AS socios
-                FROM liquidaciones l
-                JOIN socio_credito sc ON sc.credito_letra = l.credito_letra
+                FROM ref r
+                JOIN socio_credito sc ON sc.credito_letra = r.credito_letra
                 JOIN socios s ON s.id = sc.socio_id
-                WHERE l.fecha_pago IS NULL AND l.fecha_vencimiento <= %s
-                  AND COALESCE(l.mora_exenta, 0) = 0
-                GROUP BY l.credito_letra, l.nro_cuota, l.fecha_vencimiento, l.cuota_mensual
-                ORDER BY l.fecha_vencimiento ASC, l.credito_letra ASC
+                WHERE r.fecha_pago IS NULL AND r.fecha_referencia <= %s
+                  AND COALESCE(r.mora_exenta, 0) = 0
+                GROUP BY r.credito_letra, r.nro_cuota, r.fecha_vencimiento, r.cuota_mensual
+                ORDER BY r.fecha_vencimiento ASC, r.credito_letra ASC
                 LIMIT %s
             """, (limite, limit))
             return [dict(r) for r in cursor.fetchall()]
@@ -248,18 +286,28 @@ class LiquidacionesRepository:
                 row_base["valor_cuota"] if row_base else capital_original // no_cuotas_originales
             )
 
+            # El plazo de DIAS_GRACIA_VENCIDA se cuenta desde el vencimiento de
+            # la cuota ANTERIOR (o fecha_inicio si es la #1), no desde el de
+            # la cuota misma (ver config.esta_vencida).
             cursor.execute("""
-                SELECT id, valor_cuota FROM liquidaciones
-                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento <= %s
-            """, (letra_id, limite))
-            vencidas = cursor.fetchall()
+                SELECT l.id, l.valor_cuota,
+                       COALESCE(prev.fecha_vencimiento, c.fecha_inicio) AS fecha_referencia
+                FROM liquidaciones l
+                JOIN creditos c ON c.letra = l.credito_letra
+                LEFT JOIN liquidaciones prev
+                  ON prev.credito_letra = l.credito_letra AND prev.nro_cuota = l.nro_cuota - 1
+                WHERE l.credito_letra = %s AND l.fecha_pago IS NULL
+            """, (letra_id,))
+            pendientes_ref = cursor.fetchall()
+            vencidas = [r for r in pendientes_ref if str(r["fecha_referencia"]) <= limite]
+            futuras_ids = [r["id"] for r in pendientes_ref if str(r["fecha_referencia"]) > limite]
             capital_en_vencidas = sum(v["valor_cuota"] for v in vencidas)
             capital_para_futuro = max(saldo_real_nuevo - capital_en_vencidas, 0)
 
-            cursor.execute("""
-                DELETE FROM liquidaciones
-                WHERE credito_letra = %s AND fecha_pago IS NULL AND fecha_vencimiento > %s
-            """, (letra_id, limite))
+            if futuras_ids:
+                cursor.execute(
+                    "DELETE FROM liquidaciones WHERE id = ANY(%s)", (futuras_ids,)
+                )
 
             if capital_para_futuro == 0:
                 _update_no_cuotas()

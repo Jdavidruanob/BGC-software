@@ -218,9 +218,14 @@ class DBManager:
               (SELECT COALESCE(SUM(saldo),0) FROM socios) AS aportes_socios,
               (SELECT COUNT(*) FROM socios) AS socios_activos,
               (SELECT COUNT(DISTINCT credito_letra) FROM liquidaciones WHERE fecha_pago IS NULL) AS creditos_vigentes,
-              (SELECT COUNT(DISTINCT credito_letra) FROM liquidaciones
-                 WHERE fecha_pago IS NULL AND fecha_vencimiento <= %s
-                   AND COALESCE(mora_exenta, 0) = 0) AS creditos_en_mora,
+              (SELECT COUNT(DISTINCT p.credito_letra)
+                 FROM prox p
+                 JOIN liquidaciones l ON l.credito_letra = p.credito_letra AND l.nro_cuota = p.nro
+                 JOIN creditos c ON c.letra = p.credito_letra
+                 LEFT JOIN liquidaciones prev
+                   ON prev.credito_letra = p.credito_letra AND prev.nro_cuota = p.nro - 1
+                 WHERE COALESCE(prev.fecha_vencimiento, c.fecha_inicio) <= %s
+                   AND COALESCE(l.mora_exenta, 0) = 0) AS creditos_en_mora,
               (SELECT COALESCE(SUM(monto),0) FROM auxiliar
                  WHERE tipo = ANY(%s) AND substr(fecha,1,7) = %s) AS recaudo_mes,
               (SELECT COALESCE(SUM(l.saldo_capital + l.valor_cuota),0)
