@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 import psycopg
 from psycopg.rows import dict_row
@@ -47,22 +48,43 @@ class DBConnection:
         # ya no se usa: la conexión se hace por DATABASE_URL.
         self.db_path = db_path
         self.conn = None
+        # Último error de conexión (para que app.py pueda mostrar algo más útil
+        # que "no se pudo conectar" a secas). None si la última conexión sirvió.
+        self.ultimo_error = None
 
-    def connect(self):
-        try:
-            _load_env()
-            dsn = os.environ.get("DATABASE_URL")
-            if not dsn:
-                print(
-                    "❌ Falta la variable de entorno DATABASE_URL. "
-                    "Defínela en un archivo .env (ver .env.example)."
-                )
-                return False
-            self.conn = psycopg.connect(dsn, row_factory=dict_row)
-            return True
-        except psycopg.Error as e:
-            print(f"❌ Error conectando a la base de datos: {e}")
+    def connect(self, intentos=4, espera_seg=2.0, timeout_seg=8):
+        """Conecta a Postgres, reintentando ante fallos transitorios.
+
+        Un solo intento sin reintentos hacía que cualquier blip de red o un
+        momento lento del proxy de Railway se viera como "no hay conexión",
+        obligando a cerrar y volver a abrir la app (que casi siempre sí
+        conectaba en el segundo intento). `timeout_seg` además hace que cada
+        intento falle rápido si el host no responde, en vez de quedarse
+        colgado con el timeout de red por defecto del sistema operativo.
+        """
+        _load_env()
+        dsn = os.environ.get("DATABASE_URL")
+        if not dsn:
+            print(
+                "❌ Falta la variable de entorno DATABASE_URL. "
+                "Defínela en un archivo .env (ver .env.example)."
+            )
+            self.ultimo_error = "Falta la variable de entorno DATABASE_URL."
             return False
+
+        for intento in range(1, intentos + 1):
+            try:
+                self.conn = psycopg.connect(dsn, row_factory=dict_row, connect_timeout=timeout_seg)
+                self.ultimo_error = None
+                return True
+            except psycopg.Error as e:
+                self.ultimo_error = e
+                print(f"⚠️ Intento {intento}/{intentos} de conexión falló: {e}")
+                if intento < intentos:
+                    time.sleep(espera_seg)
+
+        print(f"❌ Error conectando a la base de datos tras {intentos} intentos: {self.ultimo_error}")
+        return False
 
     def close(self):
         if self.conn:

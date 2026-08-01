@@ -78,13 +78,19 @@ def main():
         print("❌ No se pudo conectar a la base de datos.")
         # Mensaje VISIBLE: la app es --windowed (sin consola), así que sin este
         # diálogo un fallo de conexión se vería como "la app no abre" sin más.
+        # db_manager.connect() ya reintentó varias veces (ver db/connection.py):
+        # si llegamos aquí, no fue un blip pasajero, así que vale la pena
+        # mostrar el detalle real en vez de un mensaje genérico.
         from PySide6.QtWidgets import QMessageBox
         QMessageBox.critical(
             None,
             "Sin conexión a la base de datos",
-            "No se pudo conectar a la base de datos.\n\n"
+            "No se pudo conectar a la base de datos después de varios intentos.\n\n"
+            f"Detalle técnico: {db_manager.ultimo_error}\n\n"
             "Revisa que tengas internet y que el archivo «.env» con la línea "
-            "DATABASE_URL esté en la misma carpeta del programa.",
+            "DATABASE_URL esté en la misma carpeta del programa. Si todo eso "
+            "está bien, puede ser un problema pasajero del servidor: espera "
+            "un momento y vuelve a abrir el programa.",
         )
         sys.exit(1)
 

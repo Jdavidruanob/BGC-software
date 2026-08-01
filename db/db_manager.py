@@ -64,6 +64,8 @@ class DBManager:
     def creditos_repo(self): return self._creditos
     @property
     def socios_repo(self): return self._socios
+    @property
+    def ultimo_error(self): return self._db.ultimo_error
 
     def connect(self):
         result = self._db.connect()
