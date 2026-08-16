@@ -12,10 +12,11 @@ from utils.sync_recibos import sincronizar_recibos
 from utils.message_boxes import show_info
 
 class AssistantPage(QWidget):
-    def __init__(self, db_manager, reversion_service=None):
+    def __init__(self, db_manager, reversion_service=None, notificacion_whatsapp_service=None):
         super().__init__()
         self.db_manager = db_manager
         self._reversion = reversion_service
+        self._notificaciones = notificacion_whatsapp_service
         self.page_size = 100        # ajuste razonable
         self.current_page = 0
         self.no_more_pages = False
@@ -405,6 +406,21 @@ class AssistantPage(QWidget):
                 f"↩️ Eliminar el recibo #{recibo_id} completo (deshace todo)"
             )
 
+        # Envío manual por WhatsApp: mismo camino que usa el bot, encolado
+        # desde acá (ver services/notificacion_whatsapp_service.py).
+        enviar_recibo_action = None
+        if recibo_id is not None and self._notificaciones is not None:
+            enviar_recibo_action = menu.addAction(
+                f"📤 Enviar recibo #{recibo_id} por WhatsApp"
+            )
+
+        letra_id = self._letra_de_fila(item.row())
+        enviar_liquidacion_action = None
+        if letra_id is not None and self._notificaciones is not None:
+            enviar_liquidacion_action = menu.addAction(
+                f"📤 Enviar liquidación de la letra #{letra_id} por WhatsApp"
+            )
+
         # Ejecutar y esperar acción
         action = menu.exec(self.table_widget.mapToGlobal(position))
 
@@ -412,6 +428,10 @@ class AssistantPage(QWidget):
             self.delete_current_operation()
         elif anular_action is not None and action == anular_action:
             self.delete_receipt(recibo_id)
+        elif enviar_recibo_action is not None and action == enviar_recibo_action:
+            self.enviar_recibo_whatsapp(recibo_id)
+        elif enviar_liquidacion_action is not None and action == enviar_liquidacion_action:
+            self.enviar_liquidacion_whatsapp(letra_id)
 
     def _recibo_de_fila(self, row):
         """Número de recibo de una fila de la tabla, o None si no tiene."""
@@ -422,6 +442,74 @@ class AssistantPage(QWidget):
             return int(item.text().strip())
         except ValueError:
             return None
+
+    def _letra_de_fila(self, row):
+        """Letra del crédito de una fila de la tabla, o None si no tiene."""
+        item = self.table_widget.item(row, 4)
+        if not item or not item.text().strip():
+            return None
+        try:
+            return int(item.text().strip())
+        except ValueError:
+            return None
+
+    def enviar_recibo_whatsapp(self, recibo_id):
+        """Encola el recibo #recibo_id para que el bot lo envíe por WhatsApp,
+        exactamente como lo hace tras una operación por Telegram (ver
+        services/notificacion_whatsapp_service.py)."""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Enviar recibo por WhatsApp")
+        msg.setIcon(QMessageBox.Question)
+        msg.setText(f"¿Enviar el recibo #{recibo_id} por WhatsApp al socio?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("Sí, enviar")
+        msg.button(QMessageBox.No).setText("Cancelar")
+        msg.setDefaultButton(QMessageBox.No)
+        msg.exec()
+
+        if msg.clickedButton() != msg.button(QMessageBox.Yes):
+            return
+
+        try:
+            socio = self._notificaciones.enviar_recibo(recibo_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo encolar el envío:\n{e}")
+            return
+
+        show_info(
+            self, "Recibo en camino",
+            f"El recibo #{recibo_id} quedó en cola para enviarse a {socio} por "
+            "WhatsApp. Le llegará en menos de un minuto.",
+        )
+
+    def enviar_liquidacion_whatsapp(self, letra_id):
+        """Encola la liquidación de la letra #letra_id para cada socio del
+        crédito (ver services/notificacion_whatsapp_service.py)."""
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Enviar liquidación por WhatsApp")
+        msg.setIcon(QMessageBox.Question)
+        msg.setText(f"¿Enviar la liquidación de la letra #{letra_id} por WhatsApp?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.button(QMessageBox.Yes).setText("Sí, enviar")
+        msg.button(QMessageBox.No).setText("Cancelar")
+        msg.setDefaultButton(QMessageBox.No)
+        msg.exec()
+
+        if msg.clickedButton() != msg.button(QMessageBox.Yes):
+            return
+
+        try:
+            socios = self._notificaciones.enviar_liquidacion(letra_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo encolar el envío:\n{e}")
+            return
+
+        show_info(
+            self, "Liquidación en camino",
+            f"La liquidación de la letra #{letra_id} quedó en cola para "
+            f"enviarse a {', '.join(socios)} por WhatsApp. Le(s) llegará en "
+            "menos de un minuto.",
+        )
 
     def delete_receipt(self, recibo_id):
         """Elimina un recibo completo revirtiendo todo lo que hizo."""
@@ -544,6 +632,18 @@ class AssistantPage(QWidget):
 
     def on_refrescar(self):
         """Deja la carpeta de recibos igual a la base y recarga la lista."""
+        # Este botón es el único refresco de la app que NO pasa por
+        # MainWindow.show_view() (se dispara solo, sin navegar), así que
+        # necesita su propio chequeo de conexión: si el internet se cayó, sin
+        # esto la consulta fallaba en silencio una y otra vez y solo se
+        # arreglaba reiniciando la app.
+        if not self.db_manager.ensure_connection():
+            QMessageBox.warning(
+                self, "Sin conexión",
+                "No se pudo conectar a la base de datos. Revisa tu internet e "
+                "intenta de nuevo.",
+            )
+            return
         self.db_manager.invalidate_members()
         nuevos, borrados = sincronizar_recibos(self.db_manager.conn, RECIBOS_OUTPUT_DIR)
         self.apply_filters()
