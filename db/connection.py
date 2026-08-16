@@ -3,6 +3,7 @@ import sys
 import time
 
 import psycopg
+from psycopg.pq import TransactionStatus
 from psycopg.rows import dict_row
 
 
@@ -89,3 +90,26 @@ class DBConnection:
     def close(self):
         if self.conn:
             self.conn.close()
+
+    def ensure_alive(self) -> bool:
+        """Se llama antes de cada refresco de pantalla para que la app se
+        recupere sola de una caída de internet, sin tener que reiniciarla.
+
+        Si la conexión está cerrada (el internet se cayó y el socket murió),
+        reconecta desde cero reusando el retry de connect(). Si sigue abierta
+        pero quedó en una transacción abortada (una consulta anterior falló a
+        medias), la limpia con rollback() — sin esto, TODAS las consultas
+        siguientes seguirían fallando en silencio aunque el internet ya haya
+        vuelto, que es justo el síntoma de "ni Refrescar lo arregla".
+
+        `conn.closed` y `conn.info.transaction_status` son datos locales (no
+        implican ida y vuelta a la red), así que este chequeo es barato.
+        """
+        if self.conn is None or self.conn.closed:
+            return self.connect()
+        try:
+            if self.conn.info.transaction_status == TransactionStatus.INERROR:
+                self.conn.rollback()
+            return True
+        except Exception:
+            return self.connect()  # el rollback también falló: la conexión está muerta de verdad

@@ -67,6 +67,12 @@ class DBManager:
     @property
     def ultimo_error(self): return self._db.ultimo_error
 
+    def ensure_connection(self):
+        """Recupera la conexión si se cayó o quedó envenenada (ver
+        DBConnection.ensure_alive). Se llama al inicio de cada refresco de
+        pantalla, ANTES de volver a consultar."""
+        return self._db.ensure_alive()
+
     def connect(self):
         result = self._db.connect()
         if result:
@@ -93,6 +99,11 @@ class DBManager:
     def get_all_members(self):
         if self._cache_short is not None and self._members_cache_fresh():
             return self._cache_short
+        if not self.ensure_connection():
+            # Sin conexión: se devuelve el caché viejo (mejor que nada) y NO
+            # se toca _cache_ts, para que el próximo llamado reintente ya
+            # mismo en vez de quedar hasta _MEMBERS_TTL devolviendo lo mismo.
+            return self._cache_short or []
         import time
         self._cache_short = self._socios.find_all()
         self._cache_ts = time.monotonic()
@@ -101,6 +112,8 @@ class DBManager:
     def get_all_members_full(self):
         if self._cache_full is not None and self._members_cache_fresh():
             return self._cache_full
+        if not self.ensure_connection():
+            return self._cache_full or []
         import time
         self._cache_full = self._socios.find_all_full()
         self._cache_ts = time.monotonic()

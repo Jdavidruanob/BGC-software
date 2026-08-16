@@ -15,6 +15,7 @@ from config import load_styles, load_svg_icon, load_svg_icon_tinted, PRIMARY_COL
 from version import APP_VERSION
 from views.widgets.update_banner import UpdateBanner
 from views.widgets.env_banner import EnvBanner
+from utils.message_boxes import show_warning
 import entorno
 
 NAV_ICON_INACTIVO = "#94a3b8"   # slate-400: gris desactivado
@@ -171,7 +172,20 @@ class MainWindow(QMainWindow):
                 self._show_loading()
                 QApplication.processEvents()   # pinta el cambio de vista + badge antes de bloquear
                 try:
-                    widget.refresh_view()
+                    # Antes de volver a consultar, asegurar que la conexión
+                    # sirva: si el internet se cayó, esto reconecta (o limpia
+                    # una transacción abortada) para que la vista no quede en
+                    # blanco sin explicación. Sin este chequeo, una consulta
+                    # fallida se veía como "la app no sirve", solucionable
+                    # antes solo reiniciando.
+                    if hasattr(widget, "db_manager") and not widget.db_manager.ensure_connection():
+                        show_warning(
+                            self, "Sin conexión",
+                            "No se pudo conectar a la base de datos. Revisa tu "
+                            "internet e intenta de nuevo.",
+                        )
+                    else:
+                        widget.refresh_view()
                 except Exception as e:
                     print(f"❌ Error al refrescar vista '{name}': {e}")
                 finally:
